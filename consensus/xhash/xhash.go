@@ -75,7 +75,7 @@ func isLittleEndian() bool {
 
 // memoryMap tries to memory map a file of uint32s for read only access.
 func memoryMap(path string, lock bool) (*os.File, mmap.MMap, []uint32, error) {
-	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	file, err := os.OpenFile(path, os.O_RDONLY, 0o644)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -126,7 +126,7 @@ func memoryMapFile(file *os.File, write bool) (mmap.MMap, []uint32, error) {
 // path requested.
 func memoryMapAndGenerate(path string, size uint64, lock bool, generator func(buffer []uint32)) (*os.File, mmap.MMap, []uint32, error) {
 	// Ensure the data folder exists
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, nil, nil, err
 	}
 	// Create a huge temporary empty file to fill with data
@@ -679,13 +679,13 @@ func (xhash *XHash) APIs(chain consensus.ChainHeaderReader) []rpc.API {
 		{
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   &API{xhash},
+			Service:   &API{chain: chain, xhash: xhash},
 			Public:    true,
 		},
 		{
 			Namespace: "xhash",
 			Version:   "1.0",
-			Service:   &API{xhash},
+			Service:   &API{chain: chain, xhash: xhash},
 			Public:    true,
 		},
 	}

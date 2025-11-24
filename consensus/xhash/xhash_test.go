@@ -99,7 +99,7 @@ func TestRemoteSealer(t *testing.T) {
 	xhash := NewTester(nil, false)
 	defer xhash.Close()
 
-	api := &API{xhash}
+	api := &API{xhash, nil}
 	if _, err := api.GetWork(); err != errNoMiningWork {
 		t.Error("expect to return an error indicate there is no mining work")
 	}
@@ -146,7 +146,7 @@ func TestHashrate(t *testing.T) {
 		t.Error("expect the result should be zero")
 	}
 
-	api := &API{xhash}
+	api := &API{xhash, nil}
 	for i := 0; i < len(hashrate); i += 1 {
 		if res := api.SubmitHashrate(hashrate[i], ids[i]); !res {
 			t.Error("remote miner submit hashrate failed")
@@ -163,7 +163,7 @@ func TestClosedRemoteSealer(t *testing.T) {
 	time.Sleep(1 * time.Second) // ensure exit channel is listening
 	xhash.Close()
 
-	api := &API{xhash}
+	api := &API{xhash, nil}
 	if _, err := api.GetWork(); err != errXHashStopped {
 		t.Error("expect to return an error to indicate XHash is stopped")
 	}

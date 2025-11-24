@@ -217,7 +217,7 @@ func TestRemoteMultiNotifyFull(t *testing.T) {
 func TestStaleSubmission(t *testing.T) {
 	xhash := NewTester(nil, true)
 	defer xhash.Close()
-	api := &API{xhash}
+	api := &API{xhash, nil}
 
 	fakeNonce, fakeDigest := types.BlockNonce{0x01, 0x02, 0x03}, common.HexToHash("deadbeef")
 

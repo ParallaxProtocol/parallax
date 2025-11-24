@@ -22,6 +22,7 @@ import (
 
 	"github.com/microstack-tech/parallax/common"
 	"github.com/microstack-tech/parallax/common/hexutil"
+	"github.com/microstack-tech/parallax/consensus"
 	"github.com/microstack-tech/parallax/core/types"
 )
 
@@ -30,6 +31,7 @@ var errXHashStopped = errors.New("xhash stopped")
 // API exposes xhash related methods for the RPC interface.
 type API struct {
 	xhash *XHash
+	chain consensus.ChainHeaderReader
 }
 
 // GetWork returns a work package for external miner.
@@ -113,13 +115,45 @@ func (api *API) GetHashrate() uint64 {
 	return uint64(api.xhash.Hashrate())
 }
 
-func (api *API) GetCumulativeEmissions(blockNumber hexutil.Uint64) *big.Int {
-	emissions := big.NewInt(0)
-	number := uint64(blockNumber)
-
-	for i := uint64(0); i < number; i++ {
-		reward := calcBlockReward(number)
-		emissions = emissions.Add(emissions, reward)
+func (api *API) GetCirculatingSupply() *big.Int {
+	header := api.chain.CurrentHeader()
+	if header == nil {
+		return big.NewInt(0)
 	}
+
+	// Number of blocks including genesis
+	n := header.Number.Uint64()
+
+	const halvingInterval uint64 = 210_000
+	emissions := new(big.Int)
+	tmp := new(big.Int)
+
+	fullEras := n / halvingInterval
+	remainder := n % halvingInterval
+
+	// Full eras
+	for era := range fullEras {
+		// pick a representative block *in* this era
+		sampleBlock := era * halvingInterval
+		reward := calcBlockReward(sampleBlock)
+
+		tmp.SetUint64(halvingInterval)
+		tmp.Mul(tmp, reward)
+		emissions.Add(emissions, tmp)
+	}
+
+	// Partial current era
+	if remainder > 0 {
+		sampleBlock := fullEras * halvingInterval
+		if sampleBlock == 0 {
+			sampleBlock = 1
+		}
+		reward := calcBlockReward(sampleBlock)
+
+		tmp.SetUint64(remainder)
+		tmp.Mul(tmp, reward)
+		emissions.Add(emissions, tmp)
+	}
+
 	return emissions
 }
