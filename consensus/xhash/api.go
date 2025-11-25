@@ -115,10 +115,10 @@ func (api *API) GetHashrate() uint64 {
 	return uint64(api.xhash.Hashrate())
 }
 
-func (api *API) GetCirculatingSupply() *big.Int {
+func (api *API) GetTotalSupply() string {
 	header := api.chain.CurrentHeader()
 	if header == nil {
-		return big.NewInt(0)
+		return "0"
 	}
 
 	// Number of blocks including genesis
@@ -155,5 +155,65 @@ func (api *API) GetCirculatingSupply() *big.Int {
 		emissions.Add(emissions, tmp)
 	}
 
-	return emissions
+	return emissions.String()
+}
+
+func (api *API) GetCirculatingSupply() string {
+	header := api.chain.CurrentHeader()
+	if header == nil {
+		return "0"
+	}
+
+	height := header.Number.Uint64()
+
+	const (
+		halvingInterval  uint64 = 210_000
+		coinbaseMaturity uint64 = 100
+	)
+
+	// No matured rewards yet
+	if height <= coinbaseMaturity {
+		return "0"
+	}
+
+	// Highest block whose coinbase is spendable
+	maturedHeight := height - coinbaseMaturity
+
+	// Number of rewarded & matured blocks (1..maturedHeight)
+	n := maturedHeight
+
+	emissions := new(big.Int)
+	tmp := new(big.Int)
+
+	fullEras := n / halvingInterval
+	remainder := n % halvingInterval
+
+	// Full eras
+	for era := range fullEras {
+		// pick a representative block in this era
+		sampleBlock := era * halvingInterval
+		if sampleBlock == 0 {
+			sampleBlock = 1 // avoid genesis if it has no reward
+		}
+		reward := calcBlockReward(sampleBlock)
+
+		tmp.SetUint64(halvingInterval)
+		tmp.Mul(tmp, reward)
+		emissions.Add(emissions, tmp)
+	}
+
+	// Partial current era
+	if remainder > 0 {
+		sampleBlock := fullEras * halvingInterval
+		if sampleBlock == 0 {
+			sampleBlock = 1
+		}
+		reward := calcBlockReward(sampleBlock)
+
+		tmp.SetUint64(remainder)
+		tmp.Mul(tmp, reward)
+		emissions.Add(emissions, tmp)
+	}
+
+	return emissions.String()
 }
