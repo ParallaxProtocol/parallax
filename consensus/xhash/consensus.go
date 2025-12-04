@@ -304,6 +304,8 @@ func (xhash *XHash) CalcDifficulty(chain consensus.ChainHeaderReader, time uint6
 	asertActivationHeight := xcfg.AsertActivationHeight
 	asertAnchorHeight := asertActivationHeight - 1
 
+	// Protect anchor cache with a mutex. CalcDifficulty can be called concurrently
+	xhash.asertMu.Lock()
 	if !xhash.asertAnchorInit {
 		// First ASERT use: init anchor from current chain view
 		xhash.initASERTAnchor(chain, asertAnchorHeight, parent)
@@ -315,6 +317,7 @@ func (xhash *XHash) CalcDifficulty(chain consensus.ChainHeaderReader, time uint6
 			xhash.initASERTAnchor(chain, asertAnchorHeight, parent)
 		}
 	}
+	xhash.asertMu.Unlock()
 
 	evalHeight := int64(parent.Number.Uint64())
 	evalTime := int64(parent.Time)

@@ -446,6 +446,8 @@ type XHash struct {
 	lock      sync.Mutex // Ensures thread safety for the in-memory caches and mining fields
 	closeOnce sync.Once  // Ensures exit channel will not be closed twice.
 
+	// ASERT anchor cache (protected by asertMu)
+	asertMu               sync.Mutex
 	asertAnchorInit       bool
 	asertAnchorHeight     int64
 	asertAnchorParentTime int64
