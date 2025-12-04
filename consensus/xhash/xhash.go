@@ -57,15 +57,6 @@ var (
 	dumpMagic = []uint32{0xbaddcafe, 0xfee1dead}
 )
 
-func init() {
-	sharedConfig := Config{
-		PowMode:       ModeNormal,
-		CachesInMem:   3,
-		DatasetsInMem: 1,
-	}
-	sharedXHash = New(sharedConfig, nil, false)
-}
-
 // isLittleEndian returns whether the local system is running in little or big
 // endian byte order.
 func isLittleEndian() bool {
@@ -453,6 +444,11 @@ type XHash struct {
 
 	lock      sync.Mutex // Ensures thread safety for the in-memory caches and mining fields
 	closeOnce sync.Once  // Ensures exit channel will not be closed twice.
+
+	asertAnchorInit       bool
+	asertAnchorHeight     int64
+	asertAnchorParentTime int64
+	asertAnchorTarget     *big.Int
 }
 
 // New creates a full sized XHash PoW scheme and starts a background thread for

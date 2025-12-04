@@ -211,6 +211,8 @@ type XHashConfig struct {
 	CoinbaseMaturityBlocks uint64 `json:"coinbaseMaturityBlocks,omitempty"`
 
 	RetargetIntervalBlocks uint64 `json:"retargetIntervalBlocks,omitempty"`
+
+	AsertActivationHeight uint64 `json:"asertAnchorHeight,omitempty"`
 }
 
 // String implements the stringer interface, returning the consensus engine details.

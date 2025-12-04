@@ -46,6 +46,8 @@ var (
 	InitialBlockRewardWei = new(big.Int).Mul(big.NewInt(50), big.NewInt(1e18))
 	// A reserved system address to store maturity schedules in the state trie.
 	lockboxAddress = common.HexToAddress("0x0000000000000000000000000000000000000042")
+
+	MaxTarget = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(1))
 )
 
 // Various error messages to mark blocks invalid. These should be private to
@@ -98,6 +100,9 @@ func (xhash *XHash) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*
 		return abort, results
 	}
 
+	// Wrap canonical chain with a batch-aware view
+	batchChain := newHeaderBatchChain(chain, headers)
+
 	// Spawn as many workers as allowed threads
 	workers := min(len(headers), runtime.GOMAXPROCS(0))
 
@@ -112,7 +117,7 @@ func (xhash *XHash) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*
 	for range workers {
 		go func() {
 			for index := range inputs {
-				errors[index] = xhash.verifyHeaderWorker(chain, headers, seals, index, unixNow)
+				errors[index] = xhash.verifyHeaderWorker(batchChain, headers, seals, index, unixNow)
 				done <- index
 			}
 		}()
@@ -149,16 +154,19 @@ func (xhash *XHash) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*
 }
 
 func (xhash *XHash) verifyHeaderWorker(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool, index int, unixNow int64) error {
+	header := headers[index]
+
 	var parent *types.Header
-	if index == 0 {
-		parent = chain.GetHeader(headers[0].ParentHash, headers[0].Number.Uint64()-1)
-	} else if headers[index-1].Hash() == headers[index].ParentHash {
+	if index > 0 && headers[index-1].Hash() == header.ParentHash {
 		parent = headers[index-1]
+	} else {
+		parent = chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
 	}
+
 	if parent == nil {
 		return consensus.ErrUnknownAncestor
 	}
-	return xhash.verifyHeader(chain, headers[index], parent, false, seals[index], unixNow)
+	return xhash.verifyHeader(chain, header, parent, false, seals[index], unixNow)
 }
 
 // VerifyUncles verifies that the given block's uncles conform to the consensus
@@ -236,6 +244,7 @@ func (xhash *XHash) verifyHeader(chain consensus.ChainHeaderReader, header, pare
 	if err := misc.VerifyForkHashes(chain.Config(), header, false /* no uncles in this chain */); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -243,7 +252,64 @@ func (xhash *XHash) verifyHeader(chain consensus.ChainHeaderReader, header, pare
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
 func (xhash *XHash) CalcDifficulty(chain consensus.ChainHeaderReader, time uint64, parent *types.Header) *big.Int {
-	return CalcNakamotoDifficulty(chain.Config(), parent)
+	if parent == nil {
+		panic("CalcDifficulty called with nil parent")
+	}
+
+	cfg := chain.Config()
+	xcfg := cfg.XHash
+	nextHeight := parent.Number.Uint64() + 1
+
+	// Pre-ASERT → Nakamoto / BTC-style
+	if xcfg == nil || xcfg.AsertActivationHeight == 0 || nextHeight < xcfg.AsertActivationHeight {
+		return CalcNakamotoDifficulty(cfg, parent)
+	}
+
+	asertActivationHeight := xcfg.AsertActivationHeight
+	asertAnchorHeight := asertActivationHeight - 1
+
+	// Lazily populate anchor cache on first ASERT block
+	if !xhash.asertAnchorInit {
+		anchorHeader := chain.GetHeaderByNumber(asertAnchorHeight)
+		if anchorHeader == nil && parent.Number.Uint64() > asertAnchorHeight {
+			// Fallback: walk backwards from parent
+			h := parent
+			for h != nil && h.Number.Uint64() > asertAnchorHeight {
+				h = chain.GetHeader(h.ParentHash, h.Number.Uint64()-1)
+			}
+			anchorHeader = h
+		}
+
+		if anchorHeader == nil || anchorHeader.Number.Uint64() != asertAnchorHeight {
+			panic(fmt.Sprintf("ASERT: could not locate anchor at height %d (nextHeight=%d, parentHeight=%d)",
+				asertAnchorHeight, nextHeight, parent.Number.Uint64()))
+		}
+
+		anchorParent := chain.GetHeader(anchorHeader.ParentHash, anchorHeader.Number.Uint64()-1)
+		if anchorParent == nil {
+			panic("ASERT: missing anchor parent header")
+		}
+
+		xhash.asertAnchorHeight = int64(anchorHeader.Number.Uint64())
+		xhash.asertAnchorParentTime = int64(anchorParent.Time)
+		xhash.asertAnchorTarget = difficultyToTarget(anchorHeader.Difficulty)
+		xhash.asertAnchorInit = true
+	}
+
+	evalHeight := int64(parent.Number.Uint64())
+	evalTime := int64(parent.Time)
+
+	// Calculate ASERT
+	nextTarget := ASERTNextTarget(
+		xhash.asertAnchorHeight,
+		xhash.asertAnchorParentTime,
+		xhash.asertAnchorTarget,
+		evalHeight,
+		evalTime,
+		MaxTarget,
+	)
+
+	return targetToDifficulty(nextTarget)
 }
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns
@@ -489,4 +555,40 @@ func popDuePayout(state *state.StateDB, height uint64) (addr common.Address, amt
 	amt = new(big.Int).SetBytes(rawAmt.Bytes())
 
 	return addr, amt, true
+}
+
+type headerBatchChain struct {
+	consensus.ChainHeaderReader // embeds the base reader
+	byNumber                    map[uint64]*types.Header
+	byHashAndNumber             map[common.Hash]uint64
+}
+
+func newHeaderBatchChain(base consensus.ChainHeaderReader, headers []*types.Header) *headerBatchChain {
+	hb := &headerBatchChain{
+		ChainHeaderReader: base,
+		byNumber:          make(map[uint64]*types.Header, len(headers)),
+		byHashAndNumber:   make(map[common.Hash]uint64, len(headers)),
+	}
+	for _, h := range headers {
+		n := h.Number.Uint64()
+		hb.byNumber[n] = h
+		hb.byHashAndNumber[h.Hash()] = n
+	}
+	return hb
+}
+
+func (hb *headerBatchChain) GetHeader(hash common.Hash, number uint64) *types.Header {
+	if n, ok := hb.byHashAndNumber[hash]; ok && n == number {
+		if h := hb.byNumber[n]; h != nil {
+			return h
+		}
+	}
+	return hb.ChainHeaderReader.GetHeader(hash, number)
+}
+
+func (hb *headerBatchChain) GetHeaderByNumber(number uint64) *types.Header {
+	if h, ok := hb.byNumber[number]; ok {
+		return h
+	}
+	return hb.ChainHeaderReader.GetHeaderByNumber(number)
 }
