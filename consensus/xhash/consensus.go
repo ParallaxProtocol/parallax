@@ -248,6 +248,42 @@ func (xhash *XHash) verifyHeader(chain consensus.ChainHeaderReader, header, pare
 	return nil
 }
 
+// initASERTAnchor (re)computes the ASERT anchor parameters from the current
+// chain view at the given anchor height. Caller must hold xhash.asertMu.
+func (xhash *XHash) initASERTAnchor(
+	chain consensus.ChainHeaderReader,
+	asertAnchorHeight uint64,
+	parent *types.Header,
+) {
+	anchorHeader := chain.GetHeaderByNumber(asertAnchorHeight)
+	if anchorHeader == nil && parent.Number.Uint64() > asertAnchorHeight {
+		// Fallback: walk backwards from parent
+		h := parent
+		for h != nil && h.Number.Uint64() > asertAnchorHeight {
+			h = chain.GetHeader(h.ParentHash, h.Number.Uint64()-1)
+		}
+		anchorHeader = h
+	}
+
+	if anchorHeader == nil || anchorHeader.Number.Uint64() != asertAnchorHeight {
+		panic(fmt.Sprintf(
+			"ASERT: could not locate anchor at height %d (parentHeight=%d)",
+			asertAnchorHeight, parent.Number.Uint64(),
+		))
+	}
+
+	anchorParent := chain.GetHeader(anchorHeader.ParentHash, anchorHeader.Number.Uint64()-1)
+	if anchorParent == nil {
+		panic("ASERT: missing anchor parent header")
+	}
+
+	xhash.asertAnchorHeight = int64(anchorHeader.Number.Uint64())
+	xhash.asertAnchorParentTime = int64(anchorParent.Time)
+	xhash.asertAnchorTarget = difficultyToTarget(anchorHeader.Difficulty)
+	xhash.asertAnchorHash = anchorHeader.Hash()
+	xhash.asertAnchorInit = true
+}
+
 // CalcDifficulty is the difficulty adjustment algorithm. It returns
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
@@ -268,32 +304,16 @@ func (xhash *XHash) CalcDifficulty(chain consensus.ChainHeaderReader, time uint6
 	asertActivationHeight := xcfg.AsertActivationHeight
 	asertAnchorHeight := asertActivationHeight - 1
 
-	// Lazily populate anchor cache on first ASERT block
 	if !xhash.asertAnchorInit {
+		// First ASERT use: init anchor from current chain view
+		xhash.initASERTAnchor(chain, asertAnchorHeight, parent)
+	} else {
+		// Detect deep reorgs that changed the header at the anchor height.
 		anchorHeader := chain.GetHeaderByNumber(asertAnchorHeight)
-		if anchorHeader == nil && parent.Number.Uint64() > asertAnchorHeight {
-			// Fallback: walk backwards from parent
-			h := parent
-			for h != nil && h.Number.Uint64() > asertAnchorHeight {
-				h = chain.GetHeader(h.ParentHash, h.Number.Uint64()-1)
-			}
-			anchorHeader = h
+		if anchorHeader == nil || anchorHeader.Hash() != xhash.asertAnchorHash {
+			// Chain history at anchor height changed. Re init anchor from this view.
+			xhash.initASERTAnchor(chain, asertAnchorHeight, parent)
 		}
-
-		if anchorHeader == nil || anchorHeader.Number.Uint64() != asertAnchorHeight {
-			panic(fmt.Sprintf("ASERT: could not locate anchor at height %d (nextHeight=%d, parentHeight=%d)",
-				asertAnchorHeight, nextHeight, parent.Number.Uint64()))
-		}
-
-		anchorParent := chain.GetHeader(anchorHeader.ParentHash, anchorHeader.Number.Uint64()-1)
-		if anchorParent == nil {
-			panic("ASERT: missing anchor parent header")
-		}
-
-		xhash.asertAnchorHeight = int64(anchorHeader.Number.Uint64())
-		xhash.asertAnchorParentTime = int64(anchorParent.Time)
-		xhash.asertAnchorTarget = difficultyToTarget(anchorHeader.Difficulty)
-		xhash.asertAnchorInit = true
 	}
 
 	evalHeight := int64(parent.Number.Uint64())

@@ -35,6 +35,7 @@ import (
 
 	"github.com/edsrzf/mmap-go"
 	"github.com/hashicorp/golang-lru/simplelru"
+	"github.com/microstack-tech/parallax/common"
 	"github.com/microstack-tech/parallax/consensus"
 	"github.com/microstack-tech/parallax/log"
 	"github.com/microstack-tech/parallax/metrics"
@@ -449,6 +450,7 @@ type XHash struct {
 	asertAnchorHeight     int64
 	asertAnchorParentTime int64
 	asertAnchorTarget     *big.Int
+	asertAnchorHash       common.Hash
 }
 
 // New creates a full sized XHash PoW scheme and starts a background thread for
