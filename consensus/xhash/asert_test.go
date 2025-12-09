@@ -319,3 +319,17 @@ func TestASERTNextTarget_BCHNVectors(t *testing.T) {
 		})
 	}
 }
+
+func TestASERTMaxTargetConsistency(t *testing.T) {
+	d1 := big.NewInt(1)
+	targetFromDiff := difficultyToTarget(d1)
+
+	if targetFromDiff.Cmp(two256m1) != 0 {
+		t.Fatalf("expected target for difficulty=1 to be two256m1, got %v", targetFromDiff)
+	}
+
+	roundTrip := targetToDifficulty(targetFromDiff)
+	if roundTrip.Cmp(d1) != 0 {
+		t.Fatalf("roundtrip diff→target→diff failed: want 1, got %v", roundTrip)
+	}
+}

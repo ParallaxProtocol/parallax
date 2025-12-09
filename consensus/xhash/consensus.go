@@ -46,8 +46,6 @@ var (
 	InitialBlockRewardWei = new(big.Int).Mul(big.NewInt(50), big.NewInt(1e18))
 	// A reserved system address to store maturity schedules in the state trie.
 	lockboxAddress = common.HexToAddress("0x0000000000000000000000000000000000000042")
-
-	MaxTarget = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(1))
 )
 
 // Various error messages to mark blocks invalid. These should be private to
@@ -329,7 +327,7 @@ func (xhash *XHash) CalcDifficulty(chain consensus.ChainHeaderReader, time uint6
 		xhash.asertAnchorTarget,
 		evalHeight,
 		evalTime,
-		MaxTarget,
+		two256m1,
 	)
 
 	return targetToDifficulty(nextTarget)
