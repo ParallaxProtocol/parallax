@@ -57,6 +57,7 @@ var (
 		XHash: &XHashConfig{
 			CoinbaseMaturityBlocks: 100,
 			RetargetIntervalBlocks: 2016,
+			AsertActivationHeight:  17560,
 		},
 	}
 
