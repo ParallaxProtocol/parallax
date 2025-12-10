@@ -35,6 +35,7 @@ import (
 
 	"github.com/edsrzf/mmap-go"
 	"github.com/hashicorp/golang-lru/simplelru"
+	"github.com/microstack-tech/parallax/common"
 	"github.com/microstack-tech/parallax/consensus"
 	"github.com/microstack-tech/parallax/log"
 	"github.com/microstack-tech/parallax/metrics"
@@ -56,15 +57,6 @@ var (
 	// dumpMagic is a dataset dump header to sanity check a data dump.
 	dumpMagic = []uint32{0xbaddcafe, 0xfee1dead}
 )
-
-func init() {
-	sharedConfig := Config{
-		PowMode:       ModeNormal,
-		CachesInMem:   3,
-		DatasetsInMem: 1,
-	}
-	sharedXHash = New(sharedConfig, nil, false)
-}
 
 // isLittleEndian returns whether the local system is running in little or big
 // endian byte order.
@@ -453,6 +445,14 @@ type XHash struct {
 
 	lock      sync.Mutex // Ensures thread safety for the in-memory caches and mining fields
 	closeOnce sync.Once  // Ensures exit channel will not be closed twice.
+
+	// ASERT anchor cache (protected by asertMu)
+	asertMu               sync.Mutex
+	asertAnchorInit       bool
+	asertAnchorHeight     int64
+	asertAnchorParentTime int64
+	asertAnchorTarget     *big.Int
+	asertAnchorHash       common.Hash
 }
 
 // New creates a full sized XHash PoW scheme and starts a background thread for
