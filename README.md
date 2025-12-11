@@ -1,6 +1,6 @@
-# Parallax
+# Parallax Core
 
-Official Golang implementation of the **Parallax protocol**.
+Reference Golang implementation of the **Parallax protocol**.
 
 > **Parallax** is a Proof-of-Work timechain protocol designed to merge the security model of Bitcoin with the programmability of the EVM. It combines Bitcoin’s fixed monetary rules with Ethereum’s virtual machine to deliver a scarce, decentralized, and programmable timechain.
 
@@ -126,4 +126,4 @@ We welcome contributions aligned with **neutrality, openness, and decentralizati
 
 ### Attribution Notice
 
-Parallax Client is a derivative work of [go-ethereum](https://github.com/ethereum/go-ethereum) originally developed by the go-ethereum authors and licensed under the GNU LGPL-3.0.
+Parallax Core is a derivative work of [go-ethereum](https://github.com/ethereum/go-ethereum) originally developed by the go-ethereum authors and licensed under the GNU LGPL-3.0.
