@@ -17,10 +17,10 @@
 package les
 
 import (
-	"github.com/microstack-tech/parallax/core/forkid"
-	"github.com/microstack-tech/parallax/p2p/dnsdisc"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/core/forkid"
+	"github.com/ParallaxProtocol/parallax/p2p/dnsdisc"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // lpsEntry is the "lps" LPS entry. This is set for LPS servers only.

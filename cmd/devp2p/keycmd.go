@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
 	"gopkg.in/urfave/cli.v1"
 )
 

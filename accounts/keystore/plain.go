@@ -22,7 +22,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 type keyStorePlain struct {

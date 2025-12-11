@@ -19,9 +19,9 @@ package vm
 import (
 	"hash"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/math"
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 // Config are the configuration options for the Interpreter

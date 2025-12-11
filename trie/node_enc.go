@@ -17,7 +17,7 @@
 package trie
 
 import (
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 func nodeToBytes(n node) []byte {

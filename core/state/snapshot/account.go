@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // Account is a modified version of a state.Account, where the root is replaced

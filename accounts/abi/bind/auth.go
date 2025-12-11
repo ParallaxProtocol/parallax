@@ -23,13 +23,13 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/accounts"
-	"github.com/microstack-tech/parallax/accounts/external"
-	"github.com/microstack-tech/parallax/accounts/keystore"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/accounts"
+	"github.com/ParallaxProtocol/parallax/accounts/external"
+	"github.com/ParallaxProtocol/parallax/accounts/keystore"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 // ErrNoChainID is returned whenever the user failed to specify a chain id.

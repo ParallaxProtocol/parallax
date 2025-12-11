@@ -21,8 +21,8 @@ package prlx
 import (
 	"errors"
 
-	parallax "github.com/microstack-tech/parallax"
-	"github.com/microstack-tech/parallax/common"
+	parallax "github.com/ParallaxProtocol/parallax"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 // Subscription represents an event subscription where events are

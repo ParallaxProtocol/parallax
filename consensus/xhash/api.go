@@ -20,10 +20,10 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/consensus"
-	"github.com/microstack-tech/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/consensus"
+	"github.com/ParallaxProtocol/parallax/core/types"
 )
 
 var errXHashStopped = errors.New("xhash stopped")

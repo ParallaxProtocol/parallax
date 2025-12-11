@@ -22,10 +22,10 @@ import (
 	"sync"
 
 	mapset "github.com/deckarep/golang-set"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 const (

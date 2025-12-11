@@ -21,11 +21,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/prl/downloader"
-	"github.com/microstack-tech/parallax/prl/protocols/prl"
-	"github.com/microstack-tech/parallax/prl/protocols/snap"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/prl/downloader"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/prl"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/snap"
 )
 
 // Tests that snap sync is disabled after a successful sync cycle.

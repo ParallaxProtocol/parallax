@@ -19,10 +19,10 @@ package core
 import (
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 // insertStats tracks and reports on block insertion.

@@ -36,7 +36,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-bexpr"
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 // Handler is the global debugging handler.

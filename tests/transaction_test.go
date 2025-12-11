@@ -19,7 +19,7 @@ package tests
 import (
 	"testing"
 
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 func TestTransaction(t *testing.T) {

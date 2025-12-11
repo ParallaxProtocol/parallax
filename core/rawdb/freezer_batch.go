@@ -21,8 +21,8 @@ import (
 	"sync/atomic"
 
 	"github.com/golang/snappy"
-	"github.com/microstack-tech/parallax/common/math"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // This is the maximum amount of data that will be buffered in memory

@@ -24,9 +24,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/math"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
 )
 
 // node represents a host on the network.

@@ -25,16 +25,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/microstack-tech/parallax"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/core/state/snapshot"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/event"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/prl/protocols/snap"
-	"github.com/microstack-tech/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/core/state/snapshot"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/event"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/snap"
+	"github.com/ParallaxProtocol/parallax/prldb"
 )
 
 var (

@@ -27,11 +27,11 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/p2p/enr"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/enr"
 	"golang.org/x/sync/singleflight"
 	"golang.org/x/time/rate"
 )

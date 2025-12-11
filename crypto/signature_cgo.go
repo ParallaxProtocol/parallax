@@ -23,8 +23,8 @@ import (
 	"crypto/elliptic"
 	"fmt"
 
-	"github.com/microstack-tech/parallax/common/math"
-	"github.com/microstack-tech/parallax/crypto/secp256k1"
+	"github.com/ParallaxProtocol/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/crypto/secp256k1"
 )
 
 // Ecrecover returns the uncompressed public key that created the given signature.

@@ -17,8 +17,8 @@
 package runtime
 
 import (
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/core/vm"
 )
 
 func NewEnv(cfg *Config) *vm.PVM {

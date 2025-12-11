@@ -23,10 +23,10 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/accounts/abi/bind"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/contracts/checkpointoracle/contract"
-	"github.com/microstack-tech/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/accounts/abi/bind"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/contracts/checkpointoracle/contract"
+	"github.com/ParallaxProtocol/parallax/core/types"
 )
 
 // CheckpointOracle is a Go wrapper around an on-chain checkpoint oracle contract.

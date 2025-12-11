@@ -21,7 +21,7 @@ import (
 	"sort"
 
 	"github.com/holiman/uint256"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 var activators = map[int]func(*JumpTable){

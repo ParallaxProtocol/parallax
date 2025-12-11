@@ -19,10 +19,10 @@ package prltest
 import (
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/internal/utesting"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/prl/protocols/prl"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/internal/utesting"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/prl"
 )
 
 // Suite represents a structure used to test a node's conformance

@@ -22,11 +22,11 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/microstack-tech/parallax/accounts/abi"
-	"github.com/microstack-tech/parallax/accounts/abi/bind"
-	"github.com/microstack-tech/parallax/accounts/keystore"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/accounts/abi"
+	"github.com/ParallaxProtocol/parallax/accounts/abi/bind"
+	"github.com/ParallaxProtocol/parallax/accounts/keystore"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/types"
 )
 
 // Signer is an interface defining the callback when a contract requires a

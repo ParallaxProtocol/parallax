@@ -20,8 +20,8 @@ import (
 	"context"
 	"net"
 
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/p2p/netutil"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/p2p/netutil"
 )
 
 // ServeListener accepts connections on l, serving JSON-RPC on them.

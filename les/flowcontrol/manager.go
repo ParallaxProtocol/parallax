@@ -22,8 +22,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/common/prque"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/common/prque"
 )
 
 // cmNodeFields are ClientNode fields used by the client manager

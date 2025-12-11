@@ -23,7 +23,7 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/microstack-tech/parallax/rlp/internal/rlpstruct"
+	"github.com/ParallaxProtocol/parallax/rlp/internal/rlpstruct"
 )
 
 var (

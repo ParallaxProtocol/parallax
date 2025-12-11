@@ -25,12 +25,12 @@ import (
 
 	"github.com/dop251/goja"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/prl/tracers"
-	jsassets "github.com/microstack-tech/parallax/prl/tracers/js/internal/tracers"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/prl/tracers"
+	jsassets "github.com/ParallaxProtocol/parallax/prl/tracers/js/internal/tracers"
 )
 
 var assetTracers = make(map[string]string)

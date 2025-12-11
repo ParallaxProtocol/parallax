@@ -17,7 +17,7 @@
 package rawdb
 
 import (
-	"github.com/microstack-tech/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/prldb"
 )
 
 // table is a wrapper around a database that prefixes each key access with a pre-

@@ -22,8 +22,8 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/types"
 )
 
 // ErrNotFound is returned by API methods if the requested item does not exist.

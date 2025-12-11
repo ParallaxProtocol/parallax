@@ -28,7 +28,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/microstack-tech/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
 	"golang.org/x/crypto/sha3"
 )
 

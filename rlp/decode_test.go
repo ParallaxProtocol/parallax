@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/common/math"
 )
 
 func TestStreamKind(t *testing.T) {

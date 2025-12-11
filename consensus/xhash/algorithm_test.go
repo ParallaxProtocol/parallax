@@ -21,8 +21,8 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
 )
 
 // prepare converts an XHash cache or dataset from a byte stream into the internal

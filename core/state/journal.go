@@ -19,7 +19,7 @@ package state
 import (
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 // journalEntry is a modification entry in the state change journal that can be

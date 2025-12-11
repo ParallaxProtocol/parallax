@@ -21,7 +21,7 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 var ErrNoReply = errors.New("no reply for given request")

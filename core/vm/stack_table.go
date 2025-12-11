@@ -17,7 +17,7 @@
 package vm
 
 import (
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 func minSwapStack(n int) int {

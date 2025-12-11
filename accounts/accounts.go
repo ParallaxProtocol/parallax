@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/microstack-tech/parallax"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/event"
+	"github.com/ParallaxProtocol/parallax"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/event"
 	"golang.org/x/crypto/sha3"
 )
 

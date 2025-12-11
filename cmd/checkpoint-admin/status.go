@@ -19,8 +19,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/microstack-tech/parallax/cmd/utils"
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/cmd/utils"
+	"github.com/ParallaxProtocol/parallax/common"
 	"gopkg.in/urfave/cli.v1"
 )
 

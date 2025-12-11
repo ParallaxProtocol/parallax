@@ -20,11 +20,11 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/internal/prlapi"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/signer/core/apitypes"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/internal/prlapi"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/signer/core/apitypes"
 )
 
 type AuditLogger struct {

@@ -22,10 +22,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/light"
-	"github.com/microstack-tech/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/light"
+	"github.com/ParallaxProtocol/parallax/prldb"
 )
 
 // LesOdr implements light.OdrBackend

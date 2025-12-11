@@ -24,8 +24,8 @@ import (
 	"time"
 
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/microstack-tech/parallax/internal/cmdtest"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/internal/cmdtest"
+	"github.com/ParallaxProtocol/parallax/rpc"
 )
 
 type testprlx struct {

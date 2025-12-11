@@ -21,8 +21,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/common/prque"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/common/prque"
 )
 
 // servingQueue allows running tasks in a limited number of threads and puts the

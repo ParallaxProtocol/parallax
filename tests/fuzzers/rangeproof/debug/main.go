@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/microstack-tech/parallax/tests/fuzzers/rangeproof"
+	"github.com/ParallaxProtocol/parallax/tests/fuzzers/rangeproof"
 )
 
 func main() {

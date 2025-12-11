@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/microstack-tech/parallax/internal/debug"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/internal/debug"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/params"
 	"gopkg.in/urfave/cli.v1"
 )
 

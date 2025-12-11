@@ -19,15 +19,15 @@ package main
 import (
 	"strconv"
 
-	"github.com/microstack-tech/parallax/accounts"
-	"github.com/microstack-tech/parallax/accounts/abi/bind"
-	"github.com/microstack-tech/parallax/accounts/external"
-	"github.com/microstack-tech/parallax/cmd/utils"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/contracts/checkpointoracle"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/prlclient"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/accounts"
+	"github.com/ParallaxProtocol/parallax/accounts/abi/bind"
+	"github.com/ParallaxProtocol/parallax/accounts/external"
+	"github.com/ParallaxProtocol/parallax/cmd/utils"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/contracts/checkpointoracle"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/prlclient"
+	"github.com/ParallaxProtocol/parallax/rpc"
 	"gopkg.in/urfave/cli.v1"
 )
 

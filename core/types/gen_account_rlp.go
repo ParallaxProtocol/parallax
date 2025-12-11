@@ -4,7 +4,7 @@
 
 package types
 
-import "github.com/microstack-tech/parallax/rlp"
+import "github.com/ParallaxProtocol/parallax/rlp"
 import "io"
 
 func (obj *StateAccount) EncodeRLP(_w io.Writer) error {

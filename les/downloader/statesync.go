@@ -21,12 +21,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/state"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/prldb"
-	"github.com/microstack-tech/parallax/trie"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/state"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/trie"
 	"golang.org/x/crypto/sha3"
 )
 

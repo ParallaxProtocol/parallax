@@ -26,9 +26,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/p2p/enr"
-	"github.com/microstack-tech/parallax/p2p/netutil"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/p2p/enr"
+	"github.com/ParallaxProtocol/parallax/p2p/netutil"
 )
 
 const (

@@ -7,10 +7,10 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/common/math"
-	"github.com/microstack-tech/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/core/types"
 )
 
 var _ = (*headerMarshaling)(nil)

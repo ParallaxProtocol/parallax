@@ -23,7 +23,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/microstack-tech/parallax/p2p/simulations/pipes"
+	"github.com/ParallaxProtocol/parallax/p2p/simulations/pipes"
 )
 
 func TestTCPPipe(t *testing.T) {

@@ -22,7 +22,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 // A BigInt represents a signed multi-precision integer.

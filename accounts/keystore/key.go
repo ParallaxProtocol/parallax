@@ -29,9 +29,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/microstack-tech/parallax/accounts"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/accounts"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/crypto"
 )
 
 const (

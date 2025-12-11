@@ -23,13 +23,13 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 // testerAccountPool is a pool to maintain currently active tester accounts,
@@ -364,7 +364,7 @@ func TestClique(t *testing.T) {
 			failure: errRecentlySigned,
 		}, {
 			// Recent signatures should not reset on checkpoint blocks imported in a new
-			// batch (https://github.com/microstack-tech/parallax/issues/17593). Whilst this
+			// batch (https://github.com/ParallaxProtocol/parallax/issues/17593). Whilst this
 			// seems overly specific and weird, it was a Rinkeby consensus split.
 			epoch:   3,
 			signers: []string{"A", "B", "C"},

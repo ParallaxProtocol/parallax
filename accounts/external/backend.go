@@ -21,15 +21,15 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/microstack-tech/parallax"
-	"github.com/microstack-tech/parallax/accounts"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/event"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/rpc"
-	"github.com/microstack-tech/parallax/signer/core/apitypes"
+	"github.com/ParallaxProtocol/parallax"
+	"github.com/ParallaxProtocol/parallax/accounts"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/event"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/signer/core/apitypes"
 )
 
 type ExternalBackend struct {

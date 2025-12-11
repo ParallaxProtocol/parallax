@@ -24,17 +24,17 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/microstack-tech/parallax"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/common/math"
-	"github.com/microstack-tech/parallax/consensus/misc"
-	"github.com/microstack-tech/parallax/core/state"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/internal/prlapi"
-	"github.com/microstack-tech/parallax/prl/filters"
-	"github.com/microstack-tech/parallax/rlp"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/consensus/misc"
+	"github.com/ParallaxProtocol/parallax/core/state"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/internal/prlapi"
+	"github.com/ParallaxProtocol/parallax/prl/filters"
+	"github.com/ParallaxProtocol/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/rpc"
 )
 
 var errBlockInvariant = errors.New("block objects must be instantiated with at least one of num or hash")

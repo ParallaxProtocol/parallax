@@ -19,8 +19,8 @@ package prl
 import (
 	"math/big"
 
-	"github.com/microstack-tech/parallax/prl/protocols/prl"
-	"github.com/microstack-tech/parallax/prl/protocols/snap"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/prl"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/snap"
 )
 
 // parallaxPeerInfo represents a short summary of the `eth` sub-protocol metadata known

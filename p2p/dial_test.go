@@ -27,11 +27,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/internal/testlog"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/p2p/netutil"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/internal/testlog"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/netutil"
 )
 
 // This test checks that dynamic dials are launched from discovery results.

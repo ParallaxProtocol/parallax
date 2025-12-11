@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/microstack-tech/parallax/metrics"
+	"github.com/ParallaxProtocol/parallax/metrics"
 	"github.com/stretchr/testify/require"
 )
 

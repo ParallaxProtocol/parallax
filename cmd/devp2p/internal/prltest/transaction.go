@@ -22,11 +22,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/internal/utesting"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/internal/utesting"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 // var faucetAddr = common.HexToAddress("0x71562b71999873DB5b286dF957af199Ec94617F7")

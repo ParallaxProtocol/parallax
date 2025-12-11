@@ -19,7 +19,7 @@ package vm
 import (
 	"fmt"
 
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 type (

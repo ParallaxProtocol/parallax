@@ -24,11 +24,11 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/microstack-tech/parallax"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/rpc"
 )
 
 // Client defines typed wrappers for the Parallax RPC API.

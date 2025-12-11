@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/microstack-tech/parallax/internal/flags"
+	"github.com/ParallaxProtocol/parallax/internal/flags"
 	"gopkg.in/urfave/cli.v1"
 )
 

@@ -22,7 +22,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 func TestHexOrDecimal256(t *testing.T) {

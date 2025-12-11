@@ -24,16 +24,16 @@ import (
 	"time"
 
 	fuzz "github.com/google/gofuzz"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/consensus/xhash"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/prl/protocols/snap"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/consensus/xhash"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/snap"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 var trieRoot common.Hash

@@ -21,7 +21,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/microstack-tech/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/core/vm"
 )
 
 // Iterator for disassembled PVM instructions

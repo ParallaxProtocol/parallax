@@ -19,7 +19,7 @@ package types
 import (
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 // LegacyTx is the transaction data of regular Parallax transactions.

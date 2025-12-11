@@ -19,7 +19,7 @@ package prlapi
 import (
 	"sync"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 type AddrLocker struct {

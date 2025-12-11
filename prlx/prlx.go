@@ -24,17 +24,17 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/internal/debug"
-	"github.com/microstack-tech/parallax/les"
-	"github.com/microstack-tech/parallax/node"
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/p2p/nat"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/prl/downloader"
-	"github.com/microstack-tech/parallax/prl/prlconfig"
-	"github.com/microstack-tech/parallax/prlclient"
-	"github.com/microstack-tech/parallax/prlstats"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/internal/debug"
+	"github.com/ParallaxProtocol/parallax/les"
+	"github.com/ParallaxProtocol/parallax/node"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/p2p/nat"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/prl/downloader"
+	"github.com/ParallaxProtocol/parallax/prl/prlconfig"
+	"github.com/ParallaxProtocol/parallax/prlclient"
+	"github.com/ParallaxProtocol/parallax/prlstats"
 )
 
 // NodeConfig represents the collection of configuration values to fine tune the Prlx

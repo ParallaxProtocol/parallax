@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // TestExport does basic sanity checks on the export/import functionality

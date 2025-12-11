@@ -39,7 +39,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/microstack-tech/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/crypto"
 )
 
 func TestKDF(t *testing.T) {

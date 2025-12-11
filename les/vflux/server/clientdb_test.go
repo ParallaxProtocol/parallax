@@ -21,10 +21,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/les/utils"
-	"github.com/microstack-tech/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/les/utils"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
 )
 
 func expval(v uint64) utils.ExpiredValue {

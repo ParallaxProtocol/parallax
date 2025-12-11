@@ -26,22 +26,22 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/common/math"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/prl/tracers"
-	"github.com/microstack-tech/parallax/rlp"
-	"github.com/microstack-tech/parallax/tests"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/prl/tracers"
+	"github.com/ParallaxProtocol/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/tests"
 
 	// Force-load native and js pacakges, to trigger registration
-	_ "github.com/microstack-tech/parallax/prl/tracers/js"
-	_ "github.com/microstack-tech/parallax/prl/tracers/native"
+	_ "github.com/ParallaxProtocol/parallax/prl/tracers/js"
+	_ "github.com/ParallaxProtocol/parallax/prl/tracers/native"
 )
 
 // To generate a new callTracer test, copy paste the makeTest method below into

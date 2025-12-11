@@ -16,7 +16,7 @@
 
 package downloader
 
-import "github.com/microstack-tech/parallax/core/types"
+import "github.com/ParallaxProtocol/parallax/core/types"
 
 type DoneEvent struct {
 	Latest *types.Header

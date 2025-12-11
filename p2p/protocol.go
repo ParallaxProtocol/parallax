@@ -19,8 +19,8 @@ package p2p
 import (
 	"fmt"
 
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/p2p/enr"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/enr"
 )
 
 // Protocol represents a P2P subprotocol implementation.

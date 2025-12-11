@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/rpc"
 )
 
 // In this example, our client wishes to track the latest 'block number'

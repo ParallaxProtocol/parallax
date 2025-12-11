@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
 )
 
 type testNode struct {

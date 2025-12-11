@@ -20,13 +20,13 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/consensus"
-	"github.com/microstack-tech/parallax/core/state"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/consensus"
+	"github.com/ParallaxProtocol/parallax/core/state"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 // StateProcessor is a basic Processor, which takes care of transitioning

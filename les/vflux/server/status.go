@@ -19,7 +19,7 @@ package server
 import (
 	"reflect"
 
-	"github.com/microstack-tech/parallax/p2p/nodestate"
+	"github.com/ParallaxProtocol/parallax/p2p/nodestate"
 )
 
 type peerWrapper struct{ clientPeer } // the NodeStateMachine type system needs this wrapper

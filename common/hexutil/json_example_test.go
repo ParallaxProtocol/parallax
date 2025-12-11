@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/microstack-tech/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
 )
 
 type MyType [5]byte

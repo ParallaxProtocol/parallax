@@ -23,7 +23,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	fuzz "github.com/google/gofuzz"
-	"github.com/microstack-tech/parallax/crypto/secp256k1"
+	"github.com/ParallaxProtocol/parallax/crypto/secp256k1"
 )
 
 func Fuzz(input []byte) int {

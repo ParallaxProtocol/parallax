@@ -22,11 +22,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/microstack-tech/parallax/core/state"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/prl/tracers/logger"
-	"github.com/microstack-tech/parallax/tests"
+	"github.com/ParallaxProtocol/parallax/core/state"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/prl/tracers/logger"
+	"github.com/ParallaxProtocol/parallax/tests"
 
 	"gopkg.in/urfave/cli.v1"
 )

@@ -19,7 +19,7 @@ package snapshot
 import (
 	"bytes"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 // binaryIterator is a simplistic iterator to step over the accounts or storage

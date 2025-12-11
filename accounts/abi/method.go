@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/microstack-tech/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/crypto"
 )
 
 // FunctionType represents different types of functions a contract might have.

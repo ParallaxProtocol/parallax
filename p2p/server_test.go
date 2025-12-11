@@ -27,12 +27,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/internal/testlog"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/p2p/enr"
-	"github.com/microstack-tech/parallax/p2p/rlpx"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/internal/testlog"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/enr"
+	"github.com/ParallaxProtocol/parallax/p2p/rlpx"
 )
 
 type testTransport struct {

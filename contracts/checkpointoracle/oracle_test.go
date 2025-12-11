@@ -27,13 +27,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/accounts/abi/bind"
-	"github.com/microstack-tech/parallax/accounts/abi/bind/backends"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/contracts/checkpointoracle/contract"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/accounts/abi/bind"
+	"github.com/ParallaxProtocol/parallax/accounts/abi/bind/backends"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/contracts/checkpointoracle/contract"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 var (

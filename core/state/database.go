@@ -22,11 +22,11 @@ import (
 
 	"github.com/VictoriaMetrics/fastcache"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/prldb"
-	"github.com/microstack-tech/parallax/trie"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/trie"
 )
 
 const (

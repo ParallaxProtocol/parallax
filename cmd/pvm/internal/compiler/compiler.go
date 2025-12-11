@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/microstack-tech/parallax/core/asm"
+	"github.com/ParallaxProtocol/parallax/core/asm"
 )
 
 func Compile(fn string, src []byte, debug bool) (string, error) {

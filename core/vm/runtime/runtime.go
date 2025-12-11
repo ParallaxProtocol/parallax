@@ -21,12 +21,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/core/state"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/core/state"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 // Config is a basic type specifying certain configuration flags for running

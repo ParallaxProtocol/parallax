@@ -22,14 +22,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microstack-tech/parallax/accounts"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/internal/prlapi"
-	"github.com/microstack-tech/parallax/signer/core"
-	"github.com/microstack-tech/parallax/signer/core/apitypes"
-	"github.com/microstack-tech/parallax/signer/storage"
+	"github.com/ParallaxProtocol/parallax/accounts"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/internal/prlapi"
+	"github.com/ParallaxProtocol/parallax/signer/core"
+	"github.com/ParallaxProtocol/parallax/signer/core/apitypes"
+	"github.com/ParallaxProtocol/parallax/signer/storage"
 )
 
 const JS = `

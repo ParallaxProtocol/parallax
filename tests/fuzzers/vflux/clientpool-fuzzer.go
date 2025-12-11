@@ -24,14 +24,14 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/les/vflux"
-	vfs "github.com/microstack-tech/parallax/les/vflux/server"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/p2p/enr"
-	"github.com/microstack-tech/parallax/prldb/memorydb"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/les/vflux"
+	vfs "github.com/ParallaxProtocol/parallax/les/vflux/server"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/enr"
+	"github.com/ParallaxProtocol/parallax/prldb/memorydb"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 var (

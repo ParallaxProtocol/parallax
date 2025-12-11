@@ -18,8 +18,8 @@ package vm
 
 import (
 	"github.com/holiman/uint256"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/math"
 )
 
 // calcMemSize64 calculates the required memory size, and returns

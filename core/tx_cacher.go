@@ -19,7 +19,7 @@ package core
 import (
 	"runtime"
 
-	"github.com/microstack-tech/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/types"
 )
 
 // senderCacher is a concurrent transaction sender recoverer and cacher.

@@ -27,9 +27,9 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/bitutil"
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/bitutil"
+	"github.com/ParallaxProtocol/parallax/log"
 	"golang.org/x/crypto/sha3"
 )
 

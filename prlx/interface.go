@@ -22,7 +22,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 // Interface represents a wrapped version of Go's any, with the capacity

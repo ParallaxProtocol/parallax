@@ -25,9 +25,9 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/prldb"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/rpc"
 )
 
 // Database is a key-value lookup for a remote database via debug_dbGet.

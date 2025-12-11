@@ -21,8 +21,8 @@ import (
 	"container/heap"
 	"errors"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/prldb"
 )
 
 // Iterator is a key-value trie iterator that traverses a Trie.

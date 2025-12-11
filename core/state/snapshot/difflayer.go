@@ -27,8 +27,8 @@ import (
 	"time"
 
 	bloomfilter "github.com/holiman/bloomfilter/v2"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 var (

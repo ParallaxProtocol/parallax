@@ -28,9 +28,9 @@ import (
 	"sync/atomic"
 
 	"github.com/golang/snappy"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/metrics"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/metrics"
 )
 
 var (

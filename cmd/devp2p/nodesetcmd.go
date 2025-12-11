@@ -25,10 +25,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/microstack-tech/parallax/core/forkid"
-	"github.com/microstack-tech/parallax/p2p/enr"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/core/forkid"
+	"github.com/ParallaxProtocol/parallax/p2p/enr"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/rlp"
 	"gopkg.in/urfave/cli.v1"
 )
 

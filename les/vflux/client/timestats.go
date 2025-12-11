@@ -21,8 +21,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/microstack-tech/parallax/les/utils"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/les/utils"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 const (

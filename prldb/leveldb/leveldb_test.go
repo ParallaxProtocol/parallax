@@ -19,8 +19,8 @@ package leveldb
 import (
 	"testing"
 
-	"github.com/microstack-tech/parallax/prldb"
-	"github.com/microstack-tech/parallax/prldb/dbtest"
+	"github.com/ParallaxProtocol/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/prldb/dbtest"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 )

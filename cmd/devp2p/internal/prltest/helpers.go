@@ -24,13 +24,13 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/internal/utesting"
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/p2p/rlpx"
-	"github.com/microstack-tech/parallax/prl/protocols/prl"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/internal/utesting"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/p2p/rlpx"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/prl"
 )
 
 var (

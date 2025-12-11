@@ -19,9 +19,9 @@ package simulations
 import (
 	"testing"
 
-	"github.com/microstack-tech/parallax/node"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/p2p/simulations/adapters"
+	"github.com/ParallaxProtocol/parallax/node"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/simulations/adapters"
 )
 
 func newTestNetwork(t *testing.T, nodeCount int) (*Network, []enode.ID) {

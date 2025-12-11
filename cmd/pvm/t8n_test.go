@@ -25,8 +25,8 @@ import (
 	"testing"
 
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/microstack-tech/parallax/cmd/pvm/internal/t8ntool"
-	"github.com/microstack-tech/parallax/internal/cmdtest"
+	"github.com/ParallaxProtocol/parallax/cmd/pvm/internal/t8ntool"
+	"github.com/ParallaxProtocol/parallax/internal/cmdtest"
 )
 
 func TestMain(m *testing.M) {

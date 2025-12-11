@@ -19,7 +19,7 @@ package abi
 import (
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 type packUnpackTest struct {

@@ -25,12 +25,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/consensus/xhash"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/consensus/xhash"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 // Tests a recovery for a short canonical chain where a recent block was already
@@ -1881,7 +1881,7 @@ func testRepair(t *testing.T, tt *rewindTest, snapshots bool) {
 	}
 }
 
-// TestIssue23496 tests scenario described in https://github.com/microstack-tech/parallax/pull/23496#issuecomment-926393893
+// TestIssue23496 tests scenario described in https://github.com/ParallaxProtocol/parallax/pull/23496#issuecomment-926393893
 // Credits to @zzyalbert for finding the issue.
 //
 // Local chain owns these blocks:

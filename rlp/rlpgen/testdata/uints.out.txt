@@ -1,6 +1,6 @@
 package test
 
-import "github.com/microstack-tech/parallax/rlp"
+import "github.com/ParallaxProtocol/parallax/rlp"
 import "io"
 
 func (obj *Test) EncodeRLP(_w io.Writer) error {

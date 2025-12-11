@@ -25,7 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/rpc"
 	"github.com/stretchr/testify/assert"
 )
 

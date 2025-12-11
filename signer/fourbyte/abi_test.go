@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microstack-tech/parallax/accounts/abi"
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/accounts/abi"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 func verify(t *testing.T, jsondata, calldata string, exp []any) {

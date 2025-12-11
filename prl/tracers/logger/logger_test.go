@@ -22,10 +22,10 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/state"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/state"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 type dummyContractRef struct {
@@ -76,7 +76,7 @@ func TestStoreCapture(t *testing.T) {
 }
 
 // Tests that blank fields don't appear in logs when JSON marshalled, to reduce
-// logs bloat and confusion. See https://github.com/microstack-tech/parallax/issues/24487
+// logs bloat and confusion. See https://github.com/ParallaxProtocol/parallax/issues/24487
 func TestStructLogMarshalingOmitEmpty(t *testing.T) {
 	tests := []struct {
 		name string

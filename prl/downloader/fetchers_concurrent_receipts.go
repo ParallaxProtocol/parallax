@@ -19,9 +19,9 @@ package downloader
 import (
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/prl/protocols/prl"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/prl"
 )
 
 // receiptQueue implements typedQueue and is a type adapter between the generic

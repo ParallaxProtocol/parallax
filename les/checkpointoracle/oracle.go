@@ -25,12 +25,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/microstack-tech/parallax/accounts/abi/bind"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/contracts/checkpointoracle"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/accounts/abi/bind"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/contracts/checkpointoracle"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 // CheckpointOracle is responsible for offering the latest stable checkpoint

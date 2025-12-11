@@ -19,12 +19,12 @@ package tests
 import (
 	"fmt"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // TransactionTest checks RLP decoding and sender derivation of transactions.

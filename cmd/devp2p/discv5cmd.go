@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/microstack-tech/parallax/cmd/devp2p/internal/v5test"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/p2p/discover"
+	"github.com/ParallaxProtocol/parallax/cmd/devp2p/internal/v5test"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/p2p/discover"
 	"gopkg.in/urfave/cli.v1"
 )
 

@@ -26,12 +26,12 @@ import (
 	"time"
 
 	"github.com/karalabe/usb"
-	"github.com/microstack-tech/parallax"
-	"github.com/microstack-tech/parallax/accounts"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax"
+	"github.com/ParallaxProtocol/parallax/accounts"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 // Maximum time between wallet health checks to detect USB unplugs.

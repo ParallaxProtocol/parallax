@@ -21,8 +21,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/les/utils"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/les/utils"
 )
 
 // requestDistributor implements a mechanism that distributes requests to

@@ -24,9 +24,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/p2p/simulations/adapters"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/simulations/adapters"
 )
 
 // a map of mocker names to its function

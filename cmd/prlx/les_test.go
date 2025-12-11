@@ -27,8 +27,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/rpc"
 )
 
 type prlxrpc struct {

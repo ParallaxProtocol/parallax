@@ -24,7 +24,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // RLPTest is the JSON structure of a single RLP test.

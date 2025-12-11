@@ -22,8 +22,8 @@ import (
 	"strings"
 
 	"github.com/cloudflare/cloudflare-go"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/p2p/dnsdisc"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/p2p/dnsdisc"
 	"gopkg.in/urfave/cli.v1"
 )
 

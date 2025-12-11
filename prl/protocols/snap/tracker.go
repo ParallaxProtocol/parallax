@@ -19,7 +19,7 @@ package snap
 import (
 	"time"
 
-	"github.com/microstack-tech/parallax/p2p/tracker"
+	"github.com/ParallaxProtocol/parallax/p2p/tracker"
 )
 
 // requestTracker is a singleton tracker for request times.

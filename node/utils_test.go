@@ -20,8 +20,8 @@
 package node
 
 import (
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/rpc"
 )
 
 // NoopLifecycle is a trivial implementation of the Service interface.

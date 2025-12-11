@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
 )
 
 // logger collects events in string format and discards events older than the

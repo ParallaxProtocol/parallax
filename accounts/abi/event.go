@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/crypto"
 )
 
 // Event is an event potentially triggered by the PVM's LOG mechanism. The Event

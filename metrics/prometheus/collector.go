@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/microstack-tech/parallax/metrics"
+	"github.com/ParallaxProtocol/parallax/metrics"
 )
 
 var (

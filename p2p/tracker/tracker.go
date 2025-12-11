@@ -22,8 +22,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/metrics"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/metrics"
 )
 
 const (

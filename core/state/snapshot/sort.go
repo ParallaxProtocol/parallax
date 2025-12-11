@@ -19,7 +19,7 @@ package snapshot
 import (
 	"bytes"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 // hashes is a helper to implement sort.Interface.

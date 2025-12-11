@@ -24,13 +24,13 @@ import (
 	"net"
 	"os"
 
-	"github.com/microstack-tech/parallax/cmd/utils"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/p2p/discover"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/p2p/nat"
-	"github.com/microstack-tech/parallax/p2p/netutil"
+	"github.com/ParallaxProtocol/parallax/cmd/utils"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/p2p/discover"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/nat"
+	"github.com/ParallaxProtocol/parallax/p2p/netutil"
 )
 
 func main() {

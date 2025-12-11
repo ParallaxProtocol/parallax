@@ -36,25 +36,25 @@ import (
 
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
-	"github.com/microstack-tech/parallax/accounts"
-	"github.com/microstack-tech/parallax/accounts/keystore"
-	"github.com/microstack-tech/parallax/cmd/utils"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/internal/flags"
-	"github.com/microstack-tech/parallax/internal/prlapi"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/node"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/rlp"
-	"github.com/microstack-tech/parallax/rpc"
-	"github.com/microstack-tech/parallax/signer/core"
-	"github.com/microstack-tech/parallax/signer/core/apitypes"
-	"github.com/microstack-tech/parallax/signer/fourbyte"
-	"github.com/microstack-tech/parallax/signer/rules"
-	"github.com/microstack-tech/parallax/signer/storage"
+	"github.com/ParallaxProtocol/parallax/accounts"
+	"github.com/ParallaxProtocol/parallax/accounts/keystore"
+	"github.com/ParallaxProtocol/parallax/cmd/utils"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/internal/flags"
+	"github.com/ParallaxProtocol/parallax/internal/prlapi"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/node"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/signer/core"
+	"github.com/ParallaxProtocol/parallax/signer/core/apitypes"
+	"github.com/ParallaxProtocol/parallax/signer/fourbyte"
+	"github.com/ParallaxProtocol/parallax/signer/rules"
+	"github.com/ParallaxProtocol/parallax/signer/storage"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -800,7 +800,7 @@ func checkFile(filename string) error {
 	}
 	// Check the unix permission bits
 	// However, on windows, we cannot use the unix perm-bits, see
-	// https://github.com/microstack-tech/parallax/issues/20123
+	// https://github.com/ParallaxProtocol/parallax/issues/20123
 	if runtime.GOOS != "windows" && info.Mode().Perm()&0377 != 0 {
 		return fmt.Errorf("file (%v) has insecure file permissions (%v)", filename, info.Mode().String())
 	}

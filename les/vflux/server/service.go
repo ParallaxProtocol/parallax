@@ -22,11 +22,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/microstack-tech/parallax/les/utils"
-	"github.com/microstack-tech/parallax/les/vflux"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/les/utils"
+	"github.com/ParallaxProtocol/parallax/les/vflux"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 type (

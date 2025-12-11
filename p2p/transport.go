@@ -25,11 +25,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/bitutil"
-	"github.com/microstack-tech/parallax/metrics"
-	"github.com/microstack-tech/parallax/p2p/rlpx"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/bitutil"
+	"github.com/ParallaxProtocol/parallax/metrics"
+	"github.com/ParallaxProtocol/parallax/p2p/rlpx"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 const (

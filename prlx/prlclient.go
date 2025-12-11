@@ -21,8 +21,8 @@ package prlx
 import (
 	"math/big"
 
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/prlclient"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/prlclient"
 )
 
 // ParallaxClient provides access to the Parallax APIs.

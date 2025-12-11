@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/microstack-tech/parallax/cmd/devp2p/internal/prltest"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/internal/utesting"
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/p2p/rlpx"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/cmd/devp2p/internal/prltest"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/internal/utesting"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/p2p/rlpx"
+	"github.com/ParallaxProtocol/parallax/rlp"
 	"gopkg.in/urfave/cli.v1"
 )
 

@@ -24,10 +24,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/console/prompt"
-	"github.com/microstack-tech/parallax/internal/prlapi"
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/console/prompt"
+	"github.com/ParallaxProtocol/parallax/internal/prlapi"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 type CommandlineUI struct {

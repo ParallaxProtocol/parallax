@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 type MyCoolType struct {

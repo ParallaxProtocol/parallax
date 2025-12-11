@@ -21,7 +21,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/microstack-tech/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/types"
 )
 
 // Tests that batched bloom bits are correctly rotated from the input bloom

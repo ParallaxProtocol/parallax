@@ -22,7 +22,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/microstack-tech/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/prldb"
 )
 
 // TestDatabaseSuite runs a suite of tests against a KeyValueStore database

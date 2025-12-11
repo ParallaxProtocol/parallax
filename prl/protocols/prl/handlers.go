@@ -20,12 +20,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/rlp"
-	"github.com/microstack-tech/parallax/trie"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/trie"
 )
 
 // handleGetBlockHeaders66 is the eth/66 version of handleGetBlockHeaders

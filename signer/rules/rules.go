@@ -23,11 +23,11 @@ import (
 	"strings"
 
 	"github.com/dop251/goja"
-	"github.com/microstack-tech/parallax/internal/jsre/deps"
-	"github.com/microstack-tech/parallax/internal/prlapi"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/signer/core"
-	"github.com/microstack-tech/parallax/signer/storage"
+	"github.com/ParallaxProtocol/parallax/internal/jsre/deps"
+	"github.com/ParallaxProtocol/parallax/internal/prlapi"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/signer/core"
+	"github.com/ParallaxProtocol/parallax/signer/storage"
 )
 
 // consoleOutput is an override for the console.log and console.error methods to

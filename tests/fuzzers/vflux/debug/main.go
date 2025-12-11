@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/tests/fuzzers/vflux"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/tests/fuzzers/vflux"
 )
 
 func main() {

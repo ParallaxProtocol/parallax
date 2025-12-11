@@ -25,9 +25,9 @@ import (
 	"testing"
 
 	"github.com/holiman/uint256"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 type TwoOperandTestcase struct {

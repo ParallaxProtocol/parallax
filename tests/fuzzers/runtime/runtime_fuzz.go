@@ -17,7 +17,7 @@
 package runtime
 
 import (
-	"github.com/microstack-tech/parallax/core/vm/runtime"
+	"github.com/ParallaxProtocol/parallax/core/vm/runtime"
 )
 
 // Fuzz is the basic entry point for the go-fuzz tool

@@ -19,8 +19,8 @@ package trie
 import (
 	"sync"
 
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/rlp"
 	"golang.org/x/crypto/sha3"
 )
 

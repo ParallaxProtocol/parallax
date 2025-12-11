@@ -21,13 +21,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/consensus/xhash"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/light"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/consensus/xhash"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/light"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 // verifyImportEvent verifies that one single event arrive on an import channel.

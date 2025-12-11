@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/light"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/light"
 )
 
 func TestLightPruner(t *testing.T) {

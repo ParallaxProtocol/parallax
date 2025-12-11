@@ -25,7 +25,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 // handler handles JSON-RPC messages. There is one handler per connection. Note that

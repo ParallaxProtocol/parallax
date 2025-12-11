@@ -16,7 +16,7 @@
 
 package snapshot
 
-import "github.com/microstack-tech/parallax/metrics"
+import "github.com/ParallaxProtocol/parallax/metrics"
 
 // Metrics in generation
 var (

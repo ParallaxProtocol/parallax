@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/crypto"
 )
 
 // The ABI holds information about a contract's context and available

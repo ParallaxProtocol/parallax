@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 func newTestFullNode(v []byte) []any {

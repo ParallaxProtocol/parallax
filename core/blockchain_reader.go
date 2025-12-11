@@ -19,16 +19,16 @@ package core
 import (
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/consensus"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/core/state"
-	"github.com/microstack-tech/parallax/core/state/snapshot"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/event"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/consensus"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/core/state"
+	"github.com/ParallaxProtocol/parallax/core/state/snapshot"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/event"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // CurrentHeader retrieves the current head header of the canonical chain. The

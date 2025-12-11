@@ -26,10 +26,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/p2p/enr"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/enr"
+	"github.com/ParallaxProtocol/parallax/rlp"
 	"golang.org/x/crypto/sha3"
 )
 

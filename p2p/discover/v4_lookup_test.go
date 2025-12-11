@@ -23,10 +23,10 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/p2p/discover/v4wire"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/p2p/enr"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/p2p/discover/v4wire"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/enr"
 )
 
 func TestUDPv4_Lookup(t *testing.T) {

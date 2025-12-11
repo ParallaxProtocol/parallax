@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
 )
 
 func TestTextHash(t *testing.T) {

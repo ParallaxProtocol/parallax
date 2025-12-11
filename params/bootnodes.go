@@ -16,7 +16,7 @@
 
 package params
 
-import "github.com/microstack-tech/parallax/common"
+import "github.com/ParallaxProtocol/parallax/common"
 
 // MainnetBootnodes are the enode URLs of the P2P bootstrap nodes running on
 // the main Parallax network.

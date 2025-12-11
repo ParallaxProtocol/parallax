@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/trie"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/trie"
 )
 
 func hexToNibbles(s string) []byte {

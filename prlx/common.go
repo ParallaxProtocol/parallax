@@ -24,8 +24,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.

@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/prldb"
 )
 
 // Iterator is an iterator to step over all the accounts or the specific

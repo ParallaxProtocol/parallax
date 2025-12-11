@@ -22,12 +22,12 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/internal/utesting"
-	"github.com/microstack-tech/parallax/light"
-	"github.com/microstack-tech/parallax/prl/protocols/snap"
-	"github.com/microstack-tech/parallax/trie"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/internal/utesting"
+	"github.com/ParallaxProtocol/parallax/light"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/snap"
+	"github.com/ParallaxProtocol/parallax/trie"
 	"golang.org/x/crypto/sha3"
 )
 

@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 func TestInterfaceGetSet(t *testing.T) {

@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microstack-tech/parallax/accounts/abi"
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/accounts/abi"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 // Tests that all the selectors contained in the 4byte database are valid.

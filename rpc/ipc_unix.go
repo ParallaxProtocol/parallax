@@ -25,7 +25,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 // ipcListen will create a Unix socket on the given endpoint.

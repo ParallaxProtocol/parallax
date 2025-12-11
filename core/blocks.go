@@ -16,7 +16,7 @@
 
 package core
 
-import "github.com/microstack-tech/parallax/common"
+import "github.com/ParallaxProtocol/parallax/common"
 
 // BadHashes represent a set of manually tracked bad hashes (usually hard forks)
 var BadHashes = map[common.Hash]bool{

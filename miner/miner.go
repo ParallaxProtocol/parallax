@@ -23,16 +23,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/consensus"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/core/state"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/event"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/prl/downloader"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/consensus"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/core/state"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/event"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/prl/downloader"
 )
 
 // Backend wraps all methods required for mining. Only full node is capable

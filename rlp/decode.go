@@ -28,7 +28,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/microstack-tech/parallax/rlp/internal/rlpstruct"
+	"github.com/ParallaxProtocol/parallax/rlp/internal/rlpstruct"
 )
 
 //lint:ignore ST1012 EOL is not an error.

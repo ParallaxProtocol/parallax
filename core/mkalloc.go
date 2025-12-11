@@ -32,8 +32,8 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 type allocItem struct{ Addr, Balance *big.Int }

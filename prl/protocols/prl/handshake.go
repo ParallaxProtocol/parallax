@@ -21,9 +21,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/forkid"
-	"github.com/microstack-tech/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/forkid"
+	"github.com/ParallaxProtocol/parallax/p2p"
 )
 
 const (

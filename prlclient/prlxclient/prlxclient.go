@@ -23,12 +23,12 @@ import (
 	"runtime"
 	"runtime/debug"
 
-	parallax "github.com/microstack-tech/parallax"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/rpc"
+	parallax "github.com/ParallaxProtocol/parallax"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/rpc"
 )
 
 // Client is a wrapper around rpc.Client that implements prlx-specific functionality.

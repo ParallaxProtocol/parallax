@@ -21,8 +21,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
 )
 
 // This is the number of consecutive leaf requests that may fail before

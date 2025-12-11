@@ -17,9 +17,9 @@
 package prl
 
 import (
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/prl/protocols/snap"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/snap"
 )
 
 // snapHandler implements the snap.Backend interface to handle the various network

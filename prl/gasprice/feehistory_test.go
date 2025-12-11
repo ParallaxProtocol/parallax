@@ -22,7 +22,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/rpc"
 )
 
 func TestFeeHistory(t *testing.T) {

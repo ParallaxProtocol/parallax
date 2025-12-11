@@ -21,7 +21,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 // Handler returns a log handler which logs to the unit test log of t.

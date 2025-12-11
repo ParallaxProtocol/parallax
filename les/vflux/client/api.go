@@ -19,9 +19,9 @@ package client
 import (
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/les/utils"
-	"github.com/microstack-tech/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/les/utils"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
 )
 
 // PrivateClientAPI implements the vflux client side API

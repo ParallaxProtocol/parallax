@@ -19,8 +19,8 @@ package les
 import (
 	"time"
 
-	"github.com/microstack-tech/parallax/common/bitutil"
-	"github.com/microstack-tech/parallax/light"
+	"github.com/ParallaxProtocol/parallax/common/bitutil"
+	"github.com/ParallaxProtocol/parallax/light"
 )
 
 const (

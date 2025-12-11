@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/golang-lru/simplelru"
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
 )
 
 const handshakeTimeout = time.Second

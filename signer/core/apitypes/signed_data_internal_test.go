@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
 )
 
 func TestBytesPadding(t *testing.T) {

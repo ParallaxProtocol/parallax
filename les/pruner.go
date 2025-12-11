@@ -20,10 +20,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/math"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/prldb"
 )
 
 // pruner is responsible for pruning historical light chain data.

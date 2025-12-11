@@ -19,8 +19,8 @@ package trie
 import (
 	"testing"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
 )
 
 // Tests if the trie diffs are tracked correctly.

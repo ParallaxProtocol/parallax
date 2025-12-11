@@ -19,7 +19,7 @@ package rlp
 import (
 	"testing"
 
-	"github.com/microstack-tech/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
 )
 
 // TestIterator tests some basic things about the ListIterator. A more

@@ -19,7 +19,7 @@ package miner
 import (
 	"testing"
 
-	"github.com/microstack-tech/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/types"
 )
 
 // noopChainRetriever is an implementation of headerRetriever that always

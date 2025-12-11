@@ -25,16 +25,16 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/consensus"
-	"github.com/microstack-tech/parallax/consensus/misc"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/core/state"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/event"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/trie"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/consensus"
+	"github.com/ParallaxProtocol/parallax/consensus/misc"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/core/state"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/event"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/trie"
 )
 
 const (
@@ -1081,7 +1081,7 @@ func (w *worker) commit(env *environment, interval func(), update bool, start ti
 			interval()
 		}
 		// Create a local environment copy, avoid the data race with snapshot state.
-		// https://github.com/microstack-tech/parallax/issues/24299
+		// https://github.com/ParallaxProtocol/parallax/issues/24299
 		env := env.copy()
 		block, err := w.engine.FinalizeAndAssemble(w.chain, env.header, env.state, env.txs, nil, env.receipts)
 		if err != nil {

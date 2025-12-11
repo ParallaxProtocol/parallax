@@ -21,11 +21,11 @@ import (
 	"testing"
 
 	"github.com/VictoriaMetrics/fastcache"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/prldb/leveldb"
-	"github.com/microstack-tech/parallax/prldb/memorydb"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/prldb/leveldb"
+	"github.com/ParallaxProtocol/parallax/prldb/memorydb"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // reverse reverses the contents of a byte slice. It's used to update random accs

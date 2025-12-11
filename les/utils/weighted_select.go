@@ -20,7 +20,7 @@ import (
 	"math"
 	"math/rand"
 
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 type (

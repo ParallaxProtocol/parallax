@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 const (

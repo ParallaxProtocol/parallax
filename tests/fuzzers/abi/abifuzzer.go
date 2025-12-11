@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	fuzz "github.com/google/gofuzz"
-	"github.com/microstack-tech/parallax/accounts/abi"
+	"github.com/ParallaxProtocol/parallax/accounts/abi"
 )
 
 var (

@@ -20,7 +20,7 @@ import (
 	"container/heap"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
 )
 
 // LazyQueue is a priority queue data structure where priorities can change over

@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 // Strings represents s slice of strs.

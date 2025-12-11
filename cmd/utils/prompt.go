@@ -20,7 +20,7 @@ package utils
 import (
 	"fmt"
 
-	"github.com/microstack-tech/parallax/console/prompt"
+	"github.com/ParallaxProtocol/parallax/console/prompt"
 )
 
 // GetPassPhrase displays the given text(prompt) to the user and requests some textual

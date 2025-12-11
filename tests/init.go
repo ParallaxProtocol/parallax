@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 // Forks table defines supported forks and their chain config.

@@ -28,8 +28,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/rpc"
 	"github.com/rs/cors"
 )
 

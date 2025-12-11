@@ -6,13 +6,13 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/consensus/xhash"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/miner"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/prl/downloader"
-	"github.com/microstack-tech/parallax/prl/gasprice"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/consensus/xhash"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/miner"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/prl/downloader"
+	"github.com/ParallaxProtocol/parallax/prl/gasprice"
 )
 
 // MarshalTOML marshals as TOML.

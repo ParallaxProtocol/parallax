@@ -21,9 +21,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/prldb"
 )
 
 // Prove constructs a merkle proof for key. The result contains all encoded nodes

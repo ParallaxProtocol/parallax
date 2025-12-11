@@ -26,7 +26,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/microstack-tech/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/common/math"
 	"gopkg.in/urfave/cli.v1"
 )
 

@@ -26,7 +26,7 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 var (

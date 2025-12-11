@@ -16,7 +16,7 @@
 
 package bind
 
-import "github.com/microstack-tech/parallax/accounts/abi"
+import "github.com/ParallaxProtocol/parallax/accounts/abi"
 
 // tmplData is the data structure required to fill the binding template.
 type tmplData struct {
@@ -92,12 +92,12 @@ import (
 	"strings"
 	"errors"
 
-	"github.com/microstack-tech/parallax"
-	"github.com/microstack-tech/parallax/accounts/abi"
-	"github.com/microstack-tech/parallax/accounts/abi/bind"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/event"
+	"github.com/ParallaxProtocol/parallax"
+	"github.com/ParallaxProtocol/parallax/accounts/abi"
+	"github.com/ParallaxProtocol/parallax/accounts/abi/bind"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/event"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.

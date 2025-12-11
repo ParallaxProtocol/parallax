@@ -23,8 +23,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/microstack-tech/parallax/signer/core/apitypes"
-	"github.com/microstack-tech/parallax/signer/fourbyte"
+	"github.com/ParallaxProtocol/parallax/signer/core/apitypes"
+	"github.com/ParallaxProtocol/parallax/signer/fourbyte"
 )
 
 func init() {

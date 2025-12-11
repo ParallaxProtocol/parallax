@@ -23,12 +23,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/les/flowcontrol"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/metrics"
-	"github.com/microstack-tech/parallax/prl/prlconfig"
-	"github.com/microstack-tech/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/les/flowcontrol"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/metrics"
+	"github.com/ParallaxProtocol/parallax/prl/prlconfig"
+	"github.com/ParallaxProtocol/parallax/prldb"
 )
 
 const makeCostStats = false // make request cost statistics during operation

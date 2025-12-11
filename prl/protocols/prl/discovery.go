@@ -17,10 +17,10 @@
 package prl
 
 import (
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/core/forkid"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/core/forkid"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // enrEntry is the ENR entry which advertises `eth` protocol on the discovery.

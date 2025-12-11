@@ -26,10 +26,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/internal/testlog"
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/internal/testlog"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 // Tests whether remote HTTP servers are correctly notified of new work.

@@ -19,7 +19,7 @@ package core
 import (
 	"errors"
 
-	"github.com/microstack-tech/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/types"
 )
 
 var (

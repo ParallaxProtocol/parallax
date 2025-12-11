@@ -28,9 +28,9 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/gorilla/websocket"
-	"github.com/microstack-tech/parallax/internal/testlog"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/internal/testlog"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/rpc"
 	"github.com/stretchr/testify/assert"
 )
 

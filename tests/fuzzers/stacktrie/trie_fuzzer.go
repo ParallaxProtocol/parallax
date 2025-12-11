@@ -25,9 +25,9 @@ import (
 	"io"
 	"sort"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/prldb"
-	"github.com/microstack-tech/parallax/trie"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/trie"
 	"golang.org/x/crypto/sha3"
 )
 

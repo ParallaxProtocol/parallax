@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
 )
 
 func TestIteratorHold(t *testing.T) {

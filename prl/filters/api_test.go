@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/rpc"
 )
 
 func TestUnmarshalJSONNewFilterArgs(t *testing.T) {

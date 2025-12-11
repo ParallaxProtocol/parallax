@@ -19,8 +19,8 @@ package prl
 import (
 	"time"
 
-	"github.com/microstack-tech/parallax/common/bitutil"
-	"github.com/microstack-tech/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/common/bitutil"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
 )
 
 const (

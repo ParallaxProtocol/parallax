@@ -17,8 +17,8 @@
 package les
 
 import (
-	"github.com/microstack-tech/parallax/metrics"
-	"github.com/microstack-tech/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/metrics"
+	"github.com/ParallaxProtocol/parallax/p2p"
 )
 
 var (

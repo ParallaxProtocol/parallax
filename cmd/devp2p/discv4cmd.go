@@ -22,12 +22,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/microstack-tech/parallax/cmd/devp2p/internal/v4test"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/p2p/discover"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/cmd/devp2p/internal/v4test"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/p2p/discover"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/params"
 	"gopkg.in/urfave/cli.v1"
 )
 

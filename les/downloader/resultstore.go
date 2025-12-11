@@ -21,7 +21,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/microstack-tech/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/types"
 )
 
 // resultStore implements a structure for maintaining fetchResults, tracking their

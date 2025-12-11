@@ -4,8 +4,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 func bi(x int64) *big.Int { return big.NewInt(x) }

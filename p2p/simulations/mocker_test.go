@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
 )
 
 func TestMocker(t *testing.T) {

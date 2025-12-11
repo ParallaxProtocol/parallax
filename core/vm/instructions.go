@@ -20,9 +20,9 @@ import (
 	"sync/atomic"
 
 	"github.com/holiman/uint256"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/params"
 	"golang.org/x/crypto/sha3"
 )
 

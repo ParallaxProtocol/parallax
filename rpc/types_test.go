@@ -21,8 +21,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/math"
 )
 
 func TestBlockNumberJSONUnmarshal(t *testing.T) {

@@ -26,8 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/bitutil"
-	"github.com/microstack-tech/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/common/bitutil"
+	"github.com/ParallaxProtocol/parallax/crypto"
 )
 
 // bloomIndexes represents the bit indexes inside the bloom filter that belong

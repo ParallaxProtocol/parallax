@@ -19,7 +19,7 @@ package downloader
 import (
 	"fmt"
 
-	"github.com/microstack-tech/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/types"
 )
 
 // peerDropFn is a callback type for dropping a peer detected as malicious.

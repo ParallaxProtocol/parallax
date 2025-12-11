@@ -26,9 +26,9 @@ import (
 
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/metrics"
-	"github.com/microstack-tech/parallax/metrics/exp"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/metrics"
+	"github.com/ParallaxProtocol/parallax/metrics/exp"
 	"gopkg.in/urfave/cli.v1"
 )
 

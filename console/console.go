@@ -31,11 +31,11 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/mattn/go-colorable"
-	"github.com/microstack-tech/parallax/console/prompt"
-	"github.com/microstack-tech/parallax/internal/jsre"
-	"github.com/microstack-tech/parallax/internal/jsre/deps"
-	"github.com/microstack-tech/parallax/internal/web3ext"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/console/prompt"
+	"github.com/ParallaxProtocol/parallax/internal/jsre"
+	"github.com/ParallaxProtocol/parallax/internal/jsre/deps"
+	"github.com/ParallaxProtocol/parallax/internal/web3ext"
+	"github.com/ParallaxProtocol/parallax/rpc"
 	"github.com/peterh/liner"
 )
 

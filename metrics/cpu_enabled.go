@@ -19,7 +19,7 @@
 package metrics
 
 import (
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/log"
 	"github.com/shirou/gopsutil/cpu"
 )
 

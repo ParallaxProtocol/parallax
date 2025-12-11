@@ -44,12 +44,12 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/p2p/simulations"
-	"github.com/microstack-tech/parallax/p2p/simulations/adapters"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/simulations"
+	"github.com/ParallaxProtocol/parallax/p2p/simulations/adapters"
+	"github.com/ParallaxProtocol/parallax/rpc"
 	"gopkg.in/urfave/cli.v1"
 )
 

@@ -23,9 +23,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/microstack-tech/parallax/cmd/utils"
-	"github.com/microstack-tech/parallax/consensus/xhash"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/cmd/utils"
+	"github.com/ParallaxProtocol/parallax/consensus/xhash"
+	"github.com/ParallaxProtocol/parallax/params"
 	"gopkg.in/urfave/cli.v1"
 )
 

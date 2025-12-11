@@ -1,4 +1,4 @@
-module github.com/microstack-tech/parallax
+module github.com/ParallaxProtocol/parallax
 
 go 1.25
 

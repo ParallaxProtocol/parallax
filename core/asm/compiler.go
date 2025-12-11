@@ -22,8 +22,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/microstack-tech/parallax/common/math"
-	"github.com/microstack-tech/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/core/vm"
 )
 
 // Compiler contains information about the parsed source

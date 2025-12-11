@@ -22,13 +22,13 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/math"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/crypto/blake2b"
-	"github.com/microstack-tech/parallax/crypto/bls12381"
-	"github.com/microstack-tech/parallax/crypto/bn256"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/crypto/blake2b"
+	"github.com/ParallaxProtocol/parallax/crypto/bls12381"
+	"github.com/ParallaxProtocol/parallax/crypto/bn256"
+	"github.com/ParallaxProtocol/parallax/params"
 
 	//lint:ignore SA1019 Needed for precompile
 	"golang.org/x/crypto/ripemd160"

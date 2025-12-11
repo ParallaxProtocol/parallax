@@ -24,11 +24,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/state"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/prl/tracers"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/state"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/prl/tracers"
 )
 
 type account struct{}

@@ -17,8 +17,8 @@
 package snapshot
 
 import (
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/prldb"
 )
 
 // holdableIterator is a wrapper of underlying database iterator. It extends

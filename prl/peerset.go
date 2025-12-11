@@ -21,10 +21,10 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/prl/protocols/prl"
-	"github.com/microstack-tech/parallax/prl/protocols/snap"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/prl"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/snap"
 )
 
 var (

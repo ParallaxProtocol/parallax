@@ -24,8 +24,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
 )
 
 // API describes the set of methods offered over the RPC interface

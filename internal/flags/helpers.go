@@ -20,7 +20,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/params"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -52,7 +52,7 @@ OPTIONS:
    {{.App.Name}} - {{.App.Usage}}
 
    Copyright 2013-2022 The go-ethereum Authors
-   Copyright 2025 Microstack
+   Copyright 2025 The ParallaxProtocol Authors
 
 USAGE:
    {{.App.HelpName}} [options]{{if .App.Commands}} [command] [command options]{{end}} {{if .App.ArgsUsage}}{{.App.ArgsUsage}}{{else}}[arguments...]{{end}}
@@ -72,7 +72,7 @@ COMMANDS:
 {{end}}{{end}}{{if .App.Copyright }}
 COPYRIGHT:
    {{.App.Copyright}}
-   Copyright 2025 Microstack
+   Copyright 2025 The ParallaxProtocol Authors
    {{end}}
 `
 	// ClefAppHelpTemplate is the template for the default, global app help topic.

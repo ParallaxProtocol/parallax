@@ -22,9 +22,9 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/microstack-tech/parallax/cmd/pvm/internal/t8ntool"
-	"github.com/microstack-tech/parallax/cmd/utils"
-	"github.com/microstack-tech/parallax/internal/flags"
+	"github.com/ParallaxProtocol/parallax/cmd/pvm/internal/t8ntool"
+	"github.com/ParallaxProtocol/parallax/cmd/utils"
+	"github.com/ParallaxProtocol/parallax/internal/flags"
 	"gopkg.in/urfave/cli.v1"
 )
 

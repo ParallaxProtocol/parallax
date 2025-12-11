@@ -39,7 +39,7 @@ package native
 import (
 	"errors"
 
-	"github.com/microstack-tech/parallax/prl/tracers"
+	"github.com/ParallaxProtocol/parallax/prl/tracers"
 )
 
 // init registers itself this packages as a lookup for tracers.

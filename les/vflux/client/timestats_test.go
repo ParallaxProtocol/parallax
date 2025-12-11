@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/les/utils"
+	"github.com/ParallaxProtocol/parallax/les/utils"
 )
 
 func TestTransition(t *testing.T) {

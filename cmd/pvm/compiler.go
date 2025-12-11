@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/microstack-tech/parallax/cmd/pvm/internal/compiler"
+	"github.com/ParallaxProtocol/parallax/cmd/pvm/internal/compiler"
 
 	"gopkg.in/urfave/cli.v1"
 )

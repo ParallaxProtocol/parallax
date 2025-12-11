@@ -21,10 +21,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/prque"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/prl/protocols/prl"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/prque"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/prl"
 )
 
 // timeoutGracePeriod is the amount of time to allow for a peer to deliver a

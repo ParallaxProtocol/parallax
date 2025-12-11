@@ -22,7 +22,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 func init() {

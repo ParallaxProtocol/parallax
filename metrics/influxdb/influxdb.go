@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/influxdata/influxdb/client"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/metrics"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/metrics"
 )
 
 type reporter struct {

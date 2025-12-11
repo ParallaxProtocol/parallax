@@ -19,7 +19,7 @@ package p2p
 import (
 	"container/heap"
 
-	"github.com/microstack-tech/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
 )
 
 // expHeap tracks strings and their expiry time.

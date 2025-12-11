@@ -27,8 +27,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/microstack-tech/parallax/prldb"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/rlp"
 	"github.com/stretchr/testify/require"
 )
 

@@ -21,7 +21,7 @@ package prlx
 import (
 	"errors"
 
-	"github.com/microstack-tech/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/p2p"
 )
 
 // NodeInfo represents pi short summary of the information known about the host.

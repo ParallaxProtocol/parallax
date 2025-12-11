@@ -16,7 +16,7 @@
 
 package state
 
-import "github.com/microstack-tech/parallax/metrics"
+import "github.com/ParallaxProtocol/parallax/metrics"
 
 var (
 	accountUpdatedMeter   = metrics.NewRegisteredMeter("state/update/account", nil)

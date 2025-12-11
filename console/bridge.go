@@ -25,12 +25,12 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
-	"github.com/microstack-tech/parallax/accounts/scwallet"
-	"github.com/microstack-tech/parallax/accounts/usbwallet"
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/console/prompt"
-	"github.com/microstack-tech/parallax/internal/jsre"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/accounts/scwallet"
+	"github.com/ParallaxProtocol/parallax/accounts/usbwallet"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/console/prompt"
+	"github.com/ParallaxProtocol/parallax/internal/jsre"
+	"github.com/ParallaxProtocol/parallax/rpc"
 )
 
 // bridge is a collection of JavaScript utility methods to bride the .js runtime

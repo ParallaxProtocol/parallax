@@ -21,9 +21,9 @@ package prlx
 import (
 	"encoding/json"
 
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 // MainnetGenesis returns the JSON spec to use for the main network. It

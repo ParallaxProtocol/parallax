@@ -19,8 +19,8 @@ package client
 import (
 	"sync"
 
-	"github.com/microstack-tech/parallax/p2p/enode"
-	"github.com/microstack-tech/parallax/p2p/nodestate"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/nodestate"
 )
 
 // QueueIterator returns nodes from the specified selectable set in the same order as

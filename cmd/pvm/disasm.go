@@ -22,7 +22,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/microstack-tech/parallax/core/asm"
+	"github.com/ParallaxProtocol/parallax/core/asm"
 	"gopkg.in/urfave/cli.v1"
 )
 

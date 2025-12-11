@@ -19,7 +19,7 @@ package keystore
 import (
 	"os"
 
-	"github.com/microstack-tech/parallax/accounts/keystore"
+	"github.com/ParallaxProtocol/parallax/accounts/keystore"
 )
 
 func Fuzz(input []byte) int {

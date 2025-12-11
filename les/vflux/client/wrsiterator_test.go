@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/p2p/nodestate"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/p2p/nodestate"
 )
 
 var (

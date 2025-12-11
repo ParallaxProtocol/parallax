@@ -27,7 +27,7 @@ import (
 	"strings"
 
 	"github.com/jedisct1/go-minisign"
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/log"
 	"gopkg.in/urfave/cli.v1"
 )
 

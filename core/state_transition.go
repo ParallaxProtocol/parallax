@@ -21,12 +21,12 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
-	cmath "github.com/microstack-tech/parallax/common/math"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	cmath "github.com/ParallaxProtocol/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 var emptyCodeHash = crypto.Keccak256Hash(nil)

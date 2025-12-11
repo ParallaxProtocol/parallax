@@ -23,21 +23,21 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microstack-tech/parallax/accounts/abi"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/consensus"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/core/asm"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/core/state"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/prl/tracers"
-	"github.com/microstack-tech/parallax/prl/tracers/logger"
+	"github.com/ParallaxProtocol/parallax/accounts/abi"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/consensus"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/core/asm"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/core/state"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/prl/tracers"
+	"github.com/ParallaxProtocol/parallax/prl/tracers/logger"
 
 	// force-load js tracers to trigger registration
-	_ "github.com/microstack-tech/parallax/prl/tracers/js"
+	_ "github.com/ParallaxProtocol/parallax/prl/tracers/js"
 )
 
 func TestDefaults(t *testing.T) {
@@ -605,7 +605,7 @@ func TestEip2929Cases(t *testing.T) {
 
 // TestColdAccountAccessCost test that the cold account access cost is reported
 // correctly
-// see: https://github.com/microstack-tech/parallax/issues/22649
+// see: https://github.com/ParallaxProtocol/parallax/issues/22649
 func TestColdAccountAccessCost(t *testing.T) {
 	for i, tc := range []struct {
 		code []byte

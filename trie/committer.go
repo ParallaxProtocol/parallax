@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 // leafChanSize is the size of the leafCh. It's a pretty arbitrary number, to allow

@@ -24,16 +24,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/mclock"
-	"github.com/microstack-tech/parallax/core/forkid"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/les/downloader"
-	"github.com/microstack-tech/parallax/light"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/params"
-	"github.com/microstack-tech/parallax/prl/protocols/prl"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/core/forkid"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/les/downloader"
+	"github.com/ParallaxProtocol/parallax/light"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/ParallaxProtocol/parallax/prl/protocols/prl"
 )
 
 // clientHandler is responsible for receiving and processing all incoming server

@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/microstack-tech/parallax/common/hexutil"
-	"github.com/microstack-tech/parallax/common/mclock"
-	vfs "github.com/microstack-tech/parallax/les/vflux/server"
-	"github.com/microstack-tech/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
+	vfs "github.com/ParallaxProtocol/parallax/les/vflux/server"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
 )
 
 var (

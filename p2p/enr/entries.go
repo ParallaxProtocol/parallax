@@ -21,7 +21,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // Entry is implemented by known node record entry types.

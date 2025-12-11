@@ -25,15 +25,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/consensus/xhash"
-	"github.com/microstack-tech/parallax/console/prompt"
-	"github.com/microstack-tech/parallax/core"
-	"github.com/microstack-tech/parallax/internal/jsre"
-	"github.com/microstack-tech/parallax/miner"
-	"github.com/microstack-tech/parallax/node"
-	"github.com/microstack-tech/parallax/prl"
-	"github.com/microstack-tech/parallax/prl/prlconfig"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/consensus/xhash"
+	"github.com/ParallaxProtocol/parallax/console/prompt"
+	"github.com/ParallaxProtocol/parallax/core"
+	"github.com/ParallaxProtocol/parallax/internal/jsre"
+	"github.com/ParallaxProtocol/parallax/miner"
+	"github.com/ParallaxProtocol/parallax/node"
+	"github.com/ParallaxProtocol/parallax/prl"
+	"github.com/ParallaxProtocol/parallax/prl/prlconfig"
 )
 
 const (

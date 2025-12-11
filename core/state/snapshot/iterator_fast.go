@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 )
 
 // weightedIterator is a iterator with an assigned weight. It is used to prioritise

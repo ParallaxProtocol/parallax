@@ -26,10 +26,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/p2p"
-	"github.com/microstack-tech/parallax/prldb"
-	"github.com/microstack-tech/parallax/rpc"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/prldb"
+	"github.com/ParallaxProtocol/parallax/rpc"
 
 	"github.com/stretchr/testify/assert"
 )

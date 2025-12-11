@@ -26,8 +26,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/microstack-tech/parallax/accounts"
-	"github.com/microstack-tech/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/accounts"
+	"github.com/ParallaxProtocol/parallax/crypto"
 	"golang.org/x/crypto/pbkdf2"
 )
 

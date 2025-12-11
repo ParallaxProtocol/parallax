@@ -21,12 +21,12 @@ import (
 	"errors"
 	"time"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/rawdb"
-	"github.com/microstack-tech/parallax/les/downloader"
-	"github.com/microstack-tech/parallax/light"
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/ParallaxProtocol/parallax/les/downloader"
+	"github.com/ParallaxProtocol/parallax/light"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 var errInvalidCheckpoint = errors.New("invalid advertised checkpoint")

@@ -16,7 +16,7 @@
 
 package rawdb
 
-import "github.com/microstack-tech/parallax/prldb"
+import "github.com/ParallaxProtocol/parallax/prldb"
 
 // KeyLengthIterator is a wrapper for a database iterator that ensures only key-value pairs
 // with a specific key length will be returned.

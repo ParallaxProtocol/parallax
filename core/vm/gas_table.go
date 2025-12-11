@@ -19,9 +19,9 @@ package vm
 import (
 	"errors"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/math"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/math"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 // memoryGasCost calculates the quadratic gas for memory expansion. It does so

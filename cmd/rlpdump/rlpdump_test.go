@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/common/hexutil"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common/hexutil"
 )
 
 func TestRoundtrip(t *testing.T) {

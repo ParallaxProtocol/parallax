@@ -19,7 +19,7 @@ package utils
 import (
 	"fmt"
 
-	"github.com/microstack-tech/parallax/prl/prlconfig"
+	"github.com/ParallaxProtocol/parallax/prl/prlconfig"
 	"gopkg.in/urfave/cli.v1"
 )
 

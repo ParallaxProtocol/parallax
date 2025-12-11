@@ -19,8 +19,8 @@ package core
 import (
 	"sync"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/state"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/state"
 )
 
 // txNoncer is a tiny virtual state database to manage the executable nonces of

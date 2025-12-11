@@ -17,7 +17,7 @@
 // Package bind generates Parallax contract Go bindings.
 //
 // Detailed usage document and tutorial available on the go-ethereum Wiki page:
-// https://github.com/microstack-tech/parallax/wiki/Native-DApps:-Go-bindings-to-Parallax-contracts
+// https://github.com/ParallaxProtocol/parallax/wiki/Native-DApps:-Go-bindings-to-Parallax-contracts
 package bind
 
 import (
@@ -30,7 +30,7 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/microstack-tech/parallax/accounts/abi"
+	"github.com/ParallaxProtocol/parallax/accounts/abi"
 )
 
 // Lang is a target programming language selector to generate bindings for.

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/microstack-tech/parallax/tests/fuzzers/stacktrie"
+	"github.com/ParallaxProtocol/parallax/tests/fuzzers/stacktrie"
 )
 
 func main() {

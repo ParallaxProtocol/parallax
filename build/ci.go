@@ -57,10 +57,10 @@ import (
 	"time"
 
 	"github.com/cespare/cp"
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/crypto/signify"
-	"github.com/microstack-tech/parallax/internal/build"
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/crypto/signify"
+	"github.com/ParallaxProtocol/parallax/internal/build"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 var (
@@ -1034,7 +1034,7 @@ func doAndroidArchive(cmdline []string) {
 	build.MustRun(tc.Go("mod", "download"))
 
 	// Build the Android archive and Maven resources
-	build.MustRun(gomobileTool("bind", "-ldflags", "-s -w", "--target", "android", "--javapkg", "org.ethereum", "-v", "github.com/microstack-tech/parallax/mobile"))
+	build.MustRun(gomobileTool("bind", "-ldflags", "-s -w", "--target", "android", "--javapkg", "org.ethereum", "-v", "github.com/ParallaxProtocol/parallax/mobile"))
 
 	if *local {
 		// If we're building locally, copy bundle to build dir and skip Maven
@@ -1159,7 +1159,7 @@ func doXCodeFramework(cmdline []string) {
 	build.MustRun(tc.Install(GOBIN, "golang.org/x/mobile/cmd/gomobile", "golang.org/x/mobile/cmd/gobind"))
 
 	// Build the iOS XCode framework
-	bind := gomobileTool("bind", "-ldflags", "-s -w", "--target", "ios", "-v", "github.com/microstack-tech/parallax/mobile")
+	bind := gomobileTool("bind", "-ldflags", "-s -w", "--target", "ios", "-v", "github.com/ParallaxProtocol/parallax/mobile")
 
 	if *local {
 		// If we're building locally, use the build folder and stop afterwards

@@ -22,7 +22,7 @@ package prlx
 import (
 	"errors"
 
-	"github.com/microstack-tech/parallax/p2p/enode"
+	"github.com/ParallaxProtocol/parallax/p2p/enode"
 )
 
 // Enode represents a host on the network.

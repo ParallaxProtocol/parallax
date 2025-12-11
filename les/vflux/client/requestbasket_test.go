@@ -20,7 +20,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/microstack-tech/parallax/les/utils"
+	"github.com/ParallaxProtocol/parallax/les/utils"
 )
 
 func checkU64(t *testing.T, name string, value, exp uint64) {

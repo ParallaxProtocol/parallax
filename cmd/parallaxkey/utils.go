@@ -22,8 +22,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/microstack-tech/parallax/cmd/utils"
-	"github.com/microstack-tech/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/cmd/utils"
+	"github.com/ParallaxProtocol/parallax/crypto"
 	"gopkg.in/urfave/cli.v1"
 )
 

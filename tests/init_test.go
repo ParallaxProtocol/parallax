@@ -29,7 +29,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microstack-tech/parallax/params"
+	"github.com/ParallaxProtocol/parallax/params"
 )
 
 var (

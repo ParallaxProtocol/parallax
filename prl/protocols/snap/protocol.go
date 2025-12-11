@@ -20,9 +20,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/state/snapshot"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/state/snapshot"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // Constants to match up protocol versions and messages

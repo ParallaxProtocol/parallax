@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/microstack-tech/parallax/core/vm"
-	"github.com/microstack-tech/parallax/tests"
+	"github.com/ParallaxProtocol/parallax/core/vm"
+	"github.com/ParallaxProtocol/parallax/tests"
 	"gopkg.in/urfave/cli.v1"
 )
 

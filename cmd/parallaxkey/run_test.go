@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/microstack-tech/parallax/internal/cmdtest"
+	"github.com/ParallaxProtocol/parallax/internal/cmdtest"
 )
 
 type testParallaxkey struct {

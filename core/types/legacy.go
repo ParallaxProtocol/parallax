@@ -19,7 +19,7 @@ package types
 import (
 	"errors"
 
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // IsLegacyStoredReceipts tries to parse the RLP-encoded blob

@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 // measurementImpact is the impact a single measurement has on a peer's final

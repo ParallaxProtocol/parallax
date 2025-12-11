@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/microstack-tech/parallax/light"
+	"github.com/ParallaxProtocol/parallax/light"
 )
 
 var (

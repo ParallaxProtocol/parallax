@@ -29,10 +29,10 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/microstack-tech/parallax/crypto"
-	"github.com/microstack-tech/parallax/crypto/ecies"
-	"github.com/microstack-tech/parallax/p2p/simulations/pipes"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/ParallaxProtocol/parallax/crypto/ecies"
+	"github.com/ParallaxProtocol/parallax/p2p/simulations/pipes"
+	"github.com/ParallaxProtocol/parallax/rlp"
 	"github.com/stretchr/testify/assert"
 )
 

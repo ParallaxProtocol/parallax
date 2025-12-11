@@ -22,8 +22,8 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/microstack-tech/parallax/log"
-	"github.com/microstack-tech/parallax/metrics"
+	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/ParallaxProtocol/parallax/metrics"
 )
 
 // Handler returns an HTTP handler which dump metrics in Prometheus format.

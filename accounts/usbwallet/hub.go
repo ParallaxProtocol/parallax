@@ -24,9 +24,9 @@ import (
 	"time"
 
 	"github.com/karalabe/usb"
-	"github.com/microstack-tech/parallax/accounts"
-	"github.com/microstack-tech/parallax/event"
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/accounts"
+	"github.com/ParallaxProtocol/parallax/event"
+	"github.com/ParallaxProtocol/parallax/log"
 )
 
 // LedgerScheme is the protocol scheme prefixing account and wallet URLs.

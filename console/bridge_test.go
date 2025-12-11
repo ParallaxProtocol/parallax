@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/dop251/goja"
-	"github.com/microstack-tech/parallax/internal/jsre"
+	"github.com/ParallaxProtocol/parallax/internal/jsre"
 )
 
 // TestUndefinedAsParam ensures that personal functions can receive

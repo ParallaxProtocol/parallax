@@ -19,9 +19,9 @@ package main
 import (
 	"os"
 
-	"github.com/microstack-tech/parallax/cmd/devp2p/internal/v4test"
-	"github.com/microstack-tech/parallax/internal/utesting"
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/cmd/devp2p/internal/v4test"
+	"github.com/ParallaxProtocol/parallax/internal/utesting"
+	"github.com/ParallaxProtocol/parallax/log"
 	"gopkg.in/urfave/cli.v1"
 )
 

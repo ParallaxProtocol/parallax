@@ -22,10 +22,10 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/microstack-tech/parallax/common"
-	"github.com/microstack-tech/parallax/core/forkid"
-	"github.com/microstack-tech/parallax/core/types"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/common"
+	"github.com/ParallaxProtocol/parallax/core/forkid"
+	"github.com/ParallaxProtocol/parallax/core/types"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 // Constants to match up protocol versions and messages

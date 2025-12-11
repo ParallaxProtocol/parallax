@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/microstack-tech/parallax/p2p"
+	"github.com/ParallaxProtocol/parallax/p2p"
 	"github.com/stretchr/testify/assert"
 )
 

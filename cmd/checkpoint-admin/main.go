@@ -22,9 +22,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/microstack-tech/parallax/common/fdlimit"
-	"github.com/microstack-tech/parallax/internal/flags"
-	"github.com/microstack-tech/parallax/log"
+	"github.com/ParallaxProtocol/parallax/common/fdlimit"
+	"github.com/ParallaxProtocol/parallax/internal/flags"
+	"github.com/ParallaxProtocol/parallax/log"
 	"gopkg.in/urfave/cli.v1"
 )
 

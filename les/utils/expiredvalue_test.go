@@ -19,7 +19,7 @@ package utils
 import (
 	"testing"
 
-	"github.com/microstack-tech/parallax/common/mclock"
+	"github.com/ParallaxProtocol/parallax/common/mclock"
 )
 
 func TestValueExpiration(t *testing.T) {

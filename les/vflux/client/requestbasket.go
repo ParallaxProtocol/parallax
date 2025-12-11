@@ -19,8 +19,8 @@ package client
 import (
 	"io"
 
-	"github.com/microstack-tech/parallax/les/utils"
-	"github.com/microstack-tech/parallax/rlp"
+	"github.com/ParallaxProtocol/parallax/les/utils"
+	"github.com/ParallaxProtocol/parallax/rlp"
 )
 
 const basketFactor = 1000000 // reference basket amount and value scale factor

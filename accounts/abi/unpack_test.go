@@ -26,7 +26,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microstack-tech/parallax/common"
+	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/stretchr/testify/require"
 )
 
