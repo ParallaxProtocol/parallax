@@ -25,13 +25,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/karalabe/usb"
 	"github.com/ParallaxProtocol/parallax"
 	"github.com/ParallaxProtocol/parallax/accounts"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core/types"
 	"github.com/ParallaxProtocol/parallax/crypto"
 	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/karalabe/usb"
 )
 
 // Maximum time between wallet health checks to detect USB unplugs.

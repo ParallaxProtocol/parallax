@@ -34,13 +34,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/docker/docker/pkg/reexec"
-	"github.com/gorilla/websocket"
 	"github.com/ParallaxProtocol/parallax/log"
 	"github.com/ParallaxProtocol/parallax/node"
 	"github.com/ParallaxProtocol/parallax/p2p"
 	"github.com/ParallaxProtocol/parallax/p2p/enode"
 	"github.com/ParallaxProtocol/parallax/rpc"
+	"github.com/docker/docker/pkg/reexec"
+	"github.com/gorilla/websocket"
 )
 
 func init() {
@@ -87,7 +87,7 @@ func (e *ExecAdapter) NewNode(config *NodeConfig) (Node, error) {
 	// create the node directory using the first 12 characters of the ID
 	// as Unix socket paths cannot be longer than 256 characters
 	dir := filepath.Join(e.BaseDir, config.ID.String()[:12])
-	if err := os.Mkdir(dir, 0755); err != nil {
+	if err := os.Mkdir(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("error creating node directory: %s", err)
 	}
 

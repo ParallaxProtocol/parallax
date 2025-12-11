@@ -41,11 +41,11 @@ import (
 	"sync"
 	"time"
 
-	pcsc "github.com/gballet/go-libpcsclite"
 	"github.com/ParallaxProtocol/parallax/accounts"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/event"
 	"github.com/ParallaxProtocol/parallax/log"
+	pcsc "github.com/gballet/go-libpcsclite"
 )
 
 // Scheme is the URI prefix for smartcard wallets.

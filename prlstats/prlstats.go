@@ -30,7 +30,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	parallax "github.com/ParallaxProtocol/parallax"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/common/mclock"
@@ -45,6 +44,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/p2p"
 	ethproto "github.com/ParallaxProtocol/parallax/prl/protocols/prl"
 	"github.com/ParallaxProtocol/parallax/rpc"
+	"github.com/gorilla/websocket"
 )
 
 const (

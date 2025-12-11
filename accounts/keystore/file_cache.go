@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	mapset "github.com/deckarep/golang-set"
 	"github.com/ParallaxProtocol/parallax/log"
+	mapset "github.com/deckarep/golang-set"
 )
 
 // fileCache is a cache of files seen during scan of keystore.

@@ -24,9 +24,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/docker/docker/pkg/reexec"
 	"github.com/ParallaxProtocol/parallax/cmd/pvm/internal/t8ntool"
 	"github.com/ParallaxProtocol/parallax/internal/cmdtest"
+	"github.com/docker/docker/pkg/reexec"
 )
 
 func TestMain(m *testing.M) {

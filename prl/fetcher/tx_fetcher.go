@@ -24,13 +24,13 @@ import (
 	"sort"
 	"time"
 
-	mapset "github.com/deckarep/golang-set"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/common/mclock"
 	"github.com/ParallaxProtocol/parallax/core"
 	"github.com/ParallaxProtocol/parallax/core/types"
 	"github.com/ParallaxProtocol/parallax/log"
 	"github.com/ParallaxProtocol/parallax/metrics"
+	mapset "github.com/deckarep/golang-set"
 )
 
 const (

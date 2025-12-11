@@ -19,8 +19,8 @@ package console
 import (
 	"testing"
 
-	"github.com/dop251/goja"
 	"github.com/ParallaxProtocol/parallax/internal/jsre"
+	"github.com/dop251/goja"
 )
 
 // TestUndefinedAsParam ensures that personal functions can receive

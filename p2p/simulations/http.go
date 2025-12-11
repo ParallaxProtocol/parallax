@@ -29,13 +29,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gorilla/websocket"
-	"github.com/julienschmidt/httprouter"
 	"github.com/ParallaxProtocol/parallax/event"
 	"github.com/ParallaxProtocol/parallax/p2p"
 	"github.com/ParallaxProtocol/parallax/p2p/enode"
 	"github.com/ParallaxProtocol/parallax/p2p/simulations/adapters"
 	"github.com/ParallaxProtocol/parallax/rpc"
+	"github.com/gorilla/websocket"
+	"github.com/julienschmidt/httprouter"
 )
 
 // DefaultClient is the default simulation API client which expects the API

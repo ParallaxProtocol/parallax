@@ -25,8 +25,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/docker/docker/pkg/reexec"
-	"github.com/gorilla/websocket"
 	"github.com/ParallaxProtocol/parallax/crypto"
 	"github.com/ParallaxProtocol/parallax/log"
 	"github.com/ParallaxProtocol/parallax/node"
@@ -34,6 +32,8 @@ import (
 	"github.com/ParallaxProtocol/parallax/p2p/enode"
 	"github.com/ParallaxProtocol/parallax/p2p/enr"
 	"github.com/ParallaxProtocol/parallax/rpc"
+	"github.com/docker/docker/pkg/reexec"
+	"github.com/gorilla/websocket"
 )
 
 // Node represents a node in a simulation network which is created by a

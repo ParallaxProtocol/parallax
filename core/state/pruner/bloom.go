@@ -21,10 +21,10 @@ import (
 	"errors"
 	"os"
 
-	bloomfilter "github.com/holiman/bloomfilter/v2"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core/rawdb"
 	"github.com/ParallaxProtocol/parallax/log"
+	bloomfilter "github.com/holiman/bloomfilter/v2"
 )
 
 // stateBloomHasher is a wrapper around a byte blob to satisfy the interface API

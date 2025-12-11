@@ -24,13 +24,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dop251/goja"
 	"github.com/ParallaxProtocol/parallax/accounts/scwallet"
 	"github.com/ParallaxProtocol/parallax/accounts/usbwallet"
 	"github.com/ParallaxProtocol/parallax/common/hexutil"
 	"github.com/ParallaxProtocol/parallax/console/prompt"
 	"github.com/ParallaxProtocol/parallax/internal/jsre"
 	"github.com/ParallaxProtocol/parallax/rpc"
+	"github.com/dop251/goja"
 )
 
 // bridge is a collection of JavaScript utility methods to bride the .js runtime

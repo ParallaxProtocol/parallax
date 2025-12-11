@@ -29,11 +29,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ParallaxProtocol/parallax/common/hexutil"
 	"github.com/ParallaxProtocol/parallax/common/mclock"
 	"github.com/ParallaxProtocol/parallax/crypto"
 	"github.com/ParallaxProtocol/parallax/p2p/enode"
+	"github.com/davecgh/go-spew/spew"
 )
 
 // To regenerate discv5 test vectors, run

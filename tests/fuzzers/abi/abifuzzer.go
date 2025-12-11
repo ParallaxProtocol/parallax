@@ -21,8 +21,8 @@ import (
 	"reflect"
 	"strings"
 
-	fuzz "github.com/google/gofuzz"
 	"github.com/ParallaxProtocol/parallax/accounts/abi"
+	fuzz "github.com/google/gofuzz"
 )
 
 var (

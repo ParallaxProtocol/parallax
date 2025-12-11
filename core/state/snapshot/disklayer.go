@@ -20,12 +20,12 @@ import (
 	"bytes"
 	"sync"
 
-	"github.com/VictoriaMetrics/fastcache"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core/rawdb"
 	"github.com/ParallaxProtocol/parallax/prldb"
 	"github.com/ParallaxProtocol/parallax/rlp"
 	"github.com/ParallaxProtocol/parallax/trie"
+	"github.com/VictoriaMetrics/fastcache"
 )
 
 // diskLayer is a low level persistent snapshot built on top of a key-value store.

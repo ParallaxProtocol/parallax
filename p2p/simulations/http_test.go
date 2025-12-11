@@ -29,7 +29,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mattn/go-colorable"
 	"github.com/ParallaxProtocol/parallax/event"
 	"github.com/ParallaxProtocol/parallax/log"
 	"github.com/ParallaxProtocol/parallax/node"
@@ -37,6 +36,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/p2p/enode"
 	"github.com/ParallaxProtocol/parallax/p2p/simulations/adapters"
 	"github.com/ParallaxProtocol/parallax/rpc"
+	"github.com/mattn/go-colorable"
 )
 
 func TestMain(m *testing.M) {

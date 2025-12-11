@@ -25,13 +25,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/VictoriaMetrics/fastcache"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core/rawdb"
 	"github.com/ParallaxProtocol/parallax/log"
 	"github.com/ParallaxProtocol/parallax/metrics"
 	"github.com/ParallaxProtocol/parallax/prldb"
 	"github.com/ParallaxProtocol/parallax/rlp"
+	"github.com/VictoriaMetrics/fastcache"
 )
 
 var (

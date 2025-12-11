@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ParallaxProtocol/parallax/accounts"
 	"github.com/ParallaxProtocol/parallax/accounts/abi"
 	"github.com/ParallaxProtocol/parallax/accounts/keystore"
@@ -45,6 +44,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/prl/tracers/logger"
 	"github.com/ParallaxProtocol/parallax/rlp"
 	"github.com/ParallaxProtocol/parallax/rpc"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/tyler-smith/go-bip39"
 )
 

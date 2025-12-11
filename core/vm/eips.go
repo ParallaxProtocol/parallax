@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/holiman/uint256"
 	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/holiman/uint256"
 )
 
 var activators = map[int]func(*JumpTable){

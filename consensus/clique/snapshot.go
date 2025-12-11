@@ -22,12 +22,12 @@ import (
 	"sort"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core/types"
 	"github.com/ParallaxProtocol/parallax/log"
 	"github.com/ParallaxProtocol/parallax/params"
 	"github.com/ParallaxProtocol/parallax/prldb"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 // Vote represents a single vote that an authorized signer made to modify the

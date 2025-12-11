@@ -25,7 +25,6 @@ import (
 	"math/big"
 	"time"
 
-	mapset "github.com/deckarep/golang-set"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/common/bitutil"
 	"github.com/ParallaxProtocol/parallax/core"
@@ -36,6 +35,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/prldb"
 	"github.com/ParallaxProtocol/parallax/rlp"
 	"github.com/ParallaxProtocol/parallax/trie"
+	mapset "github.com/deckarep/golang-set"
 )
 
 // IndexerConfig includes a set of configs for chain indexers.

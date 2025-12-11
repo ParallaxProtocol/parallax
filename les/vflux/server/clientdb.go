@@ -21,7 +21,6 @@ import (
 	"encoding/binary"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/common/mclock"
 	"github.com/ParallaxProtocol/parallax/les/utils"
@@ -29,6 +28,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/p2p/enode"
 	"github.com/ParallaxProtocol/parallax/prldb"
 	"github.com/ParallaxProtocol/parallax/rlp"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 const (

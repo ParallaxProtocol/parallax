@@ -56,11 +56,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cespare/cp"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/crypto/signify"
 	"github.com/ParallaxProtocol/parallax/internal/build"
 	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/cespare/cp"
 )
 
 var (

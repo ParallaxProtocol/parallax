@@ -32,7 +32,6 @@ import (
 	"text/template"
 	"time"
 
-	pcsclite "github.com/gballet/go-libpcsclite"
 	"github.com/ParallaxProtocol/parallax/accounts"
 	"github.com/ParallaxProtocol/parallax/accounts/keystore"
 	"github.com/ParallaxProtocol/parallax/common"
@@ -66,6 +65,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/prldb"
 	"github.com/ParallaxProtocol/parallax/prldb/remotedb"
 	"github.com/ParallaxProtocol/parallax/prlstats"
+	pcsclite "github.com/gballet/go-libpcsclite"
 	gopsutil "github.com/shirou/gopsutil/mem"
 	"gopkg.in/urfave/cli.v1"
 )

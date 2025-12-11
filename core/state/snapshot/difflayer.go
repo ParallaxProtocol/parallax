@@ -26,9 +26,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	bloomfilter "github.com/holiman/bloomfilter/v2"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/rlp"
+	bloomfilter "github.com/holiman/bloomfilter/v2"
 )
 
 var (

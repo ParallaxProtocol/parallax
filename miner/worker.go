@@ -24,7 +24,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	mapset "github.com/deckarep/golang-set"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/consensus"
 	"github.com/ParallaxProtocol/parallax/consensus/misc"
@@ -35,6 +34,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/log"
 	"github.com/ParallaxProtocol/parallax/params"
 	"github.com/ParallaxProtocol/parallax/trie"
+	mapset "github.com/deckarep/golang-set"
 )
 
 const (

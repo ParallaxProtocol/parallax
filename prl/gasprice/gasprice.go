@@ -22,7 +22,6 @@ import (
 	"sort"
 	"sync"
 
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core"
 	"github.com/ParallaxProtocol/parallax/core/types"
@@ -30,6 +29,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/log"
 	"github.com/ParallaxProtocol/parallax/params"
 	"github.com/ParallaxProtocol/parallax/rpc"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 const sampleNumber = 3 // Number of transactions sampled in a block

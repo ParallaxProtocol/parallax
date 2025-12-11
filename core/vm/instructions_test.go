@@ -24,10 +24,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/holiman/uint256"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/crypto"
 	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/holiman/uint256"
 )
 
 type TwoOperandTestcase struct {

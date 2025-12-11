@@ -34,10 +34,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/golang/snappy"
 	"github.com/ParallaxProtocol/parallax/crypto"
 	"github.com/ParallaxProtocol/parallax/crypto/ecies"
 	"github.com/ParallaxProtocol/parallax/rlp"
+	"github.com/golang/snappy"
 	"golang.org/x/crypto/sha3"
 )
 

@@ -27,7 +27,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mattn/go-colorable"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/common/hexutil"
 	"github.com/ParallaxProtocol/parallax/consensus/xhash"
@@ -42,6 +41,7 @@ import (
 	ethdownloader "github.com/ParallaxProtocol/parallax/prl/downloader"
 	"github.com/ParallaxProtocol/parallax/prl/prlconfig"
 	"github.com/ParallaxProtocol/parallax/rpc"
+	"github.com/mattn/go-colorable"
 )
 
 // Additional command line flags for the test binary.

@@ -23,9 +23,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/mattn/go-colorable"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/mattn/go-colorable"
 )
 
 func TestEncryption(t *testing.T) {

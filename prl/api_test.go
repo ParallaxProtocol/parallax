@@ -24,11 +24,11 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core/rawdb"
 	"github.com/ParallaxProtocol/parallax/core/state"
 	"github.com/ParallaxProtocol/parallax/crypto"
+	"github.com/davecgh/go-spew/spew"
 )
 
 var dumper = spew.ConfigState{Indent: "    "}

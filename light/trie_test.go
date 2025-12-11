@@ -23,7 +23,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ParallaxProtocol/parallax/consensus/xhash"
 	"github.com/ParallaxProtocol/parallax/core"
 	"github.com/ParallaxProtocol/parallax/core/rawdb"
@@ -31,6 +30,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/core/vm"
 	"github.com/ParallaxProtocol/parallax/params"
 	"github.com/ParallaxProtocol/parallax/trie"
+	"github.com/davecgh/go-spew/spew"
 )
 
 func TestNodeIterator(t *testing.T) {

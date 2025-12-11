@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/VictoriaMetrics/fastcache"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core/rawdb"
 	"github.com/ParallaxProtocol/parallax/rlp"
+	"github.com/VictoriaMetrics/fastcache"
 )
 
 // randomHash generates a random blob of data and returns it as a hash.

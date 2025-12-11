@@ -27,9 +27,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ParallaxProtocol/parallax/log"
 	mapset "github.com/deckarep/golang-set"
 	"github.com/gorilla/websocket"
-	"github.com/ParallaxProtocol/parallax/log"
 )
 
 const (

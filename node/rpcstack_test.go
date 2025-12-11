@@ -26,11 +26,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/gorilla/websocket"
 	"github.com/ParallaxProtocol/parallax/internal/testlog"
 	"github.com/ParallaxProtocol/parallax/log"
 	"github.com/ParallaxProtocol/parallax/rpc"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 )
 

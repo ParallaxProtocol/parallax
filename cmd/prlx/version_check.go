@@ -26,8 +26,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/jedisct1/go-minisign"
 	"github.com/ParallaxProtocol/parallax/log"
+	"github.com/jedisct1/go-minisign"
 	"gopkg.in/urfave/cli.v1"
 )
 

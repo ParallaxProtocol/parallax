@@ -23,7 +23,6 @@ import (
 	"math/big"
 	"time"
 
-	fuzz "github.com/google/gofuzz"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/consensus/xhash"
 	"github.com/ParallaxProtocol/parallax/core"
@@ -34,6 +33,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/params"
 	"github.com/ParallaxProtocol/parallax/prl/protocols/snap"
 	"github.com/ParallaxProtocol/parallax/rlp"
+	fuzz "github.com/google/gofuzz"
 )
 
 var trieRoot common.Hash

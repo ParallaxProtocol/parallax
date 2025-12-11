@@ -26,7 +26,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/consensus"
 	"github.com/ParallaxProtocol/parallax/core"
@@ -38,6 +37,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/params"
 	"github.com/ParallaxProtocol/parallax/prldb"
 	"github.com/ParallaxProtocol/parallax/rlp"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 var (

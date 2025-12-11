@@ -21,9 +21,9 @@ package secp256k1
 import (
 	"fmt"
 
+	"github.com/ParallaxProtocol/parallax/crypto/secp256k1"
 	"github.com/btcsuite/btcd/btcec/v2"
 	fuzz "github.com/google/gofuzz"
-	"github.com/ParallaxProtocol/parallax/crypto/secp256k1"
 )
 
 func Fuzz(input []byte) int {

@@ -23,7 +23,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/VictoriaMetrics/fastcache"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/common/hexutil"
 	"github.com/ParallaxProtocol/parallax/core/rawdb"
@@ -33,6 +32,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/prldb/memorydb"
 	"github.com/ParallaxProtocol/parallax/rlp"
 	"github.com/ParallaxProtocol/parallax/trie"
+	"github.com/VictoriaMetrics/fastcache"
 )
 
 var (

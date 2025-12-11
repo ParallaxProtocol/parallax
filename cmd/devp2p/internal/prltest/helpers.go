@@ -23,7 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core/types"
 	"github.com/ParallaxProtocol/parallax/crypto"
@@ -31,6 +30,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/p2p"
 	"github.com/ParallaxProtocol/parallax/p2p/rlpx"
 	"github.com/ParallaxProtocol/parallax/prl/protocols/prl"
+	"github.com/davecgh/go-spew/spew"
 )
 
 var (

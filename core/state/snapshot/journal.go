@@ -24,13 +24,13 @@ import (
 	"io"
 	"time"
 
-	"github.com/VictoriaMetrics/fastcache"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core/rawdb"
 	"github.com/ParallaxProtocol/parallax/log"
 	"github.com/ParallaxProtocol/parallax/prldb"
 	"github.com/ParallaxProtocol/parallax/rlp"
 	"github.com/ParallaxProtocol/parallax/trie"
+	"github.com/VictoriaMetrics/fastcache"
 )
 
 const journalVersion uint64 = 0

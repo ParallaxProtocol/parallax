@@ -19,10 +19,10 @@ package vm
 import (
 	"sync/atomic"
 
-	"github.com/holiman/uint256"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core/types"
 	"github.com/ParallaxProtocol/parallax/params"
+	"github.com/holiman/uint256"
 	"golang.org/x/crypto/sha3"
 )
 

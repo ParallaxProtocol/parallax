@@ -29,7 +29,6 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core/rawdb"
 	"github.com/ParallaxProtocol/parallax/core/types"
@@ -38,6 +37,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/prldb/leveldb"
 	"github.com/ParallaxProtocol/parallax/prldb/memorydb"
 	"github.com/ParallaxProtocol/parallax/rlp"
+	"github.com/davecgh/go-spew/spew"
 	"golang.org/x/crypto/sha3"
 )
 

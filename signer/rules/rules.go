@@ -22,12 +22,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dop251/goja"
 	"github.com/ParallaxProtocol/parallax/internal/jsre/deps"
 	"github.com/ParallaxProtocol/parallax/internal/prlapi"
 	"github.com/ParallaxProtocol/parallax/log"
 	"github.com/ParallaxProtocol/parallax/signer/core"
 	"github.com/ParallaxProtocol/parallax/signer/storage"
+	"github.com/dop251/goja"
 )
 
 // consoleOutput is an override for the console.log and console.error methods to

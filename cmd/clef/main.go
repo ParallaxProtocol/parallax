@@ -34,8 +34,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mattn/go-colorable"
-	"github.com/mattn/go-isatty"
 	"github.com/ParallaxProtocol/parallax/accounts"
 	"github.com/ParallaxProtocol/parallax/accounts/keystore"
 	"github.com/ParallaxProtocol/parallax/cmd/utils"
@@ -55,6 +53,8 @@ import (
 	"github.com/ParallaxProtocol/parallax/signer/fourbyte"
 	"github.com/ParallaxProtocol/parallax/signer/rules"
 	"github.com/ParallaxProtocol/parallax/signer/storage"
+	"github.com/mattn/go-colorable"
+	"github.com/mattn/go-isatty"
 	"gopkg.in/urfave/cli.v1"
 )
 

@@ -23,9 +23,9 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/VictoriaMetrics/fastcache"
 	"github.com/ParallaxProtocol/parallax/common"
 	"github.com/ParallaxProtocol/parallax/core/rawdb"
+	"github.com/VictoriaMetrics/fastcache"
 )
 
 // TestAccountIteratorBasics tests some simple single-layer(diff and disk) iteration
