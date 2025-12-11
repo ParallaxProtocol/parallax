@@ -64,43 +64,8 @@ prlx --testnet console
 
 ### Hardware Recommendations
 
-- **Minimum**: 2 cores, 4 GB RAM, 250 GB SSD, 8 Mbps  
+- **Minimum**: 2 cores, 4 GB RAM, 250 GB SSD, 8 Mbps
 - **Recommended**: 4+ cores, 8 GB RAM, 500 TB SSD, 25+ Mbps
-
----
-
-## Mining Parallax coins
-
-Parallax miner can be started with:
-
-```
-prlx --miner.coinbase <YOUR_WALLET_ADDRESS> --miner.threads 1 --mine
-```
-
-You can use your existing web3 wallet address from MetaMask or any other Ethereum based wallet. Or create a new wallet address using either `clef` or `parallaxkey`:
-
-```
-parallaxkey generate
-```
-
-```
-clef newaccount
-```
-
-We have beginner guides on how to run a Parallax node and mining. These can be found [here](https://docs.parallaxchain.org/guides).
-
----
-
-## JSON-RPC (Developers)
-
-IPC is enabled by default. Enable HTTP/WS explicitly:
-
-```
---http --http.addr 0.0.0.0 --http.port 8545 --http.api eth,net,web3
---ws   --ws.addr   0.0.0.0 --ws.port   8546 --ws.api   eth,net,web3
-```
-
-> ⚠️ **Security**: Do **not** expose RPC to the public Internet. Use firewalls, auth proxies, and restricted origins.
 
 ---
 
