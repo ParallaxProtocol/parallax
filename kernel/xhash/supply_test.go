@@ -18,6 +18,10 @@ import (
 // guards below pin the consensus constants and cross-check the API behaviour
 // against a ground truth derived from calcBlockReward. If either side is ever
 // changed without the other, these tests fail loudly.
+//
+// Both endpoints report cumulative issuance through the chain tip, immature
+// coinbases included: per the Bitcoin convention, maturity restricts
+// spendability, not issuance, so circulating supply equals total supply.
 
 // supplyStubChain is a minimal kernel.ChainHeaderReader; the supply RPC
 // endpoints only ever call CurrentHeader, and Finalize only calls Config.
@@ -89,10 +93,9 @@ func mustBig(t *testing.T, s string) *big.Int {
 // TestSupplyMathMatchesBlockRewards cross-checks the closed-form supply math
 // in api.go against the exact cumulative sum of calcBlockReward: at every
 // height, GetTotalSupply must equal the sum of calcBlockReward over blocks
-// 1..height, and GetCirculatingSupply the same sum over the matured prefix.
+// 1..height, and GetCirculatingSupply must report the identical figure
+// (immature coinbases count as issued, Bitcoin-style).
 func TestSupplyMathMatchesBlockRewards(t *testing.T) {
-	maturity := chainparams.MainnetChainConfig.XHash.CoinbaseMaturityBlocks
-
 	heights := []uint64{
 		0,
 		1,
@@ -114,15 +117,8 @@ func TestSupplyMathMatchesBlockRewards(t *testing.T) {
 			t.Errorf("height %d: GetTotalSupply = %s, want cumulative reward sum %s", h, gotTotal, wantTotal)
 		}
 
-		gotCirc := mustBig(t, api.GetCirculatingSupply())
-		if h <= maturity {
-			if gotCirc.Sign() != 0 {
-				t.Errorf("height %d: GetCirculatingSupply = %s, want 0 (nothing matured)", h, gotCirc)
-			}
-			continue
-		}
-		if wantCirc := cumulativeSupplyTo(h - maturity); gotCirc.Cmp(wantCirc) != 0 {
-			t.Errorf("height %d: GetCirculatingSupply = %s, want matured cumulative sum %s", h, gotCirc, wantCirc)
+		if gotCirc := mustBig(t, api.GetCirculatingSupply()); gotCirc.Cmp(wantTotal) != 0 {
+			t.Errorf("height %d: GetCirculatingSupply = %s, want total supply %s (circulating must equal total)", h, gotCirc, wantTotal)
 		}
 	}
 }
@@ -151,9 +147,8 @@ func TestHalvingConstantsConsistent(t *testing.T) {
 
 	// API side (behavioural): GetCirculatingSupply's per-block increment must
 	// switch from the era-0 reward to the era-1 reward at the same boundary.
-	maturity := chainparams.MainnetChainConfig.XHash.CoinbaseMaturityBlocks
-	circAt := func(matured uint64) *big.Int {
-		return mustBig(t, newSupplyAPI(matured+maturity).GetCirculatingSupply())
+	circAt := func(height uint64) *big.Int {
+		return mustBig(t, newSupplyAPI(height).GetCirculatingSupply())
 	}
 
 	deltaPre := new(big.Int).Sub(circAt(HalvingIntervalBlocks-1), circAt(HalvingIntervalBlocks-2))
@@ -168,9 +163,11 @@ func TestHalvingConstantsConsistent(t *testing.T) {
 	}
 }
 
-// TestCoinbaseMaturityConstantConsistent verifies that the coinbase maturity
-// used by the payout scheduling in Finalize and by GetCirculatingSupply (both
-// taken from the chain config) equals the chainparams mainnet value.
+// TestCoinbaseMaturityConstantConsistent pins the chainparams coinbase
+// maturity used by the payout scheduling in Finalize, and verifies that
+// maturity does NOT leak into the supply endpoints: per the Bitcoin
+// convention, immature rewards are issued (counted) even though Finalize
+// defers their spendability.
 func TestCoinbaseMaturityConstantConsistent(t *testing.T) {
 	maturity := chainparams.MainnetChainConfig.XHash.CoinbaseMaturityBlocks
 	if maturity != 100 {
@@ -180,15 +177,12 @@ func TestCoinbaseMaturityConstantConsistent(t *testing.T) {
 		t.Errorf("testnet CoinbaseMaturityBlocks = %d, mainnet = %d; expected identical", tn, maturity)
 	}
 
-	// API side (behavioural): nothing circulates at the maturity horizon, and
-	// exactly one block reward circulates one block later. This fails if
-	// api.go's local coinbaseMaturity const drifts from chainparams.
-	if got := newSupplyAPI(maturity).GetCirculatingSupply(); got != "0" {
-		t.Errorf("GetCirculatingSupply at height %d = %s, want 0", maturity, got)
-	}
-	if got := mustBig(t, newSupplyAPI(maturity+1).GetCirculatingSupply()); got.Cmp(InitialBlockRewardWei) != 0 {
-		t.Errorf("GetCirculatingSupply at height %d = %s, want one initial reward %s",
-			maturity+1, got, InitialBlockRewardWei)
+	// API side (behavioural): the very first reward circulates at height 1,
+	// well inside the maturity window. This fails if a maturity deduction is
+	// ever reintroduced into GetCirculatingSupply.
+	if got := mustBig(t, newSupplyAPI(1).GetCirculatingSupply()); got.Cmp(InitialBlockRewardWei) != 0 {
+		t.Errorf("GetCirculatingSupply at height 1 = %s, want one initial reward %s (immature coinbase must count)",
+			got, InitialBlockRewardWei)
 	}
 
 	// Consensus side: Finalize must schedule the coinbase payout to unlock
@@ -251,8 +245,7 @@ func TestHalvingShiftOverflowClamp(t *testing.T) {
 		newSupplyAPI(70*HalvingIntervalBlocks).GetTotalSupply(); a != b {
 		t.Errorf("GetTotalSupply not flat after exhaustion: %s at 64 eras vs %s at 70 eras", a, b)
 	}
-	maturity := chainparams.MainnetChainConfig.XHash.CoinbaseMaturityBlocks
-	if a, b := newSupplyAPI(64*HalvingIntervalBlocks+maturity).GetCirculatingSupply(),
+	if a, b := newSupplyAPI(64*HalvingIntervalBlocks).GetCirculatingSupply(),
 		newSupplyAPI(70*HalvingIntervalBlocks).GetCirculatingSupply(); a != b {
 		t.Errorf("GetCirculatingSupply not flat after exhaustion: %s vs %s", a, b)
 	}

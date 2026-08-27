@@ -128,31 +128,14 @@ func (api *API) GetTotalSupply() string {
 	return cumulativeEmissionThrough(header.Number.Uint64()).String()
 }
 
+// GetCirculatingSupply reports the same figure as GetTotalSupply, following
+// the Bitcoin convention: coinbase maturity is a spendability restriction,
+// not an issuance restriction, so rewards count as circulating from the
+// block that mints them even while they sit in the maturity lockbox. With
+// no premine, burns, or protocol locks, circulating and total supply are
+// identical by construction.
 func (api *API) GetCirculatingSupply() string {
-	header := api.chain.CurrentHeader()
-	if header == nil {
-		return "0"
-	}
-	height := header.Number.Uint64()
-
-	// Maturity comes from the same config field Finalize uses to schedule
-	// payouts, so the reported figure always agrees with consensus. In
-	// particular a chain whose xhash config omits coinbaseMaturityBlocks
-	// (zero value) genuinely pays out immediately, and circulating supply
-	// equalling total supply is then correct, not a fallthrough. The 100
-	// fallback only covers a missing xhash section entirely, where this API
-	// should not be reachable.
-	maturity := uint64(100)
-	if cfg := api.chain.Config(); cfg != nil && cfg.XHash != nil {
-		maturity = cfg.XHash.CoinbaseMaturityBlocks
-	}
-
-	// No matured rewards yet
-	if height <= maturity {
-		return "0"
-	}
-	// Emission of all blocks whose coinbase has matured.
-	return cumulativeEmissionThrough(height - maturity).String()
+	return api.GetTotalSupply()
 }
 
 // cumulativeEmissionThrough returns the exact sum of block rewards for blocks
