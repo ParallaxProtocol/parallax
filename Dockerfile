@@ -21,7 +21,10 @@ RUN cd /parallax && go run build/ci.go install ./cmd/parallaxd ./cmd/parallax-cl
 # base; bump it deliberately alongside the Go builder image.
 FROM alpine:3.24
 
-RUN apk add --no-cache ca-certificates \
+# Upgrade first so security fixes released after the base tag (e.g. the
+# libcrypto3/libssl3 patches) land in the image without a base bump.
+RUN apk upgrade --no-cache \
+  && apk add --no-cache ca-certificates \
   && addgroup -g 1000 parallax \
   && adduser -D -u 1000 -G parallax parallax \
   # Pre-create the mount points owned by the runtime user; a named
