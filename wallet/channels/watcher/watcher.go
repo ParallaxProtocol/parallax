@@ -165,8 +165,7 @@ func (w *Watcher) scanChannel(ctx context.Context, meta proofstore.ChannelMeta, 
 	if from > cutoff {
 		return nil
 	}
-	var chanTopic util.Hash
-	new(big.Int).SetUint64(meta.Key.ChannelID).FillBytes(chanTopic[:])
+	chanTopic := util.BigToHash(new(big.Int).SetUint64(meta.Key.ChannelID))
 	logs, err := w.backend.FilterLogs(ctx, parallax.FilterQuery{
 		FromBlock: new(big.Int).SetUint64(from),
 		ToBlock:   new(big.Int).SetUint64(cutoff),

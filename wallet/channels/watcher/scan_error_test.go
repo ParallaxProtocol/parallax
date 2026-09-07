@@ -50,7 +50,7 @@ func TestScanKeepsWatermarkOnIteratorError(t *testing.T) {
 		t.Fatal(err)
 	}
 	stale := e.dualSigned(t, 2, lax(1), new(big.Int))
-	if _, err := e.contract.StartClose(e.aliceAuth, big.NewInt(1), e.proofArg(stale), stale.SigA, stale.SigB); err != nil {
+	if _, err := e.contract.StartClose(e.aliceAuth, big.NewInt(1), stale.ContractProof(), stale.SigA, stale.SigB); err != nil {
 		t.Fatal(err)
 	}
 	e.commit(3) // confirm CloseStarted

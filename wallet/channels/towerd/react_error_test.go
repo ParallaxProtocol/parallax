@@ -88,15 +88,7 @@ func TestReactErrorKeepsWatermark(t *testing.T) {
 
 	// Alice force-closes at stale seq 2.
 	stale := dualSignedState(t, key, 2, lax(1), alicePriv, bobPriv)
-	proof := registry.ParallaxChannelRegistryBalanceProof{
-		ChannelId:       big.NewInt(1),
-		Seq:             stale.Seq,
-		TransferredAtoB: stale.TransferredAtoB.BigInt(),
-		TransferredBtoA: stale.TransferredBtoA.BigInt(),
-		LocksRoot:       stale.LocksRoot,
-		LockedAmount:    stale.LockedAmount.BigInt(),
-	}
-	if _, err := contract.StartClose(auth, big.NewInt(1), proof, stale.SigA, stale.SigB); err != nil {
+	if _, err := contract.StartClose(auth, big.NewInt(1), stale.ContractProof(), stale.SigA, stale.SigB); err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 3; i++ {

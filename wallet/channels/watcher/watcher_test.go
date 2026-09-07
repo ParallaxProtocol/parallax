@@ -144,17 +144,6 @@ func (e *simEnv) commit(n int) {
 	}
 }
 
-func (e *simEnv) proofArg(st proofstore.SignedState) registry.ParallaxChannelRegistryBalanceProof {
-	return registry.ParallaxChannelRegistryBalanceProof{
-		ChannelId:       new(big.Int).SetUint64(st.Key.ChannelID),
-		Seq:             st.Seq,
-		TransferredAtoB: st.TransferredAtoB.BigInt(),
-		TransferredBtoA: st.TransferredBtoA.BigInt(),
-		LocksRoot:       st.LocksRoot,
-		LockedAmount:    st.LockedAmount.BigInt(),
-	}
-}
-
 func newWatcher(t *testing.T, e *simEnv) (*Watcher, *[]string) {
 	t.Helper()
 	w, err := New(Config{ChainID: "1337", Registry: e.regAddr, Confirmations: 3}, e.store, e.backend,
@@ -208,7 +197,7 @@ func TestAutoChallengeAndSettleAgainstCheater(t *testing.T) {
 	}
 	// Alice cheats: closes at stale seq 2 where she had paid only 1 LAX.
 	stale := e.dualSigned(t, 2, lax(1), new(big.Int))
-	if _, err := e.contract.StartClose(e.aliceAuth, big.NewInt(1), e.proofArg(stale), stale.SigA, stale.SigB); err != nil {
+	if _, err := e.contract.StartClose(e.aliceAuth, big.NewInt(1), stale.ContractProof(), stale.SigA, stale.SigB); err != nil {
 		t.Fatal(err)
 	}
 	e.commit(3) // confirm CloseStarted
@@ -295,7 +284,7 @@ func TestHonestCloseNoChallengeJustSettle(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Alice closes honestly at the latest state.
-	if _, err := e.contract.StartClose(e.aliceAuth, big.NewInt(1), e.proofArg(latest), latest.SigA, latest.SigB); err != nil {
+	if _, err := e.contract.StartClose(e.aliceAuth, big.NewInt(1), latest.ContractProof(), latest.SigA, latest.SigB); err != nil {
 		t.Fatal(err)
 	}
 	e.commit(3)
@@ -380,7 +369,7 @@ func TestTickContinuesPastFailingChannel(t *testing.T) {
 		t.Fatal(err)
 	}
 	stale := e.dualSignedFor(t, key2, 2, lax(1), new(big.Int))
-	if _, err := e.contract.StartClose(e.aliceAuth, big.NewInt(2), e.proofArg(stale), stale.SigA, stale.SigB); err != nil {
+	if _, err := e.contract.StartClose(e.aliceAuth, big.NewInt(2), stale.ContractProof(), stale.SigA, stale.SigB); err != nil {
 		t.Fatal(err)
 	}
 	e.commit(3) // confirm CloseStarted
