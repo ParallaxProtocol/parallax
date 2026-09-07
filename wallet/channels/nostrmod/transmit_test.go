@@ -199,17 +199,16 @@ func TestQueueSurvivesReopen(t *testing.T) {
 	}
 }
 
-// settlingPublisher removes the given outbound item from the store while
-// publishing it — the concurrent-ACK race: the dispatcher settles the queue
-// entry between the transmitter's DueOutbound read and its reschedule, so
-// RescheduleOutbound fails that pass.
-type settlingPublisher struct {
+// closingPublisher closes the store while publishing, so the reschedule
+// that follows fails with a genuine store error (not the benign mid-pass
+// settle that Tick already tolerates) and the pass returns an error
+// alongside its give-ups.
+type closingPublisher struct {
 	store *proofstore.Store
-	id    uint64
 }
 
-func (p *settlingPublisher) Publish(ctx context.Context, ev nostr.Event) int {
-	_ = p.store.RemoveOutbound(p.id)
+func (p *closingPublisher) Publish(ctx context.Context, ev nostr.Event) int {
+	_ = p.store.Close()
 	return 1
 }
 
@@ -218,7 +217,9 @@ func (p *settlingPublisher) Publish(ctx context.Context, ev nostr.Event) int {
 // dropped that list whenever the same pass also returned an error, and for
 // a 21902 the give-up is the MANDATORY MarkPoisoned trigger (Part 3 §5): a
 // channel with an outstanding un-ACKed proposal stayed unpoisoned and the
-// user never saw the exposure.
+// user never saw the exposure. The erroring pass here is one whose
+// reschedule write fails against a closed store: Tick returns the give-ups
+// together with the error, and Run must still deliver them.
 func TestGiveUpSurvivesTickError(t *testing.T) {
 	store := openTestStore(t)
 	senderPriv, _ := newPair(t)
@@ -241,8 +242,8 @@ func TestGiveUpSurvivesTickError(t *testing.T) {
 		t.Fatal(err)
 	}
 	// ...and one due item whose reschedule will fail this pass because the
-	// "dispatcher" settles it mid-publish.
-	dueID, err := store.EnqueueOutbound(proofstore.OutboundItem{
+	// store goes away mid-publish.
+	_, err = store.EnqueueOutbound(proofstore.OutboundItem{
 		DedupeKey: "21903:due:1",
 		ToNpub:    recipientPub,
 		Kind:      21903,
@@ -253,7 +254,31 @@ func TestGiveUpSurvivesTickError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tx.pool = &settlingPublisher{store: store, id: dueID}
+	tx.pool = &closingPublisher{store: store}
+
+	// The pass must actually error: a clean pass would not exercise Run's
+	// error tolerance at all.
+	if _, gaveUp, err := tx.Tick(context.Background()); err == nil {
+		t.Fatal("tick did not error against the closed store")
+	} else if len(gaveUp) != 1 || gaveUp[0].DedupeKey != "21902:expired:1" {
+		t.Fatalf("tick give-ups: %+v", gaveUp)
+	}
+
+	// Re-arm: a fresh store with the same two items, closed again by the
+	// publisher, so the Run loop sees the identical erroring pass.
+	store = openTestStore(t)
+	tx.store = store
+	tx.pool = &closingPublisher{store: store}
+	for _, item := range []proofstore.OutboundItem{
+		{DedupeKey: "21902:expired:1", ToNpub: recipientPub, Kind: 21902,
+			Content: `{"v":1,"seq":"1"}`, RumorTime: now - 100, ExpiresAt: now - 1},
+		{DedupeKey: "21903:due:1", ToNpub: recipientPub, Kind: 21903,
+			Content: `{"v":1,"seq":"1"}`, RumorTime: now, ExpiresAt: now + 1000},
+	} {
+		if _, err := store.EnqueueOutbound(item); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
