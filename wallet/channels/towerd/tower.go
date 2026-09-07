@@ -188,7 +188,8 @@ func (t *Tower) Tick(ctx context.Context) (uint64, error) {
 	// The watermark may only advance past events that were reacted to:
 	// react() is the tower's sole evaluation of a CloseStarted, so skipping
 	// a transiently failed one would silently drop its challenge window.
-	// firstFailed pins the watermark so the failed range is re-scanned.
+	// firstFailed pins the watermark so the failed range is re-scanned,
+	// for as long as a retry could still land a challenge (retryable).
 	var firstFailed uint64
 	for iter.Next() {
 		ev := iter.Event
@@ -197,11 +198,19 @@ func (t *Tower) Tick(ctx context.Context) (uint64, error) {
 			Registry:  t.cfg.Registry,
 			ChannelID: ev.ChannelId.Uint64(),
 		}
-		if err := t.react(ctx, key, head); err != nil {
+		err := t.react(ctx, key, head)
+		if err == nil {
+			continue
+		}
+		if !errors.Is(err, errQuarantined) { // that one alarmed when it was quarantined
 			t.alarm("tower react on %s: %v", key, err)
-			if firstFailed == 0 || ev.Raw.BlockNumber < firstFailed {
-				firstFailed = ev.Raw.BlockNumber
-			}
+		}
+		if why := t.retryable(ctx, key, head); why != "" {
+			t.alarm("giving up on close of %s at block %d (%s): %v", key, ev.Raw.BlockNumber, why, err)
+			continue
+		}
+		if firstFailed == 0 || ev.Raw.BlockNumber < firstFailed {
+			firstFailed = ev.Raw.BlockNumber
 		}
 	}
 	if err := iter.Error(); err != nil {
@@ -214,11 +223,48 @@ func (t *Tower) Tick(ctx context.Context) (uint64, error) {
 	return head, t.store.SetTowerWatermark(t.cfg.ChainID, t.cfg.Registry.Hex(), mark)
 }
 
+// errQuarantined marks a close whose delegation record is in quarantine:
+// the tower held material for this channel and cannot evaluate the close
+// with it. Tick keeps the watermark pinned while a repaired or re-sent
+// delegation could still be honored.
+var errQuarantined = errors.New("towerd: delegation record quarantined")
+
+// retryable reports why re-scanning a failed CloseStarted can no longer
+// help ("" while it still can): the channel has left the Closing state, or
+// the challenge deadline has passed. An unreadable chain view keeps the
+// retry, since that is the transient case the pin exists for.
+func (t *Tower) retryable(ctx context.Context, key proofstore.ChannelKey, head uint64) (giveUp string) {
+	onchain, err := t.contract.GetChannel(&bind.CallOpts{Context: ctx}, new(big.Int).SetUint64(key.ChannelID))
+	if err != nil {
+		return ""
+	}
+	if onchain.State != 2 {
+		return "channel no longer closing"
+	}
+	if deadline := onchain.CloseInitiatedAtBlock.Uint64() + uint64(onchain.ChallengePeriodBlocks); head > deadline {
+		return fmt.Sprintf("challenge deadline %d passed unevaluated", deadline)
+	}
+	return ""
+}
+
 // react evaluates one closing channel against the delegation store.
 func (t *Tower) react(ctx context.Context, key proofstore.ChannelKey, head uint64) error {
 	deleg, err := t.store.Delegation(key)
 	if errors.Is(err, proofstore.ErrNotFound) {
+		if _, qerr := t.store.QuarantinedDelegation(key); qerr == nil {
+			return errQuarantined
+		}
 		return nil // nobody delegated this channel: not our watch
+	}
+	if errors.Is(err, proofstore.ErrCorrupt) {
+		// The bytes are present and will fail the same way on every
+		// re-read. Move them aside so a fresh delegation can land and the
+		// operator can inspect them; the close stays pinned meanwhile.
+		if _, qerr := t.store.QuarantineDelegation(key, err); qerr != nil {
+			return qerr
+		}
+		t.alarm("quarantined undecodable delegation for %s: %v (inspect with 'tower quarantine list'; the delegator may re-send)", key, err)
+		return errQuarantined
 	}
 	if err != nil {
 		// A failing READ is not an absent delegation: swallowing it would
