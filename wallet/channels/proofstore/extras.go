@@ -3,6 +3,7 @@ package proofstore
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	bolt "go.etcd.io/bbolt"
 )
@@ -84,9 +85,12 @@ func (s *Store) PutDelegation(d Delegation) (keptSeq uint64, err error) {
 		if prev := b.Get(key); prev != nil {
 			var have Delegation
 			if err := json.Unmarshal(prev, &have); err != nil {
-				return err
-			}
-			if have.State.Seq >= d.State.Seq {
+				// An undecodable record must not block the delegator from
+				// replacing it: move it aside and let the fresh one land.
+				if err := quarantine(tx, d.State.Key, prev, err); err != nil {
+					return err
+				}
+			} else if have.State.Seq >= d.State.Seq {
 				keptSeq = have.State.Seq
 				return nil
 			}
@@ -97,7 +101,77 @@ func (s *Store) PutDelegation(d Delegation) (keptSeq uint64, err error) {
 	return keptSeq, err
 }
 
-// Delegation returns the max-seq delegated state for a channel.
+// quarantine moves the live delegation record for key into the quarantine
+// bucket with the decode error that condemned it.
+func quarantine(tx *bolt.Tx, key ChannelKey, raw []byte, cause error) error {
+	q := QuarantinedDelegation{Key: key, Raw: raw, Error: cause.Error(), AtUnix: time.Now().Unix()}
+	enc, err := json.Marshal(q)
+	if err != nil {
+		return err
+	}
+	if err := tx.Bucket(bucketQuarantine).Put([]byte(key.String()), enc); err != nil {
+		return err
+	}
+	return tx.Bucket(bucketTower).Delete([]byte(key.String()))
+}
+
+// QuarantineDelegation moves the live delegation record for key aside (see
+// QuarantinedDelegation). It reports whether a live record was there to
+// move; a key with none is a no-op.
+func (s *Store) QuarantineDelegation(key ChannelKey, cause error) (moved bool, err error) {
+	err = s.db.Update(func(tx *bolt.Tx) error {
+		raw := tx.Bucket(bucketTower).Get([]byte(key.String()))
+		if raw == nil {
+			return nil
+		}
+		moved = true
+		return quarantine(tx, key, raw, cause)
+	})
+	return moved, err
+}
+
+// QuarantinedDelegation returns the quarantined record for key, or
+// ErrNotFound.
+func (s *Store) QuarantinedDelegation(key ChannelKey) (QuarantinedDelegation, error) {
+	var q QuarantinedDelegation
+	err := s.db.View(func(tx *bolt.Tx) error {
+		raw := tx.Bucket(bucketQuarantine).Get([]byte(key.String()))
+		if raw == nil {
+			return ErrNotFound
+		}
+		return json.Unmarshal(raw, &q)
+	})
+	return q, err
+}
+
+// QuarantinedDelegations lists every quarantined record.
+func (s *Store) QuarantinedDelegations() ([]QuarantinedDelegation, error) {
+	var out []QuarantinedDelegation
+	err := s.db.View(func(tx *bolt.Tx) error {
+		return tx.Bucket(bucketQuarantine).ForEach(func(_, v []byte) error {
+			var q QuarantinedDelegation
+			if err := json.Unmarshal(v, &q); err != nil {
+				return err
+			}
+			out = append(out, q)
+			return nil
+		})
+	})
+	return out, err
+}
+
+// ClearQuarantine discards the quarantined record for key; ErrNotFound when
+// there is none.
+func (s *Store) ClearQuarantine(key ChannelKey) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucketQuarantine)
+		if b.Get([]byte(key.String())) == nil {
+			return ErrNotFound
+		}
+		return b.Delete([]byte(key.String()))
+	})
+}
+
 func (s *Store) Delegation(key ChannelKey) (Delegation, error) {
 	var d Delegation
 	err := s.db.View(func(tx *bolt.Tx) error {
@@ -105,7 +179,10 @@ func (s *Store) Delegation(key ChannelKey) (Delegation, error) {
 		if raw == nil {
 			return ErrNotFound
 		}
-		return json.Unmarshal(raw, &d)
+		if err := json.Unmarshal(raw, &d); err != nil {
+			return fmt.Errorf("%w: delegation %s: %v", ErrCorrupt, key, err)
+		}
+		return nil
 	})
 	return d, err
 }
@@ -152,7 +229,9 @@ func (s *Store) DelegationCount(delegatorNpub string) (int, error) {
 		return tx.Bucket(bucketTower).ForEach(func(_, v []byte) error {
 			var d Delegation
 			if err := json.Unmarshal(v, &d); err != nil {
-				return err
+				// An undecodable record has no attributable delegator; it
+				// is quarantined the next time anything touches its key.
+				return nil
 			}
 			if d.DelegatorNpub == delegatorNpub {
 				n++

@@ -36,12 +36,18 @@ var (
 	ErrEquivocation = errors.New("proofstore: refusing to equivocate: different payload already signed at this seq (W3)")
 	ErrStaleSeq     = errors.New("proofstore: seq not above latest complete state")
 	ErrBadState     = errors.New("proofstore: state object invalid for this write")
+	// ErrCorrupt wraps a decode failure on a stored record: the bytes are
+	// present but no longer parse, and re-reading them cannot help.
+	ErrCorrupt = errors.New("proofstore: corrupt record")
 )
 
 var (
 	bucketChannels = []byte("channels")
 	bucketInvoices = []byte("invoices")
 	bucketTower    = []byte("towerdb")
+	// bucketQuarantine holds delegation records moved aside because they no
+	// longer decode, keyed by channel, for operator inspection.
+	bucketQuarantine = []byte("towerquarantine")
 
 	// per-channel sub-buckets / keys
 	keyMeta          = []byte("meta")
@@ -69,7 +75,7 @@ func Open(path string) (*Store, error) {
 	db.NoSync = false
 
 	err = db.Update(func(tx *bolt.Tx) error {
-		for _, b := range [][]byte{bucketChannels, bucketInvoices, bucketTower} {
+		for _, b := range [][]byte{bucketChannels, bucketInvoices, bucketTower, bucketQuarantine} {
 			if _, err := tx.CreateBucketIfNotExists(b); err != nil {
 				return err
 			}

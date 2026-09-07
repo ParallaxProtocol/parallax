@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
+	"strings"
 
 	"github.com/ParallaxProtocol/parallax/v2/util"
 	"github.com/ParallaxProtocol/parallax/v2/wallet/channels/registry"
@@ -76,6 +78,19 @@ type ChannelKey struct {
 
 func (k ChannelKey) String() string {
 	return fmt.Sprintf("%s:%s:%d", k.ChainID, k.Registry.Hex(), k.ChannelID)
+}
+
+// ParseChannelKey inverts String: "<chain-id>:<registry-hex>:<channel-id>".
+func ParseChannelKey(s string) (ChannelKey, error) {
+	parts := strings.Split(s, ":")
+	if len(parts) != 3 || parts[0] == "" || !util.IsHexAddress(parts[1]) {
+		return ChannelKey{}, fmt.Errorf("proofstore: bad channel key %q (want <chain-id>:<registry>:<channel-id>)", s)
+	}
+	id, err := strconv.ParseUint(parts[2], 10, 64)
+	if err != nil {
+		return ChannelKey{}, fmt.Errorf("proofstore: bad channel id in %q: %w", s, err)
+	}
+	return ChannelKey{ChainID: parts[0], Registry: util.HexToAddress(parts[1]), ChannelID: id}, nil
 }
 
 // Domain returns the channel's EIP-712 signing domain. Every digest
@@ -272,4 +287,15 @@ type Delegation struct {
 	State          SignedState `json:"state"`
 	DelegatorNpub  string      `json:"delegatorNpub"`
 	ReceivedAtUnix int64       `json:"receivedAt"`
+}
+
+// QuarantinedDelegation is a delegation record the store could not decode,
+// moved out of the live set so it neither blocks a fresh delegation for
+// the channel nor fails every read that touches it. The raw bytes are kept
+// for the operator to inspect or repair.
+type QuarantinedDelegation struct {
+	Key    ChannelKey `json:"key"`
+	Raw    []byte     `json:"raw"`
+	Error  string     `json:"error"`
+	AtUnix int64      `json:"at"`
 }
