@@ -69,6 +69,12 @@ type Node struct {
 	backupMu      sync.Mutex
 	backupRunning bool
 	backupDirty   bool
+
+	// inflight tracks on-chain submissions running off the dispatcher, keyed
+	// by verb and channel, so a retransmitted proposal or ACK does not
+	// broadcast a second transaction while the first is unmined.
+	inflightMu sync.Mutex
+	inflight   map[string]bool
 }
 
 // TxManagerFor returns the shared per-chain transaction manager (nil when
@@ -453,15 +459,9 @@ func (n *Node) handleRumor(ctx context.Context, rumor nostr.Event, sender string
 			}
 			n.settleOutbound(protocol.KindWithdrawProposal, key, 0)
 			if n.backend != nil {
-				// Off the dispatcher goroutine: the submission blocks until
-				// the transaction mines (same reasoning as submitCoopClose).
-				go func() {
-					if err := n.SubmitWithdraw(ctx, ready); err != nil {
-						// Not loss-capable: retry on the next ack
-						// retransmission or re-propose after expiry.
-						n.log.Error("withdraw submission", "err", err)
-					}
-				}()
+				// Not loss-capable on failure: retry on the next ack
+				// retransmission or re-propose after expiry.
+				n.submitAsync("withdraw", key, func() error { return n.SubmitWithdraw(ctx, ready) })
 			}
 			return nil
 		}
@@ -720,16 +720,43 @@ func (n *Node) submitCoopClose(ctx context.Context, ready *protocol.CoopCloseRea
 	if n.backend == nil {
 		return // offline node: the counterparty submits, or the CLI does later
 	}
-	// Submission waits for the transaction to mine — at least a block, so
-	// >=10 minutes of wall clock — and runs on the dispatcher goroutine's
-	// call path: it must not hold up every other channel's inbound
-	// processing meanwhile (any counterparty could trigger that stall at
-	// will by proposing a close).
+	// Not loss-capable on failure: the counterparty holds the same pair and
+	// the freeze holds until expiry either way.
+	n.submitAsync("coopclose", ready.Key, func() error { return n.SubmitCoopClose(ctx, ready) })
+}
+
+// submitAsync runs an on-chain submission off the calling goroutine, at
+// most one per verb and channel at a time. Submission waits for the
+// transaction to mine — at least a block, so >=10 minutes of wall clock —
+// and is reached from the dispatcher's call path: it must not hold up every
+// other channel's inbound processing meanwhile (any counterparty could
+// trigger that stall at will by proposing a close). The engine re-returns
+// the ready pair for every retransmitted proposal or ACK, and each
+// submission takes a fresh nonce, so without the single-flight gate a
+// retransmission during that wait would broadcast a second transaction
+// that reverts behind the first. Failures are logged; every caller has a
+// retry path (the peer's retransmission, or the CLI).
+func (n *Node) submitAsync(verb string, key proofstore.ChannelKey, submit func() error) {
+	id := verb + ":" + key.String()
+	n.inflightMu.Lock()
+	if n.inflight[id] {
+		n.inflightMu.Unlock()
+		n.log.Debug("submission already in flight", "id", id)
+		return
+	}
+	if n.inflight == nil {
+		n.inflight = make(map[string]bool)
+	}
+	n.inflight[id] = true
+	n.inflightMu.Unlock()
 	go func() {
-		if err := n.SubmitCoopClose(ctx, ready); err != nil {
-			// Not loss-capable: the counterparty holds the same pair and the
-			// freeze holds until expiry either way.
-			n.log.Error("cooperative close submission", "err", err)
+		defer func() {
+			n.inflightMu.Lock()
+			delete(n.inflight, id)
+			n.inflightMu.Unlock()
+		}()
+		if err := submit(); err != nil {
+			n.log.Error(verb+" submission", "channel", key.String(), "err", err)
 		}
 	}()
 }
