@@ -224,16 +224,17 @@ func (e *Engine) HandleWithdrawProposal(msg WithdrawProposalMsg, senderNpub stri
 		return Result{}, nil, err
 	}
 	prole := peerRole(meta.Role)
-	withdrawn := dep.WithdrawnOf(prole).BigInt()
 	// The increase is measured against the outstanding countersigned voucher
 	// too, not just confirmed figures: totals are cumulative on-chain, so a
 	// lower re-proposal is useless to the peer, and refusing it keeps the
 	// single voucher record below monotone. A retransmission of the voucher
 	// itself is exempt — it re-validates and re-ACKs idempotently.
-	if pw := meta.PeerPendingWithdraw; pw != nil && nowBlock <= pw.ExpiryBlock &&
-		!(pw.Participant == participant && pw.ExpiryBlock == expiry && pw.TotalWithdrawn.BigInt().Cmp(total) == 0) &&
-		pw.TotalWithdrawn.BigInt().Cmp(withdrawn) > 0 {
-		withdrawn = pw.TotalWithdrawn.BigInt()
+	pw := meta.PeerPendingWithdraw
+	retransmit := pw != nil && pw.Participant == participant && pw.ExpiryBlock == expiry &&
+		pw.TotalWithdrawn.BigInt().Cmp(total) == 0
+	withdrawn := dep.WithdrawnOf(prole).BigInt()
+	if !retransmit {
+		withdrawn = withdrawAdjusted(meta, dep, nowBlock).WithdrawnOf(prole).BigInt()
 	}
 	if total.Cmp(withdrawn) <= 0 {
 		return Result{Nack: nack(key, KindWithdrawProposal, 0, NackPolicy, "totalWithdrawn does not increase")}, nil, nil
