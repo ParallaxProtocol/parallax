@@ -174,13 +174,10 @@ func (n *Node) ChannelForRequest(req PaymentRequest) (proofstore.ChannelKey, err
 		if meta.PeerAddress != req.Merchant || meta.Status != proofstore.StatusOpen {
 			continue
 		}
-		if req.ChannelID != 0 {
-			if meta.Key.ChannelID != req.ChannelID {
-				continue
-			}
-			if req.Registry != (util.Address{}) && meta.Key.Registry != req.Registry {
-				continue
-			}
+		// The URI carries no chain qualifier, so the pin is matched on
+		// registry alone here.
+		if !proofstore.PinMatches(req.ChannelID, req.Registry, "", meta.Key) {
+			continue
 		}
 		return meta.Key, nil
 	}
@@ -292,18 +289,11 @@ func (n *Node) handleInvoice(msg protocol.InvoiceMsg, sender string) error {
 		pinChain = msg.ChainID
 		found := false
 		for _, meta := range metas {
-			if meta.PeerNpub != sender || meta.PeerAddress != merchant ||
-				meta.Key.ChannelID != channelID {
-				continue
+			if meta.PeerNpub == sender && meta.PeerAddress == merchant &&
+				proofstore.PinMatches(channelID, pinReg, pinChain, meta.Key) {
+				found = true
+				break
 			}
-			if pinReg != (util.Address{}) && meta.Key.Registry != pinReg {
-				continue
-			}
-			if pinChain != "" && meta.Key.ChainID != pinChain {
-				continue
-			}
-			found = true
-			break
 		}
 		if !found {
 			return fmt.Errorf("channeld: invoice pinned to channel %d, which is not a channel with this merchant", channelID)
@@ -350,21 +340,9 @@ func (n *Node) channelWithMerchant(inv proofstore.Invoice) (proofstore.ChannelKe
 		return proofstore.ChannelKey{}, false
 	}
 	for _, meta := range metas {
-		if meta.PeerAddress != inv.Merchant || meta.Status != proofstore.StatusOpen {
-			continue
+		if meta.PeerAddress == inv.Merchant && meta.Status == proofstore.StatusOpen && inv.PinMatches(meta.Key) {
+			return meta.Key, true
 		}
-		if inv.ChannelID != 0 {
-			if meta.Key.ChannelID != inv.ChannelID {
-				continue
-			}
-			if inv.Registry != (util.Address{}) && meta.Key.Registry != inv.Registry {
-				continue
-			}
-			if inv.ChainID != "" && meta.Key.ChainID != inv.ChainID {
-				continue
-			}
-		}
-		return meta.Key, true
 	}
 	return proofstore.ChannelKey{}, false
 }

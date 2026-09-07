@@ -246,6 +246,26 @@ type Invoice struct {
 	Merchant util.Address `json:"evmAddress"`
 }
 
+// PinMatches reports whether the invoice's channel pin admits key. An
+// unpinned invoice (ChannelID 0) admits any channel.
+func (inv Invoice) PinMatches(key ChannelKey) bool {
+	return PinMatches(inv.ChannelID, inv.Registry, inv.ChainID, key)
+}
+
+// PinMatches is the one definition of a channel pin: a bare id qualified
+// by an optional registry and chain. Zero qualifiers (records or wire
+// messages predating them) fall back to the bare id, and id 0 means
+// unpinned. Both payer and merchant resolve pins through it, so the two
+// sides cannot disagree on which channel an invoice is payable on.
+func PinMatches(channelID uint64, registry util.Address, chainID string, key ChannelKey) bool {
+	if channelID == 0 {
+		return true
+	}
+	return channelID == key.ChannelID &&
+		(registry == (util.Address{}) || registry == key.Registry) &&
+		(chainID == "" || chainID == key.ChainID)
+}
+
 // Delegation is a tower-mode record: the max-seq complete state a delegator
 // has entrusted for watch-and-challenge (Part 2 §6.6).
 type Delegation struct {

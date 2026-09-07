@@ -508,8 +508,8 @@ func (e *Engine) HandleProposal(msg ProposalMsg, senderNpub string, nowBlock uin
 	// decrease and my outbound must be untouched; a zero-delta proposal is
 	// the no-op supersession.
 	prole := peerRole(meta.Role)
-	delta := new(big.Int).Sub(outboundOf(&st, prole), outboundOf(&latest, prole))
-	if delta.Sign() < 0 || outboundOf(&st, meta.Role).Cmp(outboundOf(&latest, meta.Role)) != 0 {
+	delta := new(big.Int).Sub(OutboundOf(&st, prole), OutboundOf(&latest, prole))
+	if delta.Sign() < 0 || OutboundOf(&st, meta.Role).Cmp(OutboundOf(&latest, meta.Role)) != 0 {
 		return Result{Nack: nack(key, KindProposal, st.Seq, NackPolicy, "non-monotone amounts")}, nil
 	}
 	isNoOp := delta.Sign() == 0
@@ -560,14 +560,14 @@ func (e *Engine) HandleProposal(msg ProposalMsg, senderNpub string, nowBlock uin
 	// validation of a known invoice the proposal references: skipping it
 	// would let any delta flip the invoice to Paid below.
 	if !isNoOp {
-		enforce := !e.cfg.PushPayments
-		if !enforce && msg.InvoiceID != "" {
-			_, ierr := e.store.Invoice(msg.InvoiceID)
-			enforce = ierr == nil
+		var inv *proofstore.Invoice
+		if msg.InvoiceID != "" {
+			if rec, ierr := e.store.Invoice(msg.InvoiceID); ierr == nil {
+				inv = &rec
+			}
 		}
-		if enforce {
-			res := e.checkInvoice(key, msg.InvoiceID, delta, nowUnix, st.Seq)
-			if res != nil {
+		if !e.cfg.PushPayments || inv != nil {
+			if res := checkInvoice(key, msg.InvoiceID, inv, delta, nowUnix, st.Seq); res != nil {
 				return Result{Nack: res}, nil
 			}
 		}
@@ -635,13 +635,14 @@ func (e *Engine) HandleProposal(msg ProposalMsg, senderNpub string, nowBlock uin
 	}, nil
 }
 
-// checkInvoice validates §7.3 check 5; nil means pass.
-func (e *Engine) checkInvoice(key proofstore.ChannelKey, invoiceID string, delta *big.Int, nowUnix int64, seq uint64) *NackMsg {
+// checkInvoice validates §7.3 check 5 against the invoice record the
+// proposal references (nil when it names none, or one this store never
+// minted); nil means pass.
+func checkInvoice(key proofstore.ChannelKey, invoiceID string, inv *proofstore.Invoice, delta *big.Int, nowUnix int64, seq uint64) *NackMsg {
 	if invoiceID == "" {
 		return nack(key, KindProposal, seq, NackPolicy, "push payments disabled")
 	}
-	inv, err := e.store.Invoice(invoiceID)
-	if err != nil {
+	if inv == nil {
 		return nack(key, KindProposal, seq, NackPolicy, "unknown invoice")
 	}
 	if inv.Paid {
@@ -657,14 +658,9 @@ func (e *Engine) checkInvoice(key proofstore.ChannelKey, invoiceID string, delta
 	}
 	// The pin is compared as a qualified key: coexisting registries share
 	// bare ids, and honoring a pin on its same-id twin would mark the
-	// invoice paid on the wrong channel. Zero qualifiers (records predating
-	// them) fall back to the bare id.
-	if inv.ChannelID != 0 {
-		if inv.ChannelID != key.ChannelID ||
-			(inv.Registry != (util.Address{}) && inv.Registry != key.Registry) ||
-			(inv.ChainID != "" && inv.ChainID != key.ChainID) {
-			return nack(key, KindProposal, seq, NackPolicy, "invoice pinned to another channel")
-		}
+	// invoice paid on the wrong channel.
+	if !inv.PinMatches(key) {
+		return nack(key, KindProposal, seq, NackPolicy, "invoice pinned to another channel")
 	}
 	return nil
 }
