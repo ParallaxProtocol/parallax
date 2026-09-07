@@ -27,6 +27,7 @@ import (
 
 	"github.com/ParallaxProtocol/parallax/v2/cmd/utils"
 	"github.com/ParallaxProtocol/parallax/v2/util"
+	"github.com/ParallaxProtocol/parallax/v2/wallet/channels/proofstore"
 	"github.com/ParallaxProtocol/parallax/v2/wallet/channels/towerd"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -44,6 +45,78 @@ and receives the on-chain refund. The tower can be lazy, never a thief:
 delegated material only fits the anyone-can-call challenge.`,
 	Flags:  []cli.Flag{passphraseFlag, channelConfigFlag, channelDataDirFlag},
 	Action: towerDaemon,
+	Subcommands: []cli.Command{
+		{
+			Name:  "quarantine",
+			Usage: "inspect delegation records the tower could not decode",
+			Description: `
+A delegation record that no longer decodes is moved out of the live set so
+it neither blocks the delegator's next delegation nor fails every read
+that touches it. The tower alarms when it quarantines one and keeps the
+affected close pinned for re-evaluation until its challenge deadline. The
+raw bytes stay here for inspection until cleared.`,
+			Subcommands: []cli.Command{
+				{
+					Name:      "list",
+					Usage:     "list quarantined delegation records",
+					ArgsUsage: "<keyfile>",
+					Flags:     []cli.Flag{passphraseFlag, channelConfigFlag, channelDataDirFlag, jsonFlag},
+					Action:    towerQuarantineList,
+				},
+				{
+					Name:      "clear",
+					Usage:     "discard a quarantined delegation record",
+					ArgsUsage: "<keyfile> <chain-id>:<registry>:<channel-id>",
+					Flags:     []cli.Flag{passphraseFlag, channelConfigFlag, channelDataDirFlag},
+					Action:    towerQuarantineClear,
+				},
+			},
+		},
+	},
+}
+
+func towerQuarantineList(ctx *cli.Context) error {
+	node, cleanup, err := newChannelNode(ctx, false)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	rows, err := node.Store.QuarantinedDelegations()
+	if err != nil {
+		return err
+	}
+	if ctx.Bool(jsonFlag.Name) {
+		mustPrintJSON(rows)
+		return nil
+	}
+	if len(rows) == 0 {
+		fmt.Println("no quarantined delegation records")
+		return nil
+	}
+	for _, q := range rows {
+		fmt.Printf("%s  at %s  %d bytes  %s\n", q.Key, time.Unix(q.AtUnix, 0).UTC().Format(time.RFC3339), len(q.Raw), q.Error)
+	}
+	return nil
+}
+
+func towerQuarantineClear(ctx *cli.Context) error {
+	if ctx.NArg() != 2 {
+		utils.Fatalf("usage: tower quarantine clear <keyfile> <chain-id>:<registry>:<channel-id>")
+	}
+	key, err := proofstore.ParseChannelKey(ctx.Args().Get(1))
+	if err != nil {
+		return err
+	}
+	node, cleanup, err := newChannelNode(ctx, false)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	if err := node.Store.ClearQuarantine(key); err != nil {
+		return err
+	}
+	fmt.Printf("cleared quarantined delegation record for %s\n", key)
+	return nil
 }
 
 func towerDaemon(ctx *cli.Context) error {
