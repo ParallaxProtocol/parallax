@@ -22,6 +22,13 @@ import (
 // newTestNodeWith is newTestNode with a config hook applied before assembly.
 func newTestNodeWith(t *testing.T, h *hub, mutate func(*Config)) *Node {
 	t.Helper()
+	return newTestNodeWithBackend(t, h, nil, mutate)
+}
+
+// newTestNodeWithBackend is newTestNodeWith over a chain backend (nil for
+// an offline node).
+func newTestNodeWithBackend(t *testing.T, h *hub, backend Backend, mutate func(*Config)) *Node {
+	t.Helper()
 	cfg := DefaultConfig()
 	cfg.Registries = map[string][]RegistryEntry{
 		"v1": {{Address: e2eKey.Registry.Hex(), ChainID: 2110}},
@@ -35,7 +42,7 @@ func newTestNodeWith(t *testing.T, h *hub, mutate func(*Config)) *Node {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n, err := New(cfg, t.TempDir(), key, nil, nil)
+	n, err := New(cfg, t.TempDir(), key, backend, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

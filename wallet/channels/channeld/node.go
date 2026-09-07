@@ -284,7 +284,15 @@ func (n *Node) handleRumor(ctx context.Context, rumor nostr.Event, sender string
 		if err := json.Unmarshal([]byte(rumor.Content), &msg); err != nil {
 			return err
 		}
-		res, err := n.Engine.HandleProposal(msg, sender, n.headBlock(ctx), time.Now().Unix())
+		// Check 6 judges withdraw vouchers by expiry, and the freeze check
+		// by block: an online node whose RPC is failing must defer rather
+		// than count an expired voucher as live at nowBlock 0 and NACK (and
+		// poison) a valid payment. The peer retransmits.
+		nowBlock, err := n.requireHead(ctx)
+		if err != nil {
+			return fmt.Errorf("%w; deferring proposal for channel %s", err, msg.State.ChannelID)
+		}
+		res, err := n.Engine.HandleProposal(msg, sender, nowBlock, time.Now().Unix())
 		if err != nil {
 			return err
 		}
@@ -369,9 +377,9 @@ func (n *Node) handleRumor(ctx context.Context, rumor nostr.Event, sender string
 		// that would skip both checks and hand an authenticated peer a
 		// permanent-freeze grenade. The peer retransmits until a delivery
 		// finds a healthy RPC; genuinely offline nodes take the QR path.
-		nowBlock := n.headBlock(ctx)
-		if n.backend != nil && nowBlock == 0 {
-			return fmt.Errorf("head unavailable; deferring coop-close proposal for channel %s", msg.ChannelID)
+		nowBlock, err := n.requireHead(ctx)
+		if err != nil {
+			return fmt.Errorf("%w; deferring coop-close proposal for channel %s", err, msg.ChannelID)
 		}
 		res, ready, err := n.Engine.HandleCoopCloseProposal(msg, sender, nowBlock)
 		if err != nil {
@@ -417,9 +425,9 @@ func (n *Node) handleRumor(ctx context.Context, rumor nostr.Event, sender string
 		// Same head requirement as coop-close proposals: the expiry check is
 		// meaningless at nowBlock 0, and a far-future pending withdraw blocks
 		// re-proposals until it expires.
-		nowBlock := n.headBlock(ctx)
-		if n.backend != nil && nowBlock == 0 {
-			return fmt.Errorf("head unavailable; deferring withdraw proposal for channel %s", msg.ChannelID)
+		nowBlock, err := n.requireHead(ctx)
+		if err != nil {
+			return fmt.Errorf("%w; deferring withdraw proposal for channel %s", err, msg.ChannelID)
 		}
 		res, ready, err := n.Engine.HandleWithdrawProposal(msg, sender, nowBlock)
 		if err != nil {
@@ -762,15 +770,26 @@ func (n *Node) isConfiguredTower(sender string) bool {
 	return false
 }
 
-func (n *Node) headBlock(ctx context.Context) uint64 {
+// requireHead returns the chain head for verbs whose checks are meaningless
+// without one (expiries, freeze horizons, voucher liveness). A node with no
+// backend reports 0 with no error — offline, where the QR path's nowBlock 0
+// is by design. An online node whose RPC fails gets the error, so the
+// caller defers rather than signing or judging against head 0.
+func (n *Node) requireHead(ctx context.Context) (uint64, error) {
 	if n.backend == nil {
-		return 0
+		return 0, nil
 	}
 	header, err := n.backend.HeaderByNumber(ctx, nil)
 	if err != nil {
-		return 0
+		return 0, fmt.Errorf("chain head unavailable: %w", err)
 	}
-	return header.Number.Uint64()
+	return header.Number.Uint64(), nil
+}
+
+// headBlock is requireHead for verbs that tolerate an unknown head as 0.
+func (n *Node) headBlock(ctx context.Context) uint64 {
+	head, _ := n.requireHead(ctx)
+	return head
 }
 
 // channelKeyFromDedupe parses watcher.DedupeKeyFor's

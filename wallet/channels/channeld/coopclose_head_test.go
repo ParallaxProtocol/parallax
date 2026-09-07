@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/ParallaxProtocol/parallax/v2/crypto"
 	"github.com/ParallaxProtocol/parallax/v2/primitives/types"
 	"github.com/ParallaxProtocol/parallax/v2/util"
 	"github.com/ParallaxProtocol/parallax/v2/wallet/channels/protocol"
@@ -43,22 +42,7 @@ func TestCoopCloseProposalDeferredWhenHeadUnavailable(t *testing.T) {
 	h := newHub()
 	bob := newTestNode(t, h, nil) // proposer (offline node: no backend)
 
-	cfg := DefaultConfig()
-	cfg.Registries = map[string][]RegistryEntry{
-		"v1": {{Address: e2eKey.Registry.Hex(), ChainID: 2110}},
-	}
-	cfg.Nostr.Relays = []string{"wss://hub"}
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	alice, err := New(cfg, t.TempDir(), key, erroringBackend{}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { alice.Close() })
-	alice.Pool = newHubPool(h, alice.SelfPub)
-	alice.Transmitter = newHubTransmitter(alice)
+	alice := newTestNodeWithBackend(t, h, erroringBackend{}, nil)
 	linkChannel(t, alice, bob)
 
 	// A freeze grenade: expiry absurdly far in the future. The offline
@@ -90,22 +74,7 @@ func TestOutboundVerbsDeferredWhenHeadUnavailable(t *testing.T) {
 	h := newHub()
 	bob := newTestNode(t, h, nil)
 
-	cfg := DefaultConfig()
-	cfg.Registries = map[string][]RegistryEntry{
-		"v1": {{Address: e2eKey.Registry.Hex(), ChainID: 2110}},
-	}
-	cfg.Nostr.Relays = []string{"wss://hub"}
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	alice, err := New(cfg, t.TempDir(), key, erroringBackend{}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { alice.Close() })
-	alice.Pool = newHubPool(h, alice.SelfPub)
-	alice.Transmitter = newHubTransmitter(alice)
+	alice := newTestNodeWithBackend(t, h, erroringBackend{}, nil)
 	linkChannel(t, alice, bob)
 
 	ctx := context.Background()
@@ -152,23 +121,8 @@ func TestHeadFetchedOnlyWhenNeeded(t *testing.T) {
 	h := newHub()
 	bob := newTestNode(t, h, nil)
 
-	cfg := DefaultConfig()
-	cfg.Registries = map[string][]RegistryEntry{
-		"v1": {{Address: e2eKey.Registry.Hex(), ChainID: 2110}},
-	}
-	cfg.Nostr.Relays = []string{"wss://hub"}
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
 	counting := &headCountingBackend{}
-	alice, err := New(cfg, t.TempDir(), key, counting, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { alice.Close() })
-	alice.Pool = newHubPool(h, alice.SelfPub)
-	alice.Transmitter = newHubTransmitter(alice)
+	alice := newTestNodeWithBackend(t, h, counting, nil)
 	linkChannel(t, alice, bob)
 	ctx := context.Background()
 
@@ -191,5 +145,32 @@ func TestHeadFetchedOnlyWhenNeeded(t *testing.T) {
 	_ = alice.handleRumor(ctx, encodeRumor(t, protocol.KindProposal, prop), bob.SelfPub)
 	if n := counting.heads.Load(); n == 0 {
 		t.Fatal("proposal handled without a head view")
+	}
+}
+
+// TestProposalDeferredWhenHeadUnavailable: check 6 counts a withdraw
+// voucher as spent until its expiry block. An online node whose RPC is
+// failing would judge that at nowBlock 0 — every recorded voucher looks
+// live, including one that expired unsubmitted — and NACK a valid payment
+// funded by the expired entitlement, poisoning the payer's channel. The
+// proposal must be deferred like closes and withdraws are; the peer
+// retransmits.
+func TestProposalDeferredWhenHeadUnavailable(t *testing.T) {
+	h := newHub()
+	bob := newTestNode(t, h, nil)
+	alice := newTestNodeWithBackend(t, h, erroringBackend{}, nil)
+	linkChannel(t, alice, bob)
+
+	prop, err := bob.Engine.ProposePayment(e2eKey, big.NewInt(1e9), "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = alice.handleRumor(context.Background(), encodeRumor(t, protocol.KindProposal, prop), bob.SelfPub)
+	if !errors.Is(err, errRPCDown) {
+		t.Fatalf("proposal processed without a head view: %v", err)
+	}
+	latest, err := alice.Store.LatestState(e2eKey)
+	if err == nil && latest.Seq != 0 {
+		t.Fatalf("deferred proposal was countersigned at seq %d", latest.Seq)
 	}
 }
