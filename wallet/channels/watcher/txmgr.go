@@ -276,11 +276,17 @@ func (m *TxManager) Tick(ctx context.Context, head uint64) {
 			if _, err := m.send(ctx, id, p, head); err != nil {
 				// "already known" / "underpriced" races are benign (the
 				// price sticks so the next tick compounds another 25%);
-				// anything else rolls back and retries next tick.
+				// anything else rolls back the price and waits another
+				// bumpAfterBlocks before the next attempt. A build that
+				// fails deterministically (the channel was settled under
+				// a lingering challenge, so estimateGas reverts) is thereby
+				// retried and alarmed once per bump window, not on every
+				// tick for the life of the intent.
 				if benignResubmitError(err) {
 					p.bumps++
 				} else {
 					p.gasPrice.Set(prev)
+					p.submittedAt = head
 					m.alarm("fee-bump for %s failed: %v", id, err)
 				}
 				continue

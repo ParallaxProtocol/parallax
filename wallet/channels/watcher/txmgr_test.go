@@ -334,11 +334,13 @@ type erroringSendBackend struct {
 	mu      sync.Mutex
 	failing bool
 	sent    []*big.Int
+	failed  int // sends refused while failing
 }
 
 func (b *erroringSendBackend) SendTransaction(ctx context.Context, tx *types.Transaction) error {
 	b.mu.Lock()
 	if b.failing {
+		b.failed++
 		b.mu.Unlock()
 		return errInjectedOutage
 	}
@@ -396,5 +398,68 @@ func TestTxManagerBumpsSurviveRpcOutage(t *testing.T) {
 	last := erroring.sent[len(erroring.sent)-1]
 	if last.Cmp(erroring.sent[0]) <= 0 {
 		t.Fatalf("post-outage resubmission not escalated: first %s, last %s", erroring.sent[0], last)
+	}
+}
+
+// TestTxManagerFailedBumpWaitsForNextWindow: a fee bump whose send fails for
+// a non-benign reason is retried once per bump window, not on every tick.
+// Ticks arrive every few seconds while blocks arrive every ten minutes, so
+// an intent whose build fails deterministically (the channel was settled
+// under a lingering challenge, so estimateGas reverts) would otherwise
+// rebuild, fail, and alarm ~120 times per block for as long as it lives.
+func TestTxManagerFailedBumpWaitsForNextWindow(t *testing.T) {
+	e := setupSim(t)
+	erroring := &erroringSendBackend{TxBackend: e.backend}
+	mgr := NewTxManager(erroring, e.bobPriv, big.NewInt(1337))
+	var alarms int
+	mgr.Alarm = func(format string, args ...any) { alarms++ }
+
+	contract, err := registry.NewChannelRegistry(e.regAddr, erroring)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = mgr.Submit(context.Background(), "deposit:test", 10, 0,
+		func(auth *bind.TransactOpts) (*types.Transaction, error) {
+			auth.Value = lax(1)
+			return contract.Deposit(auth, big.NewInt(1))
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	erroring.mu.Lock()
+	erroring.failing = true
+	erroring.mu.Unlock()
+
+	failedAfter := func(head uint64) int {
+		mgr.Tick(context.Background(), head)
+		erroring.mu.Lock()
+		defer erroring.mu.Unlock()
+		return erroring.failed
+	}
+	// First bump-eligible head: one attempt, one alarm.
+	if n := failedAfter(10 + bumpAfterBlocks); n != 1 {
+		t.Fatalf("attempts after first bump window: %d, want 1", n)
+	}
+	// Ticks within the same window (same head, next head) must not retry.
+	if n := failedAfter(10 + bumpAfterBlocks); n != 1 {
+		t.Fatalf("retried on a same-head tick: %d attempts", n)
+	}
+	if n := failedAfter(10 + bumpAfterBlocks + 1); n != 1 {
+		t.Fatalf("retried before the next bump window: %d attempts", n)
+	}
+	// The next window retries exactly once more.
+	if n := failedAfter(10 + 2*bumpAfterBlocks); n != 2 {
+		t.Fatalf("attempts after second bump window: %d, want 2", n)
+	}
+	if alarms != 2 {
+		t.Fatalf("alarms: %d, want one per attempt (2)", alarms)
+	}
+	// The failed attempts consumed no bump budget: the escalation still has
+	// its full allowance once sends go through again.
+	mgr.mu.Lock()
+	bumps := mgr.pending["deposit:test"].bumps
+	mgr.mu.Unlock()
+	if bumps != 0 {
+		t.Fatalf("failed sends consumed %d bumps", bumps)
 	}
 }
