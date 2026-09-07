@@ -44,10 +44,14 @@ func (c Config) coopCloseHorizon() uint64 {
 }
 
 // Engine drives one wallet's side of the channel protocol. Methods
-// serialize on an internal lock (Part 3 §2's actor discipline, enforced
-// here): callers span the dispatcher, the watcher loop, the transmitter
-// give-up callback, merchant HTTP handlers, and CLI verbs, and every method
-// is a read-check-sign-write sequence whose checks must not interleave.
+// serialize on an internal lock (Part 3 §2's actor discipline for
+// everything that signs): callers span the dispatcher, the watcher loop,
+// the transmitter give-up callback, merchant HTTP handlers, and CLI verbs,
+// and every method is a read-check-sign-write sequence whose checks must
+// not interleave. The watcher's own chain observations (Closing, Settled)
+// are written to the store outside this lock; they mirror on-chain facts
+// that can land between any check and its signature regardless, so the
+// contract's settle clamp, not this lock, bounds that window.
 type Engine struct {
 	mu     sync.Mutex
 	store  *proofstore.Store
