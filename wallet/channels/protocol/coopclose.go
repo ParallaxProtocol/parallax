@@ -171,11 +171,15 @@ func (e *Engine) HandleCoopCloseProposal(msg CoopCloseProposalMsg, senderNpub st
 	if nowBlock > 0 && expiry > nowBlock+e.cfg.coopCloseHorizon() {
 		return Result{Nack: nack(key, KindCoopCloseProposal, 0, NackPolicy, "expiry beyond the close horizon")}, nil, nil
 	}
-	wantA, okA := new(big.Int).SetString(msg.BalanceA, 10)
-	wantB, okB := new(big.Int).SetString(msg.BalanceB, 10)
-	if !okA || !okB || wantA.Sign() < 0 || wantB.Sign() < 0 {
+	// parseWei bounds the balances to 256 bits: the digest ABI-encodes them
+	// into 32-byte words, and an oversized peer value must be refused here
+	// rather than reach the encoder.
+	uA, errA := parseWei(msg.BalanceA)
+	uB, errB := parseWei(msg.BalanceB)
+	if errA != nil || errB != nil {
 		return Result{Nack: nack(key, KindCoopCloseProposal, 0, NackPolicy, "bad balances")}, nil, nil
 	}
+	wantA, wantB := uA.BigInt(), uB.BigInt()
 
 	// Retransmission of the close we already countersigned: re-ACK
 	// idempotently instead of NACKing our own freeze (Part 2 §7.2 applies to

@@ -209,10 +209,13 @@ func (e *Engine) HandleWithdrawProposal(msg WithdrawProposalMsg, senderNpub stri
 	if participant != meta.PeerAddress {
 		return Result{Nack: nack(key, KindWithdrawProposal, 0, NackPolicy, "participant is not the proposer")}, nil, nil
 	}
-	total, ok := new(big.Int).SetString(msg.TotalWithdrawn, 10)
-	if !ok || total.Sign() <= 0 {
+	// parseWei bounds the total to 256 bits before it can reach the digest
+	// encoder, which packs it into a 32-byte word.
+	utotal, err := parseWei(msg.TotalWithdrawn)
+	if err != nil || utotal.Sign() <= 0 {
 		return Result{Nack: nack(key, KindWithdrawProposal, 0, NackPolicy, "bad totalWithdrawn")}, nil, nil
 	}
+	total := utotal.BigInt()
 
 	// Strict cumulative increase against confirmed figures (mirrors the
 	// contract) and the entitlement ceiling (Part 1 §7.3 wallet guard).
