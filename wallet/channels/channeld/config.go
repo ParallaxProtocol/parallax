@@ -121,6 +121,25 @@ func (c *Config) Validate() error {
 	if _, ok := c.MaxInflight(); !ok {
 		return fmt.Errorf("channeld: bad max_inflight_payment_wei %q", c.Channels.MaxInflightPaymentWei)
 	}
+	// The engine refuses a cooperative close or withdraw whose expiry lies
+	// beyond coop_close_horizon_blocks, and the node derives those expiries
+	// from the validity windows: a window wider than the horizon would make
+	// every close or withdraw fail at the proposer.
+	horizon := c.Channels.CoopCloseHorizonBlocks
+	if horizon == 0 {
+		return fmt.Errorf("channeld: coop_close_horizon_blocks must be positive")
+	}
+	for name, v := range map[string]uint64{
+		"coop_close_validity_blocks": c.Channels.CoopCloseValidityBlocks,
+		"withdraw_validity_blocks":   c.Channels.WithdrawValidityBlocks,
+	} {
+		if v == 0 {
+			return fmt.Errorf("channeld: %s must be positive", name)
+		}
+		if v > horizon {
+			return fmt.Errorf("channeld: %s (%d) exceeds coop_close_horizon_blocks (%d)", name, v, horizon)
+		}
+	}
 	if len(c.Nostr.Relays) == 0 {
 		return fmt.Errorf("channeld: no nostr relays configured")
 	}
