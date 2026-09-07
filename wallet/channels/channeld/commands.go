@@ -78,6 +78,15 @@ func (n *Node) ResolveInvoice(invoiceID string) (proofstore.ChannelKey, *big.Int
 	if err != nil {
 		return proofstore.ChannelKey{}, nil, fmt.Errorf("channeld: unknown invoice %s (was it received over the relay?)", invoiceID)
 	}
+	if inv.Paid {
+		// Spent by this wallet's own irrevocable proposal (marked at the W1
+		// write); a second proposal would be NACKed "already paid" after its
+		// own journal write and poison the channel.
+		if inv.PaidBy != nil {
+			return proofstore.ChannelKey{}, nil, fmt.Errorf("channeld: invoice %s already paid at seq %d on channel %s", invoiceID, inv.PaidSeq, inv.PaidBy.String())
+		}
+		return proofstore.ChannelKey{}, nil, fmt.Errorf("channeld: invoice %s already paid", invoiceID)
+	}
 	if time.Now().Unix() > inv.ExpiresAt {
 		return proofstore.ChannelKey{}, nil, fmt.Errorf("channeld: invoice expired")
 	}

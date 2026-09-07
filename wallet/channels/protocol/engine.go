@@ -239,6 +239,17 @@ func (e *Engine) ProposePayment(key proofstore.ChannelKey, amountWei *big.Int, i
 	if err := e.store.PutSelfSigned(next); err != nil { // W1 barrier
 		return nil, err
 	}
+	// The journal write commits this wallet to the payment (a second
+	// proposal for the same invoice would be NACKed "already paid" after
+	// its own irrevocable write, poisoning the channel), so a locally
+	// stored invoice (received via 21901) is spent here, on the payer side.
+	// Invoices only known by id (URI path) have no record to mark.
+	if invoiceID != "" {
+		if err := e.store.MarkInvoicePaid(invoiceID, key, next.Seq); err != nil &&
+			!errors.Is(err, proofstore.ErrNotFound) && !errors.Is(err, proofstore.ErrExists) {
+			return nil, err
+		}
+	}
 	return &ProposalMsg{V: 1, InvoiceID: invoiceID, State: ToWire(next), ProposerRole: string(meta.Role)}, nil
 }
 
