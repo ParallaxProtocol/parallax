@@ -226,3 +226,31 @@ func TestDecodeRejections(t *testing.T) {
 		t.Fatal("oversized memo encoded")
 	}
 }
+
+// TestDecodeRejectsOversizedBignum: every amount is a uint256 on the wire
+// and in the EIP-712 encoder, which packs it into a 32-byte word and panics
+// on a wider value. A scanned envelope carrying a 33-byte bignum must fail
+// to decode rather than reach the digest.
+func TestDecodeRejectsOversizedBignum(t *testing.T) {
+	env := sampleProposal()
+	env.TAB = new(big.Int).Lsh(big.NewInt(1), 256) // 2^256: 33 bytes
+	s, err := Encode(env)
+	if err != nil {
+		return // the encoder refusing it is equally acceptable
+	}
+	if _, err := Decode(s); err == nil {
+		t.Fatal("envelope with a 257-bit amount decoded")
+	}
+	env.TAB = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(1)) // 2^256-1 fits
+	s, err = Encode(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Decode(s)
+	if err != nil {
+		t.Fatalf("max uint256 rejected: %v", err)
+	}
+	if got.TAB.Cmp(env.TAB) != 0 {
+		t.Fatalf("max uint256 roundtrip: got %s", got.TAB)
+	}
+}

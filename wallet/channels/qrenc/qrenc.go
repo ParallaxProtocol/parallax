@@ -321,6 +321,12 @@ func (r *reader) big() (*big.Int, error) {
 		if len(raw) == 0 || raw[0] == 0 {
 			return nil, errors.New("qrenc: non-canonical bignum")
 		}
+		// Every amount is a uint256 on the wire and in the digest encoder,
+		// which packs it into a 32-byte word; a longer value must fail here,
+		// not there.
+		if len(raw) > 32 {
+			return nil, errors.New("qrenc: bignum exceeds 256 bits")
+		}
 		v := new(big.Int).SetBytes(raw)
 		if v.IsUint64() {
 			return nil, errors.New("qrenc: bignum used for uint64-range value")

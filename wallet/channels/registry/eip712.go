@@ -102,7 +102,10 @@ func (d Domain) typedDigest(structHash []byte) util.Hash {
 }
 
 // encUint ABI-encodes a uint256 into its 32-byte big-endian word. nil counts
-// as zero.
+// as zero. Values wider than 256 bits do not fit and FillBytes panics, so
+// every decoder that admits a peer-supplied amount (proofstore.U256,
+// protocol's parseWei, qrenc's bignum reader) bounds it before it can reach
+// a digest.
 func encUint(x *big.Int) []byte {
 	var word [32]byte
 	if x != nil {
