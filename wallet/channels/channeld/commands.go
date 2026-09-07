@@ -38,26 +38,20 @@ func (n *Node) Pay(ctx context.Context, key proofstore.ChannelKey, amountWei *bi
 // means OUR cumulative outbound moved by exactly the paid amount with
 // nothing of ours left journaled.
 func (n *Node) AwaitPayment(ctx context.Context, key proofstore.ChannelKey, before proofstore.SignedState, amountWei *big.Int, wait time.Duration) (uint64, error) {
-	meta, err := n.Store.Meta(key)
-	if err != nil {
-		return 0, err
-	}
-	myOutbound := func(st proofstore.SignedState) *big.Int {
-		if meta.Role == proofstore.RoleA {
-			return st.TransferredAtoB.BigInt()
-		}
-		return st.TransferredBtoA.BigInt()
-	}
 	deadline := time.Now().Add(wait)
 	for {
-		if m, merr := n.Store.Meta(key); merr == nil && m.Poisoned {
+		meta, err := n.Store.Meta(key)
+		if err != nil {
+			return 0, err
+		}
+		if meta.Poisoned {
 			exposure, _ := n.Engine.PoisonedExposure(key)
 			return 0, fmt.Errorf("channeld: payment refused (channel poisoned by a NACK); exposure if closed now: %s wei", exposure)
 		}
 		latest, lerr := n.Store.LatestState(key)
 		if lerr == nil && latest.Seq > before.Seq {
 			if journal, jerr := n.Store.SelfSigned(key); jerr == nil && len(journal) == 0 {
-				delta := new(big.Int).Sub(myOutbound(latest), myOutbound(before))
+				delta := new(big.Int).Sub(protocol.OutboundOf(&latest, meta.Role), protocol.OutboundOf(&before, meta.Role))
 				if delta.Cmp(amountWei) == 0 {
 					return latest.Seq, nil
 				}

@@ -93,8 +93,8 @@ func (e *Engine) latestOrZero(key proofstore.ChannelKey) (proofstore.SignedState
 	return st, err
 }
 
-// outboundOf returns the cumulative amount sent by the given role in a state.
-func outboundOf(st *proofstore.SignedState, r proofstore.Role) *big.Int {
+// OutboundOf returns the cumulative amount sent by the given role in a state.
+func OutboundOf(st *proofstore.SignedState, r proofstore.Role) *big.Int {
 	if r == proofstore.RoleA {
 		return st.TransferredAtoB.BigInt()
 	}
@@ -217,7 +217,7 @@ func (e *Engine) ProposePayment(key proofstore.ChannelKey, amountWei *big.Int, i
 	next.Key = key
 	next.Seq = latest.Seq + 1
 	next.SigA, next.SigB = nil, nil
-	out := new(big.Int).Add(outboundOf(&latest, meta.Role), amountWei)
+	out := new(big.Int).Add(OutboundOf(&latest, meta.Role), amountWei)
 	if meta.Role == proofstore.RoleA {
 		next.TransferredAtoB = proofstore.NewU256(out)
 		next.TransferredBtoA = proofstore.NewU256(latest.TransferredBtoA.BigInt())
@@ -418,9 +418,9 @@ func (e *Engine) PoisonedExposure(key proofstore.ChannelKey) (*big.Int, error) {
 		return nil, err
 	}
 	maxDelta := new(big.Int)
-	base := outboundOf(&latest, meta.Role)
+	base := OutboundOf(&latest, meta.Role)
 	for i := range journal {
-		delta := new(big.Int).Sub(outboundOf(&journal[i], meta.Role), base)
+		delta := new(big.Int).Sub(OutboundOf(&journal[i], meta.Role), base)
 		if delta.Cmp(maxDelta) > 0 {
 			maxDelta = delta
 		}
