@@ -86,6 +86,15 @@ func (e *Engine) ProposeCoopClose(key proofstore.ChannelKey, expiryBlock, nowBlo
 	if frozen(meta, nowBlock) {
 		return nil, ErrFrozen
 	}
+	// A close signs explicit balances against the confirmed funding view,
+	// and the contract requires their sum to equal the channel's available
+	// funds at submission (Part 2 §8). A countersigned withdraw voucher that
+	// mines first shrinks those funds and reverts the close, leaving both
+	// sides frozen until its expiry for nothing. Refuse while any voucher is
+	// still submittable; the sweep clears it after expiry.
+	if voucherLive(meta.PendingWithdraw, nowBlock) || voucherLive(meta.PeerPendingWithdraw, nowBlock) {
+		return nil, ErrWithdrawPending
+	}
 	if expiryBlock <= nowBlock {
 		return nil, fmt.Errorf("protocol: expiry block %d not in the future", expiryBlock)
 	}
@@ -205,6 +214,9 @@ func (e *Engine) HandleCoopCloseProposal(msg CoopCloseProposalMsg, senderNpub st
 	}
 	if frozen(meta, nowBlock) {
 		return Result{Nack: nack(key, KindCoopCloseProposal, 0, NackFrozen, "close already pending")}, nil, nil
+	}
+	if voucherLive(meta.PendingWithdraw, nowBlock) || voucherLive(meta.PeerPendingWithdraw, nowBlock) {
+		return Result{Nack: nack(key, KindCoopCloseProposal, 0, NackPolicy, "withdraw voucher outstanding")}, nil, nil
 	}
 
 	balA, balB, err := e.closeBalances(key)

@@ -91,7 +91,7 @@ func (e *Engine) ProposeWithdraw(key proofstore.ChannelKey, amountWei *big.Int, 
 	if frozen(meta, nowBlock) {
 		return nil, ErrFrozen
 	}
-	if pw := meta.PendingWithdraw; pw != nil && nowBlock <= pw.ExpiryBlock {
+	if voucherLive(meta.PendingWithdraw, nowBlock) {
 		return nil, ErrWithdrawPending
 	}
 	if amountWei == nil || amountWei.Sign() <= 0 {
@@ -352,7 +352,7 @@ func (e *Engine) SweepWithdraw(key proofstore.ChannelKey, nowBlock uint64) error
 		if pw == nil {
 			return false
 		}
-		return nowBlock > pw.ExpiryBlock || dep.WithdrawnOf(r).BigInt().Cmp(pw.TotalWithdrawn.BigInt()) >= 0
+		return !voucherLive(pw, nowBlock) || dep.WithdrawnOf(r).BigInt().Cmp(pw.TotalWithdrawn.BigInt()) >= 0
 	}
 	own := done(meta.Role, meta.PendingWithdraw)
 	peer := done(peerRole(meta.Role), meta.PeerPendingWithdraw)
@@ -376,7 +376,7 @@ func (e *Engine) SweepWithdraw(key proofstore.ChannelKey, nowBlock uint64) error
 // balance purposes even before the chain confirms it.
 func withdrawAdjusted(meta proofstore.ChannelMeta, dep proofstore.Deposits, nowBlock uint64) proofstore.Deposits {
 	raise := func(r proofstore.Role, pw *proofstore.PendingWithdraw) {
-		if pw == nil || nowBlock > pw.ExpiryBlock {
+		if !voucherLive(pw, nowBlock) {
 			return
 		}
 		col := &dep.WithdrawnA
@@ -390,4 +390,13 @@ func withdrawAdjusted(meta proofstore.ChannelMeta, dep proofstore.Deposits, nowB
 	raise(meta.Role, meta.PendingWithdraw)
 	raise(peerRole(meta.Role), meta.PeerPendingWithdraw)
 	return dep
+}
+
+// voucherLive reports whether a recorded withdraw voucher is still
+// submittable at nowBlock: the contract accepts it through its expiry block
+// inclusive. An unknown head (nowBlock 0) treats every recorded voucher as
+// live, so an offline node never signs against entitlement a voucher may
+// still spend.
+func voucherLive(pw *proofstore.PendingWithdraw, nowBlock uint64) bool {
+	return pw != nil && nowBlock <= pw.ExpiryBlock
 }
