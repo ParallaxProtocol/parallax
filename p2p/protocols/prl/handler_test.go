@@ -252,6 +252,25 @@ func testGetBlockHeaders(t *testing.T, protocol uint) {
 				backend.chain.GetBlockByNumber(1).Hash(),
 			},
 		},
+		// Zero-amount requests must return nothing in every mode. Number
+		// origins are repeated by hash below, which covers the hash-mode
+		// forward path where count-1 used to underflow.
+		{
+			&GetBlockHeadersPacket{Origin: HashOrNumber{Number: limit / 2}, Amount: 0},
+			[]util.Hash{},
+		},
+		{
+			&GetBlockHeadersPacket{Origin: HashOrNumber{Number: limit / 2}, Amount: 0, Reverse: true},
+			[]util.Hash{},
+		},
+		{
+			&GetBlockHeadersPacket{Origin: HashOrNumber{Number: limit / 2}, Skip: 3, Amount: 0},
+			[]util.Hash{},
+		},
+		{
+			&GetBlockHeadersPacket{Origin: HashOrNumber{Number: limit / 2}, Skip: 3, Amount: 0, Reverse: true},
+			[]util.Hash{},
+		},
 		// Check that non existing headers aren't returned
 		{
 			&GetBlockHeadersPacket{Origin: HashOrNumber{Hash: unknown}, Amount: 1},
