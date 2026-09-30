@@ -144,6 +144,11 @@ func serviceContiguousBlockHeaderQuery(chain *validation.BlockChain, query *GetB
 	if count > maxHeadersServe {
 		count = maxHeadersServe
 	}
+	if count == 0 {
+		// Nothing requested. Bail out early, otherwise the hash-mode path
+		// below underflows count-1 and bypasses maxHeadersServe.
+		return nil
+	}
 	if query.Origin.Hash == (util.Hash{}) {
 		// Number mode, just return the canon chain segment. The backend
 		// delivers in [N, N-1, N-2..] descending order, so we need to
