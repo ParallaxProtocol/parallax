@@ -180,12 +180,13 @@ func (api *PublicFilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Su
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
 	}
 
-	rpcSub := notifier.CreateSubscription()
+	var (
+		rpcSub       = notifier.CreateSubscription()
+		txHashes     = make(chan []util.Hash, 128)
+		pendingTxSub = api.events.SubscribePendingTxs(txHashes)
+	)
 
 	go func() {
-		txHashes := make(chan []util.Hash, 128)
-		pendingTxSub := api.events.SubscribePendingTxs(txHashes)
-
 		for {
 			select {
 			case hashes := <-txHashes:
@@ -249,12 +250,13 @@ func (api *PublicFilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, er
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
 	}
 
-	rpcSub := notifier.CreateSubscription()
+	var (
+		rpcSub     = notifier.CreateSubscription()
+		headers    = make(chan *types.Header)
+		headersSub = api.events.SubscribeNewHeads(headers)
+	)
 
 	go func() {
-		headers := make(chan *types.Header)
-		headersSub := api.events.SubscribeNewHeads(headers)
-
 		for {
 			select {
 			case h := <-headers:
