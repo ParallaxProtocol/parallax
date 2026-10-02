@@ -1871,7 +1871,7 @@ func (api *PublicDebugAPI) GetRawReceipts(ctx context.Context, blockNrOrHash rpc
 		hash = h
 	} else {
 		block, err := api.b.BlockByNumberOrHash(ctx, blockNrOrHash)
-		if err != nil {
+		if block == nil || err != nil {
 			return nil, err
 		}
 		hash = block.Hash()
