@@ -79,7 +79,7 @@ func TestSubscriptions(t *testing.T) {
 		request := map[string]any{
 			"id":      i,
 			"method":  fmt.Sprintf("%s_subscribe", namespace),
-			"version": "2.0",
+			"jsonrpc": "2.0",
 			"params":  []any{"someSubscription", notificationCount, i},
 		}
 		if err := out.Encode(&request); err != nil {
