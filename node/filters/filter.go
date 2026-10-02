@@ -159,6 +159,9 @@ func (f *Filter) Logs(ctx context.Context) ([]*types.Log, error) {
 	if f.end, err = resolveSpecial(f.end); err != nil {
 		return nil, err
 	}
+	if f.begin > f.end {
+		return nil, errInvalidBlockRange
+	}
 	// Gather all indexed logs, and finish with non indexed ones
 	var (
 		logs           []*types.Log
