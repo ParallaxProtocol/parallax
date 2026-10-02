@@ -38,7 +38,10 @@ import (
 	"github.com/ParallaxProtocol/parallax/v2/validation/state"
 )
 
-var errBlockInvariant = errors.New("block objects must be instantiated with at least one of num or hash")
+var (
+	errBlockInvariant    = errors.New("block objects must be instantiated with at least one of num or hash")
+	errInvalidBlockRange = errors.New("invalid from and to block combination: from > to")
+)
 
 type Long int64
 
@@ -1199,7 +1202,7 @@ func (r *Resolver) Blocks(ctx context.Context, args struct {
 		to = rpc.BlockNumber(r.backend.CurrentBlock().Number().Int64())
 	}
 	if to < from {
-		return []*Block{}, nil
+		return nil, errInvalidBlockRange
 	}
 	var ret []*Block
 	for i := from; i <= to; i++ {
@@ -1283,6 +1286,9 @@ func (r *Resolver) Logs(ctx context.Context, args struct{ Filter FilterCriteria 
 	end := rpc.LatestBlockNumber.Int64()
 	if args.Filter.ToBlock != nil {
 		end = int64(*args.Filter.ToBlock)
+	}
+	if begin >= 0 && end >= 0 && begin > end {
+		return nil, errInvalidBlockRange
 	}
 	var addresses []util.Address
 	if args.Filter.Addresses != nil {
