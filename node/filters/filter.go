@@ -133,21 +133,38 @@ func (f *Filter) Logs(ctx context.Context) ([]*types.Log, error) {
 	if header == nil {
 		return nil, nil
 	}
-	head := header.Number.Uint64()
-
-	if f.begin == -1 {
-		f.begin = int64(head)
+	var (
+		err  error
+		head = header.Number.Int64()
+	)
+	resolveSpecial := func(number int64) (int64, error) {
+		switch number {
+		case rpc.LatestBlockNumber.Int64(), rpc.PendingBlockNumber.Int64():
+			// Pending logs are not tracked by the filter, so "pending" is
+			// served from the latest block.
+			return head, nil
+		case rpc.FinalizedBlockNumber.Int64():
+			hdr, _ := f.backend.HeaderByNumber(ctx, rpc.FinalizedBlockNumber)
+			if hdr == nil {
+				return 0, errors.New("finalized header not found")
+			}
+			return hdr.Number.Int64(), nil
+		default:
+			return number, nil
+		}
 	}
-	end := uint64(f.end)
-	if f.end == -1 {
-		end = head
+	if f.begin, err = resolveSpecial(f.begin); err != nil {
+		return nil, err
+	}
+	if f.end, err = resolveSpecial(f.end); err != nil {
+		return nil, err
 	}
 	// Gather all indexed logs, and finish with non indexed ones
 	var (
-		logs []*types.Log
-		err  error
+		logs           []*types.Log
+		end            = uint64(f.end)
+		size, sections = f.backend.BloomStatus()
 	)
-	size, sections := f.backend.BloomStatus()
 	if indexed := sections * size; indexed > uint64(f.begin) {
 		if indexed > end {
 			logs, err = f.indexedLogs(ctx, end)
