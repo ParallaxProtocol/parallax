@@ -227,6 +227,15 @@ func TestFilters(t *testing.T) {
 		t.Error("expected 1 log, got", len(logs))
 	}
 
+	// Inverted ranges are rejected, also when they end at genesis or start
+	// after the head block.
+	for _, r := range [][2]int64{{10, 1}, {1, 0}, {2000, rpc.LatestBlockNumber.Int64()}} {
+		filter = NewRangeFilter(backend, r[0], r[1], nil, nil)
+		if _, err := filter.Logs(context.Background()); err != errInvalidBlockRange {
+			t.Errorf("range %d..%d: expected %v, got %v", r[0], r[1], errInvalidBlockRange, err)
+		}
+	}
+
 	// Special block numbers which cannot be resolved must not be treated as
 	// raw block numbers.
 	filter = NewRangeFilter(backend, rpc.FinalizedBlockNumber.Int64(), rpc.LatestBlockNumber.Int64(), nil, nil)

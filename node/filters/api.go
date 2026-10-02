@@ -32,6 +32,8 @@ import (
 	"github.com/ParallaxProtocol/parallax/v2/util/hexutil"
 )
 
+var errInvalidBlockRange = errors.New("invalid block range params")
+
 // filter is a helper struct that holds meta information over the filter type
 // and associated subscription in the event system.
 type filter struct {
@@ -337,6 +339,10 @@ func (api *PublicFilterAPI) GetLogs(ctx context.Context, crit FilterCriteria) ([
 		end := rpc.LatestBlockNumber.Int64()
 		if crit.ToBlock != nil {
 			end = crit.ToBlock.Int64()
+		}
+		// Block numbers below 0 are special cases.
+		if begin >= 0 && end >= 0 && begin > end {
+			return nil, errInvalidBlockRange
 		}
 		// Construct the range filter
 		filter = NewRangeFilter(api.backend, begin, end, crit.Addresses, crit.Topics)
