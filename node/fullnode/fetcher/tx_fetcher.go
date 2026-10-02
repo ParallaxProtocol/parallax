@@ -335,9 +335,9 @@ func (f *TxFetcher) Enqueue(peer string, txs []*types.Transaction, direct bool) 
 		otherRejectMeter.Mark(otherreject)
 
 		// If 'other reject' is >25% of the deliveries in any batch, sleep a bit.
-		if otherreject > 128/4 {
+		if otherreject > int64((len(batch)+3)/4) {
+			logging.Debug("Peer delivering stale or invalid transactions", "peer", peer, "rejected", otherreject)
 			time.Sleep(200 * time.Millisecond)
-			logging.Warn("Peer delivering stale transactions", "peer", peer, "rejected", otherreject)
 		}
 	}
 	if accepted > 0 && f.txAccepted != nil {
