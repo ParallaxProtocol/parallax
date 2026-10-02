@@ -230,6 +230,21 @@ func testMixerClose(t *testing.T) {
 	mix.Close() // shouldn't crash
 }
 
+// This test checks that a source added after Close is closed by the mixer,
+// since AddSource takes ownership of it.
+func TestFairMixAddSourceAfterClose(t *testing.T) {
+	mix := NewFairMix(-1)
+	mix.Close()
+
+	it := make(blockingIter)
+	mix.AddSource(it)
+	select {
+	case <-it:
+	default:
+		t.Fatal("source added after Close was not closed")
+	}
+}
+
 func idPrefixDistribution(nodes []*Node) map[uint32]int {
 	d := make(map[uint32]int)
 	for _, node := range nodes {
