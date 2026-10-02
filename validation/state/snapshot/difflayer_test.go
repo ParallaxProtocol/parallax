@@ -227,6 +227,39 @@ func TestInsertAndMerge(t *testing.T) {
 	}
 }
 
+// TestStorageListMemoryAccounting ensures that StorageList increases dl.memory
+// proportionally to the number of storage slots in the requested account and
+// does not change memory usage on repeated calls for the same account.
+func TestStorageListMemoryAccounting(t *testing.T) {
+	parent := newDiffLayer(emptyLayer(), util.Hash{}, nil, nil, nil)
+	account := util.HexToHash("0x01")
+
+	slots := make(map[util.Hash][]byte)
+	for i := 0; i < 3; i++ {
+		slots[randomHash()] = []byte{0x01}
+	}
+	storage := map[util.Hash]map[util.Hash][]byte{
+		account: slots,
+	}
+	dl := newDiffLayer(parent, util.Hash{}, nil, nil, storage)
+
+	before := dl.memory
+	list, _ := dl.StorageList(account)
+	if have, want := len(list), len(slots); have != want {
+		t.Fatalf("StorageList length mismatch: have %d, want %d", have, want)
+	}
+	expectedDelta := uint64(len(list)*util.HashLength + util.HashLength)
+	if have, want := dl.memory-before, expectedDelta; have != want {
+		t.Fatalf("StorageList memory delta mismatch: have %d, want %d", have, want)
+	}
+
+	before = dl.memory
+	_, _ = dl.StorageList(account)
+	if dl.memory != before {
+		t.Fatalf("StorageList changed memory on cached call: have %d, want %d", dl.memory, before)
+	}
+}
+
 func emptyLayer() *diskLayer {
 	return &diskLayer{
 		diskdb: memorydb.New(),

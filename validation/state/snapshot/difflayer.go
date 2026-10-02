@@ -566,6 +566,6 @@ func (dl *diffLayer) StorageList(accountHash util.Hash) ([]util.Hash, bool) {
 	}
 	sort.Sort(hashes(storageList))
 	dl.storageList[accountHash] = storageList
-	dl.memory += uint64(len(dl.storageList)*util.HashLength + util.HashLength)
+	dl.memory += uint64(len(storageList)*util.HashLength + util.HashLength)
 	return storageList, destructed
 }
