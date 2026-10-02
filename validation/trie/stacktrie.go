@@ -58,6 +58,7 @@ type StackTrie struct {
 	key      []byte                 // key chunk covered by this (leaf|ext) node
 	children [16]*StackTrie         // list of children (for branch and exts)
 	db       dbstore.KeyValueWriter // Pointer to the commit db, can be nil
+	last     []byte                 // Last inserted key (root only), used to enforce key ordering
 }
 
 // NewStackTrie allocates and initializes an empty trie.
@@ -181,11 +182,17 @@ const (
 
 // TryUpdate inserts a (key, value) pair into the stack trie
 func (st *StackTrie) TryUpdate(key, value []byte) error {
-	k := keybytesToHex(key)
 	if len(value) == 0 {
-		panic("deletion not supported")
+		return errors.New("trying to insert empty (deletion)")
 	}
-	st.insert(k[:len(k)-1], value)
+	k := keybytesToHex(key)
+	k = k[:len(k)-1] // chop the termination flag
+	if bytes.Compare(st.last, k) >= 0 {
+		return errors.New("non-ascending key order")
+	}
+	st.last = append(st.last[:0], k...)
+
+	st.insert(k, value)
 	return nil
 }
 
@@ -198,6 +205,7 @@ func (st *StackTrie) Update(key, value []byte) {
 func (st *StackTrie) Reset() {
 	st.db = nil
 	st.key = st.key[:0]
+	st.last = st.last[:0]
 	st.val = nil
 	for i := range st.children {
 		st.children[i] = nil
