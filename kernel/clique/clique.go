@@ -176,7 +176,7 @@ type Clique struct {
 
 	signer util.Address // Parallax address of the signing key
 	signFn SignerFn     // Signer function to authorize hashes with
-	lock   sync.RWMutex // Protects the signer fields
+	lock   sync.RWMutex // Protects the signer and proposals fields
 
 	// The fields below are for testing only
 	fakeDiff bool // Skip difficulty verifications
@@ -496,9 +496,8 @@ func (c *Clique) Prepare(chain kernel.ChainHeaderReader, header *types.Header) e
 	if err != nil {
 		return err
 	}
+	c.lock.RLock()
 	if number%c.config.Epoch != 0 {
-		c.lock.RLock()
-
 		// Gather all the proposals that make sense voting on
 		addresses := make([]util.Address, 0, len(c.proposals))
 		for address, authorize := range c.proposals {
@@ -515,10 +514,14 @@ func (c *Clique) Prepare(chain kernel.ChainHeaderReader, header *types.Header) e
 				copy(header.Nonce[:], nonceDropVote)
 			}
 		}
-		c.lock.RUnlock()
 	}
+
+	// Copy signer protected by mutex to avoid race condition
+	signer := c.signer
+	c.lock.RUnlock()
+
 	// Set the correct difficulty
-	header.Difficulty = calcDifficulty(snap, c.signer)
+	header.Difficulty = calcDifficulty(snap, signer)
 
 	// Ensure the extra data has all its components
 	if len(header.Extra) < extraVanity {
@@ -654,7 +657,10 @@ func (c *Clique) CalcDifficulty(chain kernel.ChainHeaderReader, time uint64, par
 	if err != nil {
 		return nil
 	}
-	return calcDifficulty(snap, c.signer)
+	c.lock.RLock()
+	signer := c.signer
+	c.lock.RUnlock()
+	return calcDifficulty(snap, signer)
 }
 
 func calcDifficulty(snap *Snapshot, signer util.Address) *big.Int {
