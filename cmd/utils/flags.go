@@ -605,6 +605,11 @@ var (
 		Usage: "Maximum number of bytes returned from a batched call",
 		Value: node.DefaultConfig.BatchResponseMaxSize,
 	}
+	HTTPBodyLimitFlag = cli.IntFlag{
+		Name:  "rpc.http-body-limit",
+		Usage: "Maximum size (in megabytes) of an HTTP request body",
+		Value: node.DefaultConfig.HTTPBodyLimit / (1024 * 1024),
+	}
 
 	// Network Settings
 	MaxPeersFlag = cli.IntFlag{
@@ -1106,6 +1111,10 @@ func setHTTP(ctx *cli.Context, cfg *node.Config) {
 
 	if ctx.GlobalIsSet(BatchResponseMaxSize.Name) {
 		cfg.BatchResponseMaxSize = ctx.GlobalInt(BatchResponseMaxSize.Name)
+	}
+
+	if ctx.GlobalIsSet(HTTPBodyLimitFlag.Name) {
+		cfg.HTTPBodyLimit = ctx.GlobalInt(HTTPBodyLimitFlag.Name) * 1024 * 1024
 	}
 }
 

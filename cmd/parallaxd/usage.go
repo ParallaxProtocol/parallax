@@ -141,6 +141,7 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.AllowUnprotectedTxs,
 			utils.BatchRequestLimit,
 			utils.BatchResponseMaxSize,
+			utils.HTTPBodyLimitFlag,
 			utils.JSpathFlag,
 			utils.ExecFlag,
 			utils.PreloadJSFlag,
