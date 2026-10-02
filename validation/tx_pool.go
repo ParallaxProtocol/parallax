@@ -172,7 +172,7 @@ type TxPoolConfig struct {
 	AccountQueue uint64 // Maximum number of non-executable transaction slots permitted per account
 	GlobalQueue  uint64 // Maximum number of non-executable transaction slots for all accounts
 
-	Lifetime time.Duration // Maximum amount of time non-executable transaction are queued
+	Lifetime time.Duration // Maximum amount of time an account can remain stale in the non-executable pool
 }
 
 // DefaultTxPoolConfig contains the default configurations for the transaction
@@ -779,8 +779,8 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (replaced bool, err e
 		pool.queueTxEvent(tx)
 		logging.Trace("Pooled new executable transaction", "hash", hash, "from", from, "to", tx.To())
 
-		// Successful promotion, bump the heartbeat
-		pool.beats[from] = time.Now()
+		// Successful replacement. If needed, bump the heartbeat giving more time to queued txs.
+		pool.bumpBeat(from)
 		return old != nil, nil
 	}
 	// New transaction isn't replacing a pending one, push into queue
@@ -910,9 +910,17 @@ func (pool *TxPool) promoteTx(addr util.Address, hash util.Hash, tx *types.Trans
 	// Set the potentially new pending nonce and notify any subsystems of the new tx
 	pool.pendingNonces.set(addr, tx.Nonce()+1)
 
-	// Successful promotion, bump the heartbeat
-	pool.beats[addr] = time.Now()
+	// Successful promotion, bump the heartbeat, giving more time to queued txs.
+	pool.bumpBeat(addr)
 	return true
+}
+
+// bumpBeat updates the heartbeat for the given account address. If the address
+// has no queued transactions (and thus no heartbeat), the call is a no-op.
+func (pool *TxPool) bumpBeat(addr util.Address) {
+	if _, ok := pool.beats[addr]; ok {
+		pool.beats[addr] = time.Now()
+	}
 }
 
 // AddLocals enqueues a batch of transactions into the pool if they are valid, marking the
