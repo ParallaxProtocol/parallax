@@ -27,6 +27,9 @@ import (
 	"github.com/graph-gophers/graphql-go"
 )
 
+// maxQueryDepth limits the maximum field nesting depth allowed in GraphQL queries.
+const maxQueryDepth = 20
+
 type handler struct {
 	Schema *graphql.Schema
 }
@@ -64,17 +67,18 @@ func New(stack *node.Node, backend api.Backend, cors, vhosts []string) error {
 		panic("missing backend")
 	}
 	// check if http server with given endpoint exists and enable graphQL on it
-	return newHandler(stack, backend, cors, vhosts)
+	_, err := newHandler(stack, backend, cors, vhosts)
+	return err
 }
 
 // newHandler returns a new `http.Handler` that will answer GraphQL queries.
 // It additionally exports an interactive query browser on the / endpoint.
-func newHandler(stack *node.Node, backend api.Backend, cors, vhosts []string) error {
+func newHandler(stack *node.Node, backend api.Backend, cors, vhosts []string) (*handler, error) {
 	q := Resolver{backend}
 
-	s, err := graphql.ParseSchema(schema, &q)
+	s, err := graphql.ParseSchema(schema, &q, graphql.MaxDepth(maxQueryDepth))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	h := handler{Schema: s}
 	handler := node.NewHTTPHandlerStack(h, cors, vhosts, nil)
@@ -83,5 +87,5 @@ func newHandler(stack *node.Node, backend api.Backend, cors, vhosts []string) er
 	stack.RegisterHandler("GraphQL", "/graphql", handler)
 	stack.RegisterHandler("GraphQL", "/graphql/", handler)
 
-	return nil
+	return &h, nil
 }
