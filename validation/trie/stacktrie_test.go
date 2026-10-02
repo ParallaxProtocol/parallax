@@ -24,6 +24,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/v2/crypto"
 	"github.com/ParallaxProtocol/parallax/v2/dbstore/memorydb"
 	"github.com/ParallaxProtocol/parallax/v2/util"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStackTrieInsertAndHash(t *testing.T) {
@@ -389,4 +390,25 @@ func TestStacktrieSerialization(t *testing.T) {
 	if have, want := st.Hash(), nt.Hash(); have != want {
 		t.Fatalf("have %#x want %#x", have, want)
 	}
+}
+
+func TestStackTrieErrors(t *testing.T) {
+	s := NewStackTrie(nil)
+	// Deletion
+	if err := s.TryUpdate(nil, nil); err == nil {
+		t.Fatal("expected error")
+	}
+	if err := s.TryUpdate(nil, []byte{}); err == nil {
+		t.Fatal("expected error")
+	}
+	if err := s.TryUpdate([]byte{0xa}, []byte{}); err == nil {
+		t.Fatal("expected error")
+	}
+	// Non-ascending keys (going backwards or repeating)
+	assert.Nil(t, s.TryUpdate([]byte{0xaa}, []byte{0xa}))
+	assert.NotNil(t, s.TryUpdate([]byte{0xaa}, []byte{0xa}), "repeat insert same key")
+	assert.NotNil(t, s.TryUpdate([]byte{0xaa}, []byte{0xb}), "repeat insert same key")
+	assert.Nil(t, s.TryUpdate([]byte{0xab}, []byte{0xa}))
+	assert.NotNil(t, s.TryUpdate([]byte{0x10}, []byte{0xb}), "out of order insert")
+	assert.NotNil(t, s.TryUpdate([]byte{0xaa}, []byte{0xb}), "repeat insert same key")
 }
