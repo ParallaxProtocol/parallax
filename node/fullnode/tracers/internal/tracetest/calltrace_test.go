@@ -387,3 +387,78 @@ func TestZeroValueToNotExitCall(t *testing.T) {
 		t.Error("have != want")
 	}
 }
+
+// TestPrestateTracerInternals runs the prestate tracer over hand-crafted
+// bytecode exercising edge cases that previously crashed the tracer.
+func TestPrestateTracerInternals(t *testing.T) {
+	var (
+		to        = util.HexToAddress("0x00000000000000000000000000000000deadbeef")
+		origin    = util.HexToAddress("0x00000000000000000000000000000000feed")
+		txContext = script.TxContext{
+			Origin:   origin,
+			GasPrice: big.NewInt(1),
+		}
+		context = script.BlockContext{
+			CanTransfer: validation.CanTransfer,
+			Transfer:    validation.Transfer,
+			Coinbase:    util.Address{},
+			BlockNumber: new(big.Int).SetUint64(8000000),
+			Time:        new(big.Int).SetUint64(5),
+			Difficulty:  big.NewInt(0x30000),
+			GasLimit:    uint64(6000000),
+		}
+	)
+	for _, tc := range []struct {
+		name string
+		code []byte
+		want string
+	}{
+		{
+			// Leads to OOM on the prestate tracer
+			name: "CREATE2 OOM",
+			code: []byte{
+				byte(script.PUSH1), 0x1,
+				byte(script.PUSH1), 0x0,
+				byte(script.MSTORE),
+				byte(script.PUSH1), 0x1,
+				byte(script.PUSH5), 0xff, 0xff, 0xff, 0xff, 0xff,
+				byte(script.PUSH1), 0x1,
+				byte(script.PUSH1), 0x0,
+				byte(script.CREATE2),
+				byte(script.PUSH1), 0xff,
+				byte(script.PUSH1), 0x0,
+				byte(script.LOG0),
+			},
+			want: `{"0x000000000000000000000000000000000000feed":{"balance":"0x1c6bf52647880","nonce":0,"code":"0x","storage":{}},"0x00000000000000000000000000000000deadbeef":{"balance":"0x0","nonce":0,"code":"0x6001600052600164ffffffffff60016000f560ff6000a0","storage":{}}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, statedb := tests.MakePreState(rawdb.NewMemoryDatabase(),
+				validation.GenesisAlloc{
+					to: validation.GenesisAccount{
+						Code: tc.code,
+					},
+					origin: validation.GenesisAccount{
+						Balance: big.NewInt(500000000000000),
+					},
+				}, false)
+			tracer, err := tracers.New("prestateTracer", nil)
+			if err != nil {
+				t.Fatalf("failed to create prestate tracer: %v", err)
+			}
+			pvm := script.NewPVM(context, txContext, statedb, chainparams.MainnetChainConfig, script.Config{Debug: true, Tracer: tracer})
+			msg := types.NewMessage(origin, &to, 0, big.NewInt(0), 80000, big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, false)
+			st := validation.NewStateTransition(pvm, msg, new(validation.GasPool).AddGas(msg.Gas()))
+			if _, err := st.TransitionDb(); err != nil {
+				t.Fatalf("failed to execute transaction: %v", err)
+			}
+			res, err := tracer.GetResult()
+			if err != nil {
+				t.Fatalf("failed to retrieve trace result: %v", err)
+			}
+			if string(res) != tc.want {
+				t.Errorf("trace mismatch\n have: %s\n want: %s", res, tc.want)
+			}
+		})
+	}
+}
