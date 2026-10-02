@@ -208,10 +208,10 @@ func handleMessage(backend Backend, peer *Peer) error {
 	if err != nil {
 		return err
 	}
+	defer msg.Discard()
 	if msg.Size > maxMessageSize {
 		return fmt.Errorf("%w: %v > %v", errMsgTooLarge, msg.Size, maxMessageSize)
 	}
-	defer msg.Discard()
 
 	handlers := parallax66
 	//if peer.Version() >= PRL67 { // Left in as a sample when new protocol is added
