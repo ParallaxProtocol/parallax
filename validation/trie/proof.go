@@ -511,6 +511,11 @@ func VerifyRangeProof(rootHash util.Hash, firstKey []byte, lastKey []byte, keys 
 		}
 		return false, nil
 	}
+	// Short circuit if the key of first element is greater than firstKey.
+	// A nil firstKey slice is equivalent to an empty slice.
+	if bytes.Compare(firstKey, keys[0]) > 0 {
+		return false, errors.New("unexpected key-value pairs preceding the requested range")
+	}
 	// Special case, there is only one element and two edge keys are same.
 	// In this case, we can't construct two edge paths. So handle it here.
 	if len(keys) == 1 && bytes.Equal(firstKey, lastKey) {
@@ -562,7 +567,9 @@ func VerifyRangeProof(rootHash util.Hash, firstKey []byte, lastKey []byte, keys 
 		tr.root = nil
 	}
 	for index, key := range keys {
-		tr.TryUpdate(key, values[index])
+		if err := tr.TryUpdate(key, values[index]); err != nil {
+			return false, err
+		}
 	}
 	if tr.Hash() != rootHash {
 		return false, fmt.Errorf("invalid proof, want hash %x, got %x", rootHash, tr.Hash())

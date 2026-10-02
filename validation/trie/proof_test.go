@@ -1102,6 +1102,40 @@ func TestRangeProofKeysWithSharedPrefix(t *testing.T) {
 	}
 }
 
+// TestRangeProofPrecedingKeys tests that key-value pairs preceding the
+// requested range are rejected, even if they fall into a part of the trie
+// that is only referenced by hash in the edge proofs.
+func TestRangeProofPrecedingKeys(t *testing.T) {
+	trie, vals := randomTrie(4096)
+	var entries entrySlice
+	for _, kv := range vals {
+		entries = append(entries, kv)
+	}
+	sort.Sort(entries)
+
+	for _, start := range []int{1, 100, 1000, 2000} {
+		end := start + 50
+
+		proof := memorydb.New()
+		if err := trie.Prove(entries[start].k, 0, proof); err != nil {
+			t.Fatalf("Failed to prove the first node %v", err)
+		}
+		if err := trie.Prove(entries[end-1].k, 0, proof); err != nil {
+			t.Fatalf("Failed to prove the last node %v", err)
+		}
+		// Prepend a fabricated key-value pair preceding the requested range
+		keys := [][]byte{entries[start-1].k}
+		values := [][]byte{randBytes(20)}
+		for i := start; i < end; i++ {
+			keys = append(keys, entries[i].k)
+			values = append(values, entries[i].v)
+		}
+		if _, err := VerifyRangeProof(trie.Hash(), entries[start].k, keys[len(keys)-1], keys, values, proof); err == nil {
+			t.Fatalf("start %d: expected error for key-value pair preceding the range", start)
+		}
+	}
+}
+
 // TestRangeProofErrors tests a few cases where the prover is supposed
 // to exit with errors
 func TestRangeProofErrors(t *testing.T) {
