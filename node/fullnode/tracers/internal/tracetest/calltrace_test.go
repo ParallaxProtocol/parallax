@@ -431,6 +431,24 @@ func TestPrestateTracerInternals(t *testing.T) {
 			},
 			want: `{"0x000000000000000000000000000000000000feed":{"balance":"0x1c6bf52647880","nonce":0,"code":"0x","storage":{}},"0x00000000000000000000000000000000deadbeef":{"balance":"0x0","nonce":0,"code":"0x6001600052600164ffffffffff60016000f560ff6000a0","storage":{}}}`,
 		},
+		{
+			// CREATE2 which requires padding memory by prestate tracer
+			name: "CREATE2 Memory padding",
+			code: []byte{
+				byte(script.PUSH1), 0x1,
+				byte(script.PUSH1), 0x0,
+				byte(script.MSTORE),
+				byte(script.PUSH1), 0x1,
+				byte(script.PUSH1), 0xff,
+				byte(script.PUSH1), 0x1,
+				byte(script.PUSH1), 0x0,
+				byte(script.CREATE2),
+				byte(script.PUSH1), 0xff,
+				byte(script.PUSH1), 0x0,
+				byte(script.LOG0),
+			},
+			want: `{"0x000000000000000000000000000000000000feed":{"balance":"0x1c6bf52647880","nonce":0,"code":"0x","storage":{}},"0x00000000000000000000000000000000deadbeef":{"balance":"0x0","nonce":0,"code":"0x6001600052600160ff60016000f560ff6000a0","storage":{}},"0x91ff9a805d36f54e3e272e230f3e3f5c1b330804":{"balance":"0x0","nonce":0,"code":"0x","storage":{}}}`,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, statedb := tests.MakePreState(rawdb.NewMemoryDatabase(),

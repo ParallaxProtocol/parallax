@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/ParallaxProtocol/parallax/v2/crypto"
+	"github.com/ParallaxProtocol/parallax/v2/logging"
 	"github.com/ParallaxProtocol/parallax/v2/node/fullnode/tracers"
 	"github.com/ParallaxProtocol/parallax/v2/script"
 	"github.com/ParallaxProtocol/parallax/v2/util"
@@ -116,7 +117,11 @@ func (t *prestateTracer) CaptureState(pc uint64, op script.OpCode, gas, cost uin
 	case stackLen >= 4 && op == script.CREATE2:
 		offset := stackData[stackLen-2]
 		size := stackData[stackLen-3]
-		init := scope.Memory.GetCopy(int64(offset.Uint64()), int64(size.Uint64()))
+		init, err := tracers.GetMemoryCopyPadded(scope.Memory, int64(offset.Uint64()), int64(size.Uint64()))
+		if err != nil {
+			logging.Warn("failed to copy CREATE2 input", "err", err, "tracer", "prestateTracer", "offset", offset, "size", size)
+			return
+		}
 		inithash := crypto.Keccak256(init)
 		salt := stackData[stackLen-4]
 		t.lookupAccount(crypto.CreateAddress2(scope.Contract.Address(), salt.Bytes32(), inithash))
