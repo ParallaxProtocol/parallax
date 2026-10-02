@@ -89,15 +89,15 @@ func (q *bodyQueue) request(peer *peerConnection, req *fetchRequest, resCh chan 
 // deliver is responsible for taking a generic response packet from the concurrent
 // fetcher, unpacking the body data and delivering it to the downloader's queue.
 func (q *bodyQueue) deliver(peer *peerConnection, packet *prl.Response) (int, error) {
-	txs := packet.Res.(*prl.BlockBodiesPacket).Unpack()
-	hashsets := packet.Meta.([][]util.Hash) // {txs hashes, uncle hashes}
+	resp := packet.Res.(*prl.BlockBodiesResponse)
+	meta := packet.Meta.(prl.BlockBodyHashes)
 
-	accepted, err := q.queue.DeliverBodies(peer.id, txs, hashsets[0])
+	accepted, err := q.queue.DeliverBodies(peer.id, meta, *resp)
 	switch {
-	case err == nil && len(txs) == 0:
+	case err == nil && len(*resp) == 0:
 		peer.log.Trace("Requested bodies delivered")
 	case err == nil:
-		peer.log.Trace("Delivered new batch of bodies", "count", len(txs), "accepted", accepted)
+		peer.log.Trace("Delivered new batch of bodies", "count", len(*resp), "accepted", accepted)
 	default:
 		peer.log.Debug("Failed to deliver retrieved bodies", "err", err)
 	}

@@ -268,18 +268,15 @@ func (dlp *downloadTesterPeer) RequestHeadersByNumber(origin uint64, amount int,
 func (dlp *downloadTesterPeer) RequestBodies(hashes []util.Hash, sink chan *prl.Response) (*prl.Request, error) {
 	blobs := prl.ServiceGetBlockBodiesQuery(dlp.chain, hashes)
 
-	bodies := make([]*prl.BlockBody, len(blobs))
+	bodies := make(prl.BlockBodiesResponse, len(blobs))
 	for i, blob := range blobs {
-		bodies[i] = new(prl.BlockBody)
-		rlp.DecodeBytes(blob, bodies[i])
+		rlp.DecodeBytes(blob, &bodies[i])
 	}
-	var (
-		txsHashes   = make([]util.Hash, len(bodies))
-		uncleHashes = make([]util.Hash, len(bodies))
-	)
+	txsHashes := make([]util.Hash, len(bodies))
 	hasher := trie.NewStackTrie(nil)
 	for i, body := range bodies {
-		txsHashes[i] = types.DeriveSha(types.Transactions(body.Transactions), hasher)
+		txs, _ := body.Transactions.Items()
+		txsHashes[i] = types.DeriveSha(types.Transactions(txs), hasher)
 	}
 	if dlp.corruptBodies {
 		for i := range txsHashes {
@@ -291,8 +288,8 @@ func (dlp *downloadTesterPeer) RequestBodies(hashes []util.Hash, sink chan *prl.
 	}
 	res := &prl.Response{
 		Req:  req,
-		Res:  (*prl.BlockBodiesPacket)(&bodies),
-		Meta: [][]util.Hash{txsHashes, uncleHashes},
+		Res:  &bodies,
+		Meta: prl.BlockBodyHashes{TransactionRoots: txsHashes},
 		Time: 1,
 		Done: make(chan error),
 	}
@@ -411,10 +408,14 @@ func (dlp *downloadTesterPeer) RequestByteCodes(id uint64, hashes []util.Hash, b
 // RequestTrieNodes fetches a batch of account or storage trie nodes rooted in
 // a specificstate trie.
 func (dlp *downloadTesterPeer) RequestTrieNodes(id uint64, root util.Hash, paths []snap.TrieNodePathSet, bytes uint64) error {
+	encPaths, err := rlp.EncodeToRawList(paths)
+	if err != nil {
+		panic(err)
+	}
 	req := &snap.GetTrieNodesPacket{
 		ID:    id,
 		Root:  root,
-		Paths: paths,
+		Paths: encPaths,
 		Bytes: bytes,
 	}
 	nodes, _ := snap.ServiceGetTrieNodesQuery(dlp.chain, req, time.Now())

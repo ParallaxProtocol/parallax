@@ -28,6 +28,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/v2/kernel/chainparams"
 	"github.com/ParallaxProtocol/parallax/v2/kernel/xhash"
 	"github.com/ParallaxProtocol/parallax/v2/p2p/protocols/prl"
+	"github.com/ParallaxProtocol/parallax/v2/primitives/rlp"
 	"github.com/ParallaxProtocol/parallax/v2/primitives/types"
 	"github.com/ParallaxProtocol/parallax/v2/util"
 	"github.com/ParallaxProtocol/parallax/v2/validation"
@@ -236,18 +237,19 @@ func (f *fetcherTester) makeBodyFetcher(peer string, blocks map[util.Hash]*types
 			}
 		}
 		// Return on a new thread
-		bodies := make([]*prl.BlockBody, len(transactions))
+		bodies := make(prl.BlockBodiesResponse, len(transactions))
+		roots := make([]util.Hash, len(transactions))
 		for i, txs := range transactions {
-			bodies[i] = &prl.BlockBody{
-				Transactions: txs,
-			}
+			bodies[i].Transactions, _ = rlp.EncodeToRawList(txs)
+			roots[i] = types.DeriveSha(types.Transactions(txs), trie.NewStackTrie(nil))
 		}
 		req := &prl.Request{
 			Peer: peer,
 		}
 		res := &prl.Response{
 			Req:  req,
-			Res:  (*prl.BlockBodiesPacket)(&bodies),
+			Res:  &bodies,
+			Meta: prl.BlockBodyHashes{TransactionRoots: roots},
 			Time: drift,
 			Done: make(chan error, 1), // Ignore the returned status
 		}

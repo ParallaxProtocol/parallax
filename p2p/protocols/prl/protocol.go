@@ -48,6 +48,10 @@ var protocolLengths = map[uint]uint64{Parallax66: 17}
 // maxMessageSize is the maximum cap on the size of a protocol message.
 const maxMessageSize = 10 * 1024 * 1024
 
+// maxTransactionAnnouncements is the maximum number of transactions in a
+// Transactions message.
+const maxTransactionAnnouncements = 5000
+
 const (
 	StatusMsg                     = 0x00
 	NewBlockHashesMsg             = 0x01
@@ -176,6 +180,13 @@ type BlockHeadersPacket66 struct {
 	BlockHeadersPacket
 }
 
+// blockHeadersInput is the undecoded form of BlockHeadersPacket66. It is used
+// to check the response against the originating request before decoding.
+type blockHeadersInput struct {
+	RequestId uint64
+	List      rlp.RawList[*types.Header]
+}
+
 // BlockHeadersRLPPacket represents a block header response, to use when we already
 // have the headers rlp encoded.
 type BlockHeadersRLPPacket []rlp.RawValue
@@ -223,6 +234,12 @@ type BlockBodiesPacket66 struct {
 	BlockBodiesPacket
 }
 
+// blockBodiesInput is the undecoded form of BlockBodiesPacket66.
+type blockBodiesInput struct {
+	RequestId uint64
+	List      rlp.RawList[RawBlockBody]
+}
+
 // BlockBodiesRLPPacket is used for replying to block body requests, in cases
 // where we already have them RLP-encoded, and thus can avoid the decode-encode
 // roundtrip.
@@ -239,14 +256,20 @@ type BlockBody struct {
 	Transactions []*types.Transaction // Transactions contained within a block
 }
 
-// Unpack retrieves the transactions and uncles from the range packet and returns
-// them in a split flat format that's more consistent with the internal data structures.
-func (p *BlockBodiesPacket) Unpack() [][]*types.Transaction {
-	txset := make([][]*types.Transaction, len(*p))
-	for i, body := range *p {
-		txset[i] = body.Transactions
-	}
-	return txset
+// RawBlockBody is the wire form of BlockBody with the transaction list left
+// undecoded. Block bodies received in response to a request are delivered in
+// this form, so the transactions are only decoded after the body has been
+// matched against its header.
+type RawBlockBody struct {
+	Transactions rlp.RawList[*types.Transaction]
+}
+
+// BlockBodiesResponse is the list of block bodies delivered to the requester.
+type BlockBodiesResponse []RawBlockBody
+
+// BlockBodyHashes contains the transaction roots of a list of block bodies.
+type BlockBodyHashes struct {
+	TransactionRoots []util.Hash
 }
 
 // GetNodeDataPacket represents a trie node data query.
@@ -267,6 +290,12 @@ type NodeDataPacket66 struct {
 	NodeDataPacket
 }
 
+// nodeDataInput is the undecoded form of NodeDataPacket66.
+type nodeDataInput struct {
+	RequestId uint64
+	List      rlp.RawList[[]byte]
+}
+
 // GetReceiptsPacket represents a block receipts query.
 type GetReceiptsPacket []util.Hash
 
@@ -283,6 +312,12 @@ type ReceiptsPacket [][]*types.Receipt
 type ReceiptsPacket66 struct {
 	RequestId uint64
 	ReceiptsPacket
+}
+
+// receiptsInput is the undecoded form of ReceiptsPacket66.
+type receiptsInput struct {
+	RequestId uint64
+	List      rlp.RawList[[]*types.Receipt]
 }
 
 // ReceiptsRLPPacket is used for receipts, when we already have it encoded
@@ -312,6 +347,12 @@ type PooledTransactionsPacket []*types.Transaction
 type PooledTransactionsPacket66 struct {
 	RequestId uint64
 	PooledTransactionsPacket
+}
+
+// pooledTransactionsInput is the undecoded form of PooledTransactionsPacket66.
+type pooledTransactionsInput struct {
+	RequestId uint64
+	List      rlp.RawList[*types.Transaction]
 }
 
 // PooledTransactionsRLPPacket is the network packet for transaction distribution, used
