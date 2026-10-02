@@ -165,6 +165,23 @@ func TestClientBatchRequest(t *testing.T) {
 	}
 }
 
+// This checks that an empty batch is rejected immediately instead of waiting
+// for a response that can never be matched to the request.
+func TestClientBatchRequestEmpty(t *testing.T) {
+	server := newTestServer()
+	defer server.Stop()
+	client := DialInProc(server)
+	defer client.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := client.BatchCallContext(ctx, nil)
+	var rpcErr Error
+	if !errors.As(err, &rpcErr) || rpcErr.ErrorCode() != -32600 {
+		t.Fatalf("expected invalid request error, got %v", err)
+	}
+}
+
 // This checks that, for HTTP connections, the length of batch responses is validated to
 // match the request exactly.
 func TestClientBatchRequest_len(t *testing.T) {
