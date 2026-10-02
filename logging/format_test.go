@@ -1,9 +1,11 @@
 package logging
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -91,5 +93,63 @@ func BenchmarkPrettyUint64Logfmt(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		sink = FormatLogfmtUint64(rand.Uint64())
+	}
+}
+
+func TestSanitation(t *testing.T) {
+	msg := "\u001b[1G\u001b[K\u001b[1A"
+	msg2 := "\u001b  \u0000"
+	msg3 := "NiceMessage"
+	msg4 := "Space Message"
+	msg5 := "Enter\nMessage"
+	msg6 := "🔷 Block found"
+	msg7 := "Bidi ‮ Message"
+
+	for i, tt := range []struct {
+		msg  string
+		want string
+	}{
+		{
+			msg:  msg,
+			want: fmt.Sprintf("] %q                   %q=%q\n", msg, msg, msg),
+		},
+		{
+			msg:  msg2,
+			want: fmt.Sprintf("] %q                             %q=%q\n", msg2, msg2, msg2),
+		},
+		{
+			msg:  msg3,
+			want: fmt.Sprintf("] %s                              %s=%s\n", msg3, msg3, msg3),
+		},
+		{
+			msg:  msg4,
+			want: fmt.Sprintf("] %s                            %q=%q\n", msg4, msg4, msg4),
+		},
+		{
+			msg:  msg5,
+			want: fmt.Sprintf("] %s                            %q=%q\n", msg5, msg5, msg5),
+		},
+		{
+			msg:  msg6,
+			want: fmt.Sprintf("] %s                            %q=%q\n", msg6, msg6, msg6),
+		},
+		{
+			msg:  msg7,
+			want: fmt.Sprintf("] %q                    %q=%q\n", msg7, msg7, msg7),
+		},
+	} {
+		var (
+			logger = New()
+			out    = new(strings.Builder)
+		)
+		logger.SetHandler(LvlFilterHandler(LvlInfo, StreamHandler(out, TerminalFormat(false))))
+		logger.Info(tt.msg, tt.msg, tt.msg)
+		have := out.String()
+		if idx := strings.Index(have, "] "); idx >= 0 {
+			have = have[idx:]
+		}
+		if tt.want != have {
+			t.Fatalf("test %d: want / have: \n%v\n%v", i, tt.want, have)
+		}
 	}
 }
