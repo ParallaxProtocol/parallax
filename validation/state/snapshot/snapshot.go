@@ -259,6 +259,9 @@ func (t *Tree) Disable() {
 			layer.stale = true
 			layer.lock.Unlock()
 
+			// Release the clean cache, it's not reused by anyone
+			layer.Release()
+
 		case *diffLayer:
 			// If the layer is a simple diff, simply mark as stale
 			layer.lock.Lock()
@@ -712,6 +715,9 @@ func (t *Tree) Rebuild(root util.Hash) {
 			layer.lock.Lock()
 			layer.stale = true
 			layer.lock.Unlock()
+
+			// Release the clean cache, it's not reused by anyone
+			layer.Release()
 
 		case *diffLayer:
 			// If the layer is a simple diff, simply mark as stale
