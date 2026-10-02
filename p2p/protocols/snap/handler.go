@@ -423,6 +423,7 @@ func ServiceGetStorageRangesQuery(chain *validation.BlockChain, req *GetStorageR
 			})
 			// If we've exceeded the request threshold, abort
 			if bytes.Compare(hash[:], limit[:]) >= 0 {
+				abort = true
 				break
 			}
 		}
