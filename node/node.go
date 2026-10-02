@@ -108,9 +108,11 @@ func New(conf *Config) (*Node, error) {
 		return nil, errors.New(`Config.Name cannot end in ".ipc"`)
 	}
 
+	server := rpc.NewServer()
+	server.SetBatchLimits(conf.BatchRequestLimit, conf.BatchResponseMaxSize)
 	node := &Node{
 		config:        conf,
-		inprocHandler: rpc.NewServer(),
+		inprocHandler: server,
 		eventmux:      new(event.TypeMux),
 		log:           conf.Logger,
 		stop:          make(chan struct{}),
@@ -413,6 +415,11 @@ func (n *Node) startRPC() error {
 		open, all = n.GetAPIs()
 	)
 
+	rpcConfig := rpcEndpointConfig{
+		batchItemLimit:         n.config.BatchRequestLimit,
+		batchResponseSizeLimit: n.config.BatchResponseMaxSize,
+	}
+
 	initHttp := func(server *httpServer, apis []rpc.API, port int) error {
 		if err := server.setListenAddr(n.config.HTTPHost, port); err != nil {
 			return err
@@ -422,6 +429,7 @@ func (n *Node) startRPC() error {
 			Vhosts:             n.config.HTTPVirtualHosts,
 			Modules:            n.config.HTTPModules,
 			prefix:             n.config.HTTPPathPrefix,
+			rpcEndpointConfig:  rpcConfig,
 		}); err != nil {
 			return err
 		}
@@ -435,9 +443,10 @@ func (n *Node) startRPC() error {
 			return err
 		}
 		if err := server.enableWS(n.rpcAPIs, wsConfig{
-			Modules: n.config.WSModules,
-			Origins: n.config.WSOrigins,
-			prefix:  n.config.WSPathPrefix,
+			Modules:           n.config.WSModules,
+			Origins:           n.config.WSOrigins,
+			prefix:            n.config.WSPathPrefix,
+			rpcEndpointConfig: rpcConfig,
 		}); err != nil {
 			return err
 		}
@@ -451,12 +460,14 @@ func (n *Node) startRPC() error {
 		if err := server.setListenAddr(n.config.AuthAddr, port); err != nil {
 			return err
 		}
+		sharedConfig := rpcConfig
+		sharedConfig.jwtSecret = secret
 		if err := server.enableRPC(apis, httpConfig{
 			CorsAllowedOrigins: DefaultAuthCors,
 			Vhosts:             n.config.AuthVirtualHosts,
 			Modules:            DefaultAuthModules,
 			prefix:             DefaultAuthPrefix,
-			jwtSecret:          secret,
+			rpcEndpointConfig:  sharedConfig,
 		}); err != nil {
 			return err
 		}
@@ -467,10 +478,10 @@ func (n *Node) startRPC() error {
 			return err
 		}
 		if err := server.enableWS(apis, wsConfig{
-			Modules:   DefaultAuthModules,
-			Origins:   DefaultAuthOrigins,
-			prefix:    DefaultAuthPrefix,
-			jwtSecret: secret,
+			Modules:           DefaultAuthModules,
+			Origins:           DefaultAuthOrigins,
+			prefix:            DefaultAuthPrefix,
+			rpcEndpointConfig: sharedConfig,
 		}); err != nil {
 			return err
 		}

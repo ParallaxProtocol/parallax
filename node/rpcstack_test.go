@@ -361,8 +361,10 @@ func TestJWT(t *testing.T) {
 		fmt.Sprintf("Bearer\t%v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix()})),
 		fmt.Sprintf("Bearer \t%v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix()})),
 	}
-	srv := createAndStartServer(t, &httpConfig{jwtSecret: []byte("secret")},
-		true, &wsConfig{Origins: []string{"*"}, jwtSecret: []byte("secret")})
+	cfg := rpcEndpointConfig{jwtSecret: []byte("secret")}
+	httpcfg := &httpConfig{rpcEndpointConfig: cfg}
+	wscfg := &wsConfig{Origins: []string{"*"}, rpcEndpointConfig: cfg}
+	srv := createAndStartServer(t, httpcfg, true, wscfg)
 	wsUrl := fmt.Sprintf("ws://%v", srv.listenAddr())
 	htUrl := fmt.Sprintf("http://%v", srv.listenAddr())
 
