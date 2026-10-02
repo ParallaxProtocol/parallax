@@ -17,6 +17,7 @@
 package p2p
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -386,6 +387,23 @@ func TestMatchProtocols(t *testing.T) {
 				t.Errorf("test %d, proto '%s': not negotiated, should have", i, name)
 				continue
 			}
+		}
+	}
+}
+
+func TestDecodeDisconnectMessage(t *testing.T) {
+	tests := []struct {
+		input []byte
+		want  DiscReason
+	}{
+		{[]byte{0xC1, byte(DiscTooManyPeers)}, DiscTooManyPeers}, // list
+		{[]byte{byte(DiscTooManyPeers)}, DiscTooManyPeers},       // legacy byte array
+		{[]byte{0xC0}, DiscInvalid},                              // empty list
+		{nil, DiscInvalid},                                       // empty payload
+	}
+	for i, test := range tests {
+		if got := decodeDisconnectMessage(bytes.NewReader(test.input)); got != test.want {
+			t.Errorf("test %d: got %v, want %v", i, got, test.want)
 		}
 	}
 }
