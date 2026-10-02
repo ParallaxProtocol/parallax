@@ -32,6 +32,11 @@ import (
 	"github.com/ParallaxProtocol/parallax/v2/util"
 )
 
+var (
+	errNoEventSignature       = errors.New("no event signature")
+	errEventSignatureMismatch = errors.New("event signature mismatch")
+)
+
 // SignerFn is a signer function callback when a contract requires a method to
 // sign the transaction before submission.
 type SignerFn func(util.Address, *types.Transaction) (*types.Transaction, error)
@@ -483,8 +488,12 @@ func (c *BoundContract) WatchLogs(opts *WatchOpts, name string, query ...[]any) 
 
 // UnpackLog unpacks a retrieved log into the provided output structure.
 func (c *BoundContract) UnpackLog(out any, event string, log types.Log) error {
+	// Anonymous events are not supported.
+	if len(log.Topics) == 0 {
+		return errNoEventSignature
+	}
 	if log.Topics[0] != c.abi.Events[event].ID {
-		return fmt.Errorf("event signature mismatch")
+		return errEventSignatureMismatch
 	}
 	if len(log.Data) > 0 {
 		if err := c.abi.UnpackIntoInterface(out, event, log.Data); err != nil {
@@ -502,8 +511,12 @@ func (c *BoundContract) UnpackLog(out any, event string, log types.Log) error {
 
 // UnpackLogIntoMap unpacks a retrieved log into the provided map.
 func (c *BoundContract) UnpackLogIntoMap(out map[string]any, event string, log types.Log) error {
+	// Anonymous events are not supported.
+	if len(log.Topics) == 0 {
+		return errNoEventSignature
+	}
 	if log.Topics[0] != c.abi.Events[event].ID {
-		return fmt.Errorf("event signature mismatch")
+		return errEventSignatureMismatch
 	}
 	if len(log.Data) > 0 {
 		if err := c.abi.UnpackIntoMap(out, event, log.Data); err != nil {

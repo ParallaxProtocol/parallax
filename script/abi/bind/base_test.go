@@ -186,6 +186,27 @@ func TestUnpackIndexedStringTyLogIntoMap(t *testing.T) {
 	unpackAndCheck(t, bc, expectedReceivedMap, mockLog)
 }
 
+func TestUnpackAnonymousLogIntoMap(t *testing.T) {
+	mockLog := newMockLog(nil, util.HexToHash("0x0"))
+
+	abiString := `[{"anonymous":false,"inputs":[{"indexed":false,"name":"amount","type":"uint256"}],"name":"received","type":"event"}]`
+	parsedAbi, _ := abi.JSON(strings.NewReader(abiString))
+	bc := bind.NewBoundContract(util.HexToAddress("0x0"), parsedAbi, nil, nil, nil)
+
+	var received map[string]any
+	err := bc.UnpackLogIntoMap(received, "received", mockLog)
+	if err == nil {
+		t.Fatal("unpacking anonymous event is not supported")
+	}
+	if err.Error() != "no event signature" {
+		t.Errorf("expected error 'no event signature', got '%s'", err)
+	}
+	var out struct{ Amount *big.Int }
+	if err := bc.UnpackLog(&out, "received", mockLog); err == nil || err.Error() != "no event signature" {
+		t.Errorf("expected error 'no event signature', got '%v'", err)
+	}
+}
+
 func TestUnpackIndexedSliceTyLogIntoMap(t *testing.T) {
 	sliceBytes, err := rlp.EncodeToBytes([]string{"name1", "name2", "name3", "name4"})
 	if err != nil {
