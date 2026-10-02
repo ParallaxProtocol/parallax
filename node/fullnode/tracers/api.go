@@ -62,6 +62,8 @@ const (
 	defaultTracechainMemLimit = util.StorageSize(500 * 1024 * 1024)
 )
 
+var errTxNotFound = errors.New("transaction not found")
+
 // Backend interface provides the common API services (that are provided by
 // both full and light clients) with access to necessary functions.
 type Backend interface {
@@ -775,9 +777,13 @@ func containsTx(block *types.Block, hash util.Hash) bool {
 // TraceTransaction returns the structured logs created during the execution of PVM
 // and returns them as a JSON object.
 func (api *API) TraceTransaction(ctx context.Context, hash util.Hash, config *TraceConfig) (any, error) {
-	_, blockHash, blockNumber, index, err := api.backend.GetTransaction(ctx, hash)
+	tx, blockHash, blockNumber, index, err := api.backend.GetTransaction(ctx, hash)
 	if err != nil {
 		return nil, err
+	}
+	// Only mined txes are supported
+	if tx == nil {
+		return nil, errTxNotFound
 	}
 	// It shouldn't happen in practice.
 	if blockNumber == 0 {
