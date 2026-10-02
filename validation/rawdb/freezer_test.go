@@ -327,6 +327,28 @@ func checkAncientCount(t *testing.T, f *Freezer, kind string, n uint64) {
 	}
 }
 
+// TestFreezerAppendUnknownTable checks that appending to a table the freezer
+// does not know about fails instead of panicking.
+func TestFreezerAppendUnknownTable(t *testing.T) {
+	t.Parallel()
+
+	f, _ := newFreezerForTesting(t, map[string]bool{"raw": true})
+	defer f.Close()
+
+	_, err := f.ModifyAncients(func(op dbstore.AncientWriteOp) error {
+		return op.AppendRaw("missing", 0, []byte{1})
+	})
+	if !errors.Is(err, errUnknownTable) {
+		t.Fatalf("AppendRaw: have %v, want %v", err, errUnknownTable)
+	}
+	_, err = f.ModifyAncients(func(op dbstore.AncientWriteOp) error {
+		return op.Append("missing", 0, uint64(1))
+	})
+	if !errors.Is(err, errUnknownTable) {
+		t.Fatalf("Append: have %v, want %v", err, errUnknownTable)
+	}
+}
+
 // TestFreezerLstatError checks that opening a freezer whose datadir cannot be
 // stat-ed (for reasons other than not existing) fails instead of panicking.
 func TestFreezerLstatError(t *testing.T) {
