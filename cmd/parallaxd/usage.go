@@ -139,6 +139,8 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.RPCGlobalPVMTimeoutFlag,
 			utils.RPCGlobalTxFeeCapFlag,
 			utils.AllowUnprotectedTxs,
+			utils.BatchRequestLimit,
+			utils.BatchResponseMaxSize,
 			utils.JSpathFlag,
 			utils.ExecFlag,
 			utils.PreloadJSFlag,
