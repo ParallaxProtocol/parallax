@@ -33,8 +33,9 @@ import (
 )
 
 var (
-	errInvalidBlockRange = errors.New("invalid block range params")
-	errExceedMaxTopics   = errors.New("exceed max topics")
+	errInvalidBlockRange   = errors.New("invalid block range params")
+	errExceedMaxTopics     = errors.New("exceed max topics")
+	errExceedLogQueryLimit = errors.New("exceed max addresses or topics per search position")
 )
 
 const (
@@ -63,15 +64,20 @@ type PublicFilterAPI struct {
 	filtersMu sync.Mutex
 	filters   map[rpc.ID]*filter
 	timeout   time.Duration
+
+	logQueryLimit int
 }
 
-// NewPublicFilterAPI returns a new PublicFilterAPI instance.
-func NewPublicFilterAPI(backend Backend, lightMode bool, timeout time.Duration) *PublicFilterAPI {
+// NewPublicFilterAPI returns a new PublicFilterAPI instance. logQueryLimit is the
+// maximum number of addresses or topics allowed per search position in filter
+// criteria (0 = no cap).
+func NewPublicFilterAPI(backend Backend, lightMode bool, timeout time.Duration, logQueryLimit int) *PublicFilterAPI {
 	api := &PublicFilterAPI{
-		backend: backend,
-		events:  NewEventSystem(backend, lightMode),
-		filters: make(map[rpc.ID]*filter),
-		timeout: timeout,
+		backend:       backend,
+		events:        NewEventSystem(backend, lightMode),
+		filters:       make(map[rpc.ID]*filter),
+		timeout:       timeout,
+		logQueryLimit: logQueryLimit,
 	}
 	go api.timeoutLoop(timeout)
 
@@ -106,6 +112,23 @@ func (api *PublicFilterAPI) timeoutLoop(timeout time.Duration) {
 		}
 		toUninstall = nil
 	}
+}
+
+// checkLogQueryLimit verifies that the given criteria do not exceed the
+// configured number of addresses or topics per search position.
+func (api *PublicFilterAPI) checkLogQueryLimit(crit FilterCriteria) error {
+	if api.logQueryLimit == 0 {
+		return nil
+	}
+	if len(crit.Addresses) > api.logQueryLimit {
+		return errExceedLogQueryLimit
+	}
+	for _, topics := range crit.Topics {
+		if len(topics) > api.logQueryLimit {
+			return errExceedLogQueryLimit
+		}
+	}
+	return nil
 }
 
 // NewPendingTransactionFilter creates a filter that fetches pending transaction hashes
@@ -253,6 +276,9 @@ func (api *PublicFilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
 	}
 
+	if err := api.checkLogQueryLimit(crit); err != nil {
+		return nil, err
+	}
 	var (
 		rpcSub      = notifier.CreateSubscription()
 		matchedLogs = make(chan []*types.Log)
@@ -301,6 +327,9 @@ type FilterCriteria parallax.FilterQuery
 //
 // https://eth.wiki/json-rpc/API#eth_newfilter
 func (api *PublicFilterAPI) NewFilter(crit FilterCriteria) (rpc.ID, error) {
+	if err := api.checkLogQueryLimit(crit); err != nil {
+		return "", err
+	}
 	logs := make(chan []*types.Log)
 	logsSub, err := api.events.SubscribeLogs(parallax.FilterQuery(crit), logs)
 	if err != nil {
@@ -338,6 +367,9 @@ func (api *PublicFilterAPI) NewFilter(crit FilterCriteria) (rpc.ID, error) {
 func (api *PublicFilterAPI) GetLogs(ctx context.Context, crit FilterCriteria) ([]*types.Log, error) {
 	if len(crit.Topics) > maxTopics {
 		return nil, errExceedMaxTopics
+	}
+	if err := api.checkLogQueryLimit(crit); err != nil {
+		return nil, err
 	}
 	var filter *Filter
 	if crit.BlockHash != nil {

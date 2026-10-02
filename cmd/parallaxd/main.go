@@ -178,6 +178,7 @@ var (
 		utils.RPCGlobalGasCapFlag,
 		utils.RPCGlobalPVMTimeoutFlag,
 		utils.RPCGlobalTxFeeCapFlag,
+		utils.RPCGlobalLogQueryLimit,
 		utils.AllowUnprotectedTxs,
 		utils.BatchRequestLimit,
 		utils.BatchResponseMaxSize,
