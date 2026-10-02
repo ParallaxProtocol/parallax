@@ -25,6 +25,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/v2/crypto"
 	"github.com/ParallaxProtocol/parallax/v2/internal/utesting"
 	"github.com/ParallaxProtocol/parallax/v2/p2p/protocols/snap"
+	"github.com/ParallaxProtocol/parallax/v2/primitives/rlp"
 	"github.com/ParallaxProtocol/parallax/v2/util"
 	"github.com/ParallaxProtocol/parallax/v2/validation/trie"
 	"golang.org/x/crypto/sha3"
@@ -633,10 +634,14 @@ func (s *Suite) snapGetTrieNodes(t *utesting.T, tc *trieNodesTest) error {
 		t.Fatalf("peering failed: %v", err)
 	}
 	// write request
+	paths, err := rlp.EncodeToRawList(tc.paths)
+	if err != nil {
+		t.Fatalf("encoding paths failed: %v", err)
+	}
 	req := &GetTrieNodes{
 		ID:    uint64(rand.Int63()),
 		Root:  tc.root,
-		Paths: tc.paths,
+		Paths: paths,
 		Bytes: tc.nBytes,
 	}
 	resp, err := conn.snapRequest(req, req.ID, s.chain)

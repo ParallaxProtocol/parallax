@@ -21,11 +21,13 @@ package downloader
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/ParallaxProtocol/parallax/v2/logging"
+	"github.com/ParallaxProtocol/parallax/v2/p2p/protocols/prl"
 	"github.com/ParallaxProtocol/parallax/v2/primitives/types"
 	"github.com/ParallaxProtocol/parallax/v2/support/metrics"
 	"github.com/ParallaxProtocol/parallax/v2/util"
@@ -764,14 +766,23 @@ func (q *queue) DeliverHeaders(id string, headers []*types.Header, hashes []util
 // DeliverBodies injects a block body retrieval response into the results queue.
 // The method returns the number of blocks bodies accepted from the delivery and
 // also wakes any threads waiting for data delivery.
-func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, txListHashes []util.Hash) (int, error) {
+//
+// The bodies are delivered with their transactions still encoded, and are only
+// decoded after their transaction root has been matched against the header.
+func (q *queue) DeliverBodies(id string, hashes prl.BlockBodyHashes, bodies []prl.RawBlockBody) (int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
+	txLists := make([][]*types.Transaction, len(bodies))
 	validate := func(index int, header *types.Header) error {
-		if txListHashes[index] != header.TxHash {
+		if hashes.TransactionRoots[index] != header.TxHash {
 			return errInvalidBody
 		}
+		txs, err := bodies[index].Transactions.Items()
+		if err != nil {
+			return fmt.Errorf("%w: bad transactions: %v", errInvalidBody, err)
+		}
+		txLists[index] = txs
 		return nil
 	}
 
@@ -780,7 +791,7 @@ func (q *queue) DeliverBodies(id string, txLists [][]*types.Transaction, txListH
 		result.SetBodyDone()
 	}
 	return q.deliver(id, q.blockTaskPool, q.blockTaskQueue, q.blockPendPool,
-		bodyReqTimer, bodyInMeter, bodyDropMeter, len(txLists), validate, reconstruct)
+		bodyReqTimer, bodyInMeter, bodyDropMeter, len(bodies), validate, reconstruct)
 }
 
 // DeliverReceipts injects a receipt retrieval response into the results queue.

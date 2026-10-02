@@ -20,8 +20,10 @@ import (
 	"math/big"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/ParallaxProtocol/parallax/v2/p2p"
+	"github.com/ParallaxProtocol/parallax/v2/p2p/tracker"
 	"github.com/ParallaxProtocol/parallax/v2/primitives/rlp"
 	"github.com/ParallaxProtocol/parallax/v2/primitives/types"
 	"github.com/ParallaxProtocol/parallax/v2/util"
@@ -84,9 +86,10 @@ type Peer struct {
 	txBroadcast chan []util.Hash // Channel used to queue transaction propagation requests
 	txAnnounce  chan []util.Hash // Channel used to queue transaction announcement requests
 
-	reqDispatch chan *request  // Dispatch channel to send requests and track then until fulfilment
-	reqCancel   chan *cancel   // Dispatch channel to cancel pending requests and untrack them
-	resDispatch chan *response // Dispatch channel to fulfil pending requests and untrack them
+	tracker     *tracker.Tracker // Per-peer request tracker, also enforcing response limits
+	reqDispatch chan *request    // Dispatch channel to send requests and track then until fulfilment
+	reqCancel   chan *cancel     // Dispatch channel to cancel pending requests and untrack them
+	resDispatch chan *response   // Dispatch channel to fulfil pending requests and untrack them
 
 	term chan struct{} // Termination channel to stop the broadcasters
 	lock sync.RWMutex  // Mutex protecting the internal fields
@@ -95,8 +98,10 @@ type Peer struct {
 // NewPeer create a wrapper for a network connection and negotiated  protocol
 // version.
 func NewPeer(version uint, p *p2p.Peer, rw p2p.MsgReadWriter, txpool TxPool) *Peer {
+	cap := p2p.Cap{Name: ProtocolName, Version: version}
+	id := p.ID().String()
 	peer := &Peer{
-		id:              p.ID().String(),
+		id:              id,
 		Peer:            p,
 		rw:              rw,
 		version:         version,
@@ -106,6 +111,7 @@ func NewPeer(version uint, p *p2p.Peer, rw p2p.MsgReadWriter, txpool TxPool) *Pe
 		queuedBlockAnns: make(chan *types.Block, maxQueuedBlockAnns),
 		txBroadcast:     make(chan []util.Hash),
 		txAnnounce:      make(chan []util.Hash),
+		tracker:         tracker.New(cap, id, 5*time.Minute),
 		reqDispatch:     make(chan *request),
 		reqCancel:       make(chan *cancel),
 		resDispatch:     make(chan *response),
@@ -336,10 +342,11 @@ func (p *Peer) RequestOneHeader(hash util.Hash, sink chan *Response) (*Request, 
 	id := rand.Uint64()
 
 	req := &Request{
-		id:   id,
-		sink: sink,
-		code: GetBlockHeadersMsg,
-		want: BlockHeadersMsg,
+		id:       id,
+		sink:     sink,
+		code:     GetBlockHeadersMsg,
+		want:     BlockHeadersMsg,
+		numItems: 1,
 		data: &GetBlockHeadersPacket66{
 			RequestId: id,
 			GetBlockHeadersPacket: &GetBlockHeadersPacket{
@@ -363,10 +370,11 @@ func (p *Peer) RequestHeadersByHash(origin util.Hash, amount int, skip int, reve
 	id := rand.Uint64()
 
 	req := &Request{
-		id:   id,
-		sink: sink,
-		code: GetBlockHeadersMsg,
-		want: BlockHeadersMsg,
+		id:       id,
+		sink:     sink,
+		code:     GetBlockHeadersMsg,
+		want:     BlockHeadersMsg,
+		numItems: amount,
 		data: &GetBlockHeadersPacket66{
 			RequestId: id,
 			GetBlockHeadersPacket: &GetBlockHeadersPacket{
@@ -390,10 +398,11 @@ func (p *Peer) RequestHeadersByNumber(origin uint64, amount int, skip int, rever
 	id := rand.Uint64()
 
 	req := &Request{
-		id:   id,
-		sink: sink,
-		code: GetBlockHeadersMsg,
-		want: BlockHeadersMsg,
+		id:       id,
+		sink:     sink,
+		code:     GetBlockHeadersMsg,
+		want:     BlockHeadersMsg,
+		numItems: amount,
 		data: &GetBlockHeadersPacket66{
 			RequestId: id,
 			GetBlockHeadersPacket: &GetBlockHeadersPacket{
@@ -417,10 +426,11 @@ func (p *Peer) RequestBodies(hashes []util.Hash, sink chan *Response) (*Request,
 	id := rand.Uint64()
 
 	req := &Request{
-		id:   id,
-		sink: sink,
-		code: GetBlockBodiesMsg,
-		want: BlockBodiesMsg,
+		id:       id,
+		sink:     sink,
+		code:     GetBlockBodiesMsg,
+		want:     BlockBodiesMsg,
+		numItems: len(hashes),
 		data: &GetBlockBodiesPacket66{
 			RequestId:            id,
 			GetBlockBodiesPacket: hashes,
@@ -439,10 +449,11 @@ func (p *Peer) RequestNodeData(hashes []util.Hash, sink chan *Response) (*Reques
 	id := rand.Uint64()
 
 	req := &Request{
-		id:   id,
-		sink: sink,
-		code: GetNodeDataMsg,
-		want: NodeDataMsg,
+		id:       id,
+		sink:     sink,
+		code:     GetNodeDataMsg,
+		want:     NodeDataMsg,
+		numItems: len(hashes),
 		data: &GetNodeDataPacket66{
 			RequestId:         id,
 			GetNodeDataPacket: hashes,
@@ -460,10 +471,11 @@ func (p *Peer) RequestReceipts(hashes []util.Hash, sink chan *Response) (*Reques
 	id := rand.Uint64()
 
 	req := &Request{
-		id:   id,
-		sink: sink,
-		code: GetReceiptsMsg,
-		want: ReceiptsMsg,
+		id:       id,
+		sink:     sink,
+		code:     GetReceiptsMsg,
+		want:     ReceiptsMsg,
+		numItems: len(hashes),
 		data: &GetReceiptsPacket66{
 			RequestId:         id,
 			GetReceiptsPacket: hashes,
@@ -480,7 +492,15 @@ func (p *Peer) RequestTxs(hashes []util.Hash) error {
 	p.Log().Debug("Fetching batch of transactions", "count", len(hashes))
 	id := rand.Uint64()
 
-	requestTracker.Track(p.id, p.version, GetPooledTransactionsMsg, PooledTransactionsMsg, id)
+	err := p.tracker.Track(tracker.Request{
+		ID:       id,
+		ReqCode:  GetPooledTransactionsMsg,
+		RespCode: PooledTransactionsMsg,
+		Size:     len(hashes),
+	})
+	if err != nil {
+		return err
+	}
 	return p2p.Send(p.rw, GetPooledTransactionsMsg, &GetPooledTransactionsPacket66{
 		RequestId:                   id,
 		GetPooledTransactionsPacket: hashes,

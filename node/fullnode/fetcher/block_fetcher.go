@@ -541,6 +541,12 @@ func (f *BlockFetcher) loop() {
 				fetchBodies := f.completing[hashes[0]].fetchBodies
 				bodyFetchMeter.Mark(int64(len(hashes)))
 
+				// Collect the transaction roots of the requested blocks, so
+				// that only matching bodies are ever decoded.
+				roots := make(map[util.Hash]struct{}, len(hashes))
+				for _, hash := range hashes {
+					roots[f.completing[hash].header.TxHash] = struct{}{}
+				}
 				go func(peer string, hashes []util.Hash) {
 					resCh := make(chan *prl.Response)
 
@@ -557,7 +563,23 @@ func (f *BlockFetcher) loop() {
 					case res := <-resCh:
 						res.Done <- nil
 
-						txs := res.Res.(*prl.BlockBodiesPacket).Unpack()
+						bodies := *res.Res.(*prl.BlockBodiesResponse)
+						meta := res.Meta.(prl.BlockBodyHashes)
+
+						// Decode only the bodies whose transaction root matches one
+						// of the requested headers, anything else is junk.
+						var txs [][]*types.Transaction
+						for i := range bodies {
+							if _, ok := roots[meta.TransactionRoots[i]]; !ok {
+								continue
+							}
+							list, err := bodies[i].Transactions.Items()
+							if err != nil {
+								logging.Debug("Invalid block body transactions", "peer", peer, "err", err)
+								continue
+							}
+							txs = append(txs, list)
+						}
 						f.FilterBodies(peer, txs, time.Now())
 
 					case <-timeout.C:

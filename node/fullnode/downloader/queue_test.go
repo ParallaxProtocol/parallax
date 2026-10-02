@@ -27,6 +27,8 @@ import (
 	"github.com/ParallaxProtocol/parallax/v2/kernel/chainparams"
 	"github.com/ParallaxProtocol/parallax/v2/kernel/xhash"
 	"github.com/ParallaxProtocol/parallax/v2/logging"
+	"github.com/ParallaxProtocol/parallax/v2/p2p/protocols/prl"
+	"github.com/ParallaxProtocol/parallax/v2/primitives/rlp"
 	"github.com/ParallaxProtocol/parallax/v2/primitives/types"
 	"github.com/ParallaxProtocol/parallax/v2/util"
 	"github.com/ParallaxProtocol/parallax/v2/validation"
@@ -331,12 +333,14 @@ func XTestDelivery(t *testing.T) {
 					txset = append(txset, world.getTransactions(hdr.Number.Uint64()))
 				}
 				txsHashes := make([]util.Hash, len(txset))
+				bodies := make([]prl.RawBlockBody, len(txset))
 				hasher := trie.NewStackTrie(nil)
 				for i, txs := range txset {
 					txsHashes[i] = types.DeriveSha(types.Transactions(txs), hasher)
+					bodies[i].Transactions, _ = rlp.EncodeToRawList(txs)
 				}
 				time.Sleep(100 * time.Millisecond)
-				_, err := q.DeliverBodies(peer.id, txset, txsHashes)
+				_, err := q.DeliverBodies(peer.id, prl.BlockBodyHashes{TransactionRoots: txsHashes}, bodies)
 				if err != nil {
 					fmt.Printf("delivered %d bodies %v\n", len(txset), err)
 				}
