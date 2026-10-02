@@ -1146,6 +1146,9 @@ func (r *Resolver) Block(ctx context.Context, args struct {
 	Hash   *util.Hash
 },
 ) (*Block, error) {
+	if args.Number != nil && args.Hash != nil {
+		return nil, errors.New("only one of number or hash must be specified")
+	}
 	var block *Block
 	if args.Number != nil {
 		if *args.Number < 0 {
