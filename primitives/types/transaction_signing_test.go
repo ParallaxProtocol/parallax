@@ -17,10 +17,12 @@
 package types
 
 import (
+	"errors"
 	"math/big"
 	"testing"
 
 	"github.com/ParallaxProtocol/parallax/v2/crypto"
+	"github.com/ParallaxProtocol/parallax/v2/kernel/chainparams"
 	"github.com/ParallaxProtocol/parallax/v2/primitives/rlp"
 	"github.com/ParallaxProtocol/parallax/v2/util"
 )
@@ -159,6 +161,37 @@ func TestSignatureValuesError(t *testing.T) {
 					t.Fatalf("signer %T, tx type %d: expected error for invalid signature length", signer, tx.Type())
 				}
 			}()
+		}
+	}
+}
+
+type nilSigner struct {
+	v, r, s *big.Int
+	Signer
+}
+
+func (ns *nilSigner) SignatureValues(tx *Transaction, sig []byte) (r, s, v *big.Int, err error) {
+	return ns.v, ns.r, ns.s, nil
+}
+
+// TestNilSigner ensures a faulty Signer implementation does not result in nil signature values or panics.
+func TestNilSigner(t *testing.T) {
+	key, _ := crypto.GenerateKey()
+	innerSigner := LatestSignerForChainID(big.NewInt(1))
+	for i, signer := range []Signer{
+		&nilSigner{v: nil, r: nil, s: nil, Signer: innerSigner},
+		&nilSigner{v: big.NewInt(1), r: big.NewInt(1), s: nil, Signer: innerSigner},
+		&nilSigner{v: big.NewInt(1), r: nil, s: big.NewInt(1), Signer: innerSigner},
+		&nilSigner{v: nil, r: big.NewInt(1), s: big.NewInt(1), Signer: innerSigner},
+	} {
+		legacyTx := &LegacyTx{
+			Nonce:    0,
+			Value:    big.NewInt(0),
+			Gas:      chainparams.TxGas,
+			GasPrice: big.NewInt(1),
+		}
+		if _, err := SignNewTx(key, signer, legacyTx); !errors.Is(err, ErrInvalidSig) {
+			t.Fatalf("signer %d: expected signature values error, have %v", i, err)
 		}
 	}
 }
