@@ -226,9 +226,12 @@ func (p *Peer) AsyncSendTransactions(hashes []util.Hash) {
 // directly as the queueing (memory) and transmission (bandwidth) costs should
 // not be managed directly.
 func (p *Peer) sendPooledTransactionHashes(hashes []util.Hash) error {
+	if err := p2p.Send(p.rw, NewPooledTransactionHashesMsg, NewPooledTransactionHashesPacket(hashes)); err != nil {
+		return err
+	}
 	// Mark all the transactions as known, but ensure we don't overflow our limits
 	p.knownTxs.Add(hashes...)
-	return p2p.Send(p.rw, NewPooledTransactionHashesMsg, NewPooledTransactionHashesPacket(hashes))
+	return nil
 }
 
 // AsyncSendPooledTransactionHashes queues a list of transactions hashes to eventually
@@ -246,14 +249,16 @@ func (p *Peer) AsyncSendPooledTransactionHashes(hashes []util.Hash) {
 
 // ReplyPooledTransactionsRLP is the parallax/66 version of SendPooledTransactionsRLP.
 func (p *Peer) ReplyPooledTransactionsRLP(id uint64, hashes []util.Hash, txs []rlp.RawValue) error {
-	// Mark all the transactions as known, but ensure we don't overflow our limits
-	p.knownTxs.Add(hashes...)
-
 	// Not packed into PooledTransactionsPacket to avoid RLP decoding
-	return p2p.Send(p.rw, PooledTransactionsMsg, &PooledTransactionsRLPPacket66{
+	if err := p2p.Send(p.rw, PooledTransactionsMsg, &PooledTransactionsRLPPacket66{
 		RequestId:                   id,
 		PooledTransactionsRLPPacket: txs,
-	})
+	}); err != nil {
+		return err
+	}
+	// Mark all the transactions as known, but ensure we don't overflow our limits
+	p.knownTxs.Add(hashes...)
+	return nil
 }
 
 // SendNewBlockHashes announces the availability of a number of blocks through
