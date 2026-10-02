@@ -666,6 +666,7 @@ func (api *privateAdminAPI) StartHTTP(host *string, port *int, cors *string, api
 		rpcEndpointConfig: rpcEndpointConfig{
 			batchItemLimit:         api.node.config.BatchRequestLimit,
 			batchResponseSizeLimit: api.node.config.BatchResponseMaxSize,
+			httpBodyLimit:          api.node.config.HTTPBodyLimit,
 		},
 	}
 	if cors != nil {
@@ -744,6 +745,7 @@ func (api *privateAdminAPI) StartWS(host *string, port *int, allowedOrigins *str
 		rpcEndpointConfig: rpcEndpointConfig{
 			batchItemLimit:         api.node.config.BatchRequestLimit,
 			batchResponseSizeLimit: api.node.config.BatchResponseMaxSize,
+			httpBodyLimit:          api.node.config.HTTPBodyLimit,
 		},
 	}
 	if apis != nil {
