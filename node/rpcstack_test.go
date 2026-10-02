@@ -327,6 +327,8 @@ func TestJWT(t *testing.T) {
 		fmt.Sprintf("Bearer %v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix()})),
 		fmt.Sprintf("Bearer %v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix() + 4})),
 		fmt.Sprintf("Bearer %v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix() - 4})),
+		fmt.Sprintf("bearer %v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix()})),
+		fmt.Sprintf("BEARER %v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix()})),
 		fmt.Sprintf("Bearer %v", issueToken(secret, nil, testClaim{
 			"iat": time.Now().Unix(),
 			"exp": time.Now().Unix() + 2,
@@ -354,7 +356,6 @@ func TestJWT(t *testing.T) {
 		// Various malformed syntax
 		fmt.Sprintf("%v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix()})),
 		fmt.Sprintf("Bearer  %v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix()})),
-		fmt.Sprintf("bearer %v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix()})),
 		fmt.Sprintf("Bearer: %v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix()})),
 		fmt.Sprintf("Bearer:%v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix()})),
 		fmt.Sprintf("Bearer\t%v", issueToken(secret, nil, testClaim{"iat": time.Now().Unix()})),
