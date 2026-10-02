@@ -141,6 +141,21 @@ func TestGraphQLBlockSerialization(t *testing.T) {
 			want: `{"data":{"block":{"number":10,"call":{"data":"0x","status":1}}}}`,
 			code: 200,
 		},
+		{
+			body: `{"query": "{blocks(from: 2, to: 1) {number}}"}`,
+			want: `{"errors":[{"message":"invalid from and to block combination: from \u003e to","path":["blocks"]}],"data":null}`,
+			code: 400,
+		},
+		{
+			body: `{"query": "{logs(filter: {fromBlock: 2, toBlock: 1}) {index}}"}`,
+			want: `{"errors":[{"message":"invalid from and to block combination: from \u003e to","path":["logs"]}],"data":null}`,
+			code: 400,
+		},
+		{
+			body: `{"query": "{logs(filter: {fromBlock: 1, toBlock: 0}) {index}}"}`,
+			want: `{"errors":[{"message":"invalid from and to block combination: from \u003e to","path":["logs"]}],"data":null}`,
+			code: 400,
+		},
 	} {
 		resp, err := http.Post(fmt.Sprintf("%s/graphql", stack.HTTPEndpoint()), "application/json", strings.NewReader(tt.body))
 		if err != nil {
