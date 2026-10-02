@@ -355,6 +355,27 @@ func TestTransactionPendingReplaceNoHeartbeat(t *testing.T) {
 	}
 }
 
+// Tests that querying the pending nonce of accounts that don't exist does not
+// grow the nonce cache.
+func TestTransactionNoncerSkipsEmptyAccounts(t *testing.T) {
+	t.Parallel()
+
+	pool, _ := setupTxPool()
+	defer pool.Stop()
+
+	for i := 0; i < 16; i++ {
+		if nonce := pool.Nonce(util.Address{byte(i)}); nonce != 0 {
+			t.Fatalf("nonce mismatch for unknown account: have %d, want 0", nonce)
+		}
+	}
+	pool.mu.RLock()
+	cached := len(pool.pendingNonces.nonces)
+	pool.mu.RUnlock()
+	if cached != 0 {
+		t.Fatalf("nonce cache grew for unknown accounts: have %d entries, want 0", cached)
+	}
+}
+
 func TestTransactionQueue(t *testing.T) {
 	t.Parallel()
 
