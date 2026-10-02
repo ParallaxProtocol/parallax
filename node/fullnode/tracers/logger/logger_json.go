@@ -31,6 +31,7 @@ type JSONLogger struct {
 	encoder *json.Encoder
 	cfg     *Config
 	env     *script.PVM
+	logs    int // number of step logs emitted so far
 }
 
 // NewJSONLogger creates a new PVM tracer that prints execution steps as JSON objects
@@ -54,6 +55,12 @@ func (l *JSONLogger) CaptureFault(pc uint64, op script.OpCode, gas uint64, cost 
 
 // CaptureState outputs state information on the logger.
 func (l *JSONLogger) CaptureState(pc uint64, op script.OpCode, gas, cost uint64, scope *script.ScopeContext, rData []byte, depth int, err error) {
+	// check if already emitted the specified number of logs
+	if l.cfg.Limit != 0 && l.cfg.Limit <= l.logs {
+		return
+	}
+	l.logs++
+
 	memory := scope.Memory
 	stack := scope.Stack
 
