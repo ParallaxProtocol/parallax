@@ -93,6 +93,9 @@ func (t *prestateTracer) CaptureEnd(output []byte, gasUsed uint64, _ time.Durati
 
 // CaptureState implements the PVMLogger interface to trace a single step of VM execution.
 func (t *prestateTracer) CaptureState(pc uint64, op script.OpCode, gas, cost uint64, scope *script.ScopeContext, rData []byte, depth int, err error) {
+	if err != nil {
+		return
+	}
 	stack := scope.Stack
 	stackData := stack.Data()
 	stackLen := len(stackData)
