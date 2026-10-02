@@ -464,6 +464,11 @@ var (
 		Usage: "Sets a cap on transaction fee (in laxes) that can be sent via the RPC APIs (0 = no cap)",
 		Value: nodeconfig.Defaults.RPCTxFeeCap,
 	}
+	RPCGlobalLogQueryLimit = cli.IntFlag{
+		Name:  "rpc.logquerylimit",
+		Usage: "Maximum number of alternative addresses or topics allowed per search position in eth_getLogs filter criteria (0 = no cap)",
+		Value: nodeconfig.Defaults.LogQueryLimit,
+	}
 	// Authenticated RPC HTTP settings
 	AuthListenFlag = cli.StringFlag{
 		Name:  "authrpc.addr",
@@ -1690,6 +1695,9 @@ func SetPrlConfig(ctx *cli.Context, stack *node.Node, cfg *nodeconfig.Config) {
 
 	if ctx.GlobalIsSet(RPCGlobalGasCapFlag.Name) {
 		cfg.RPCGasCap = ctx.GlobalUint64(RPCGlobalGasCapFlag.Name)
+	}
+	if ctx.GlobalIsSet(RPCGlobalLogQueryLimit.Name) {
+		cfg.LogQueryLimit = ctx.GlobalInt(RPCGlobalLogQueryLimit.Name)
 	}
 	if cfg.RPCGasCap != 0 {
 		logging.Info("Set global gas cap", "cap", cfg.RPCGasCap)

@@ -85,6 +85,7 @@ var Defaults = Config{
 	RPCPVMTimeout: 5 * time.Second,
 	GPO:           FullNodeGPO,
 	RPCTxFeeCap:   1,
+	LogQueryLimit: 1000,
 }
 
 func init() {
@@ -181,6 +182,10 @@ type Config struct {
 	// RPCTxFeeCap is the global transaction fee(price * gaslimit) cap for
 	// send-transction variants. The unit is laxes.
 	RPCTxFeeCap float64
+
+	// LogQueryLimit is the maximum number of addresses or topics allowed per
+	// search position in log filter criteria (0 = no cap).
+	LogQueryLimit int
 
 	// Checkpoint is a hardcoded checkpoint which can be nil.
 	Checkpoint *chainparams.TrustedCheckpoint `toml:",omitempty"`
