@@ -1251,9 +1251,13 @@ func (pool *TxPool) runReorg(done chan struct{}, reset *txpoolResetRequest, dirt
 	// because of another transaction (e.g. higher gas price).
 	if reset != nil {
 		pool.demoteUnexecutables()
-		if reset.newHead != nil && pool.chainconfig.IsLondon(new(big.Int).Add(reset.newHead.Number, big.NewInt(1))) {
-			pendingBaseFee := kernel.CalcBaseFee(pool.chainconfig, reset.newHead)
-			pool.priced.SetBaseFee(pendingBaseFee)
+		if reset.newHead != nil {
+			if pool.chainconfig.IsLondon(new(big.Int).Add(reset.newHead.Number, big.NewInt(1))) {
+				pendingBaseFee := kernel.CalcBaseFee(pool.chainconfig, reset.newHead)
+				pool.priced.SetBaseFee(pendingBaseFee)
+			} else {
+				pool.priced.Reheap()
+			}
 		}
 		// Update all accounts to the latest known pending nonce
 		nonces := make(map[util.Address]uint64, len(pool.pending))
