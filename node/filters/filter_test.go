@@ -25,6 +25,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/v2/kernel/chainparams"
 	"github.com/ParallaxProtocol/parallax/v2/kernel/xhash"
 	"github.com/ParallaxProtocol/parallax/v2/primitives/types"
+	"github.com/ParallaxProtocol/parallax/v2/rpc"
 	"github.com/ParallaxProtocol/parallax/v2/util"
 	"github.com/ParallaxProtocol/parallax/v2/validation"
 	"github.com/ParallaxProtocol/parallax/v2/validation/rawdb"
@@ -214,5 +215,22 @@ func TestFilters(t *testing.T) {
 	logs, _ = filter.Logs(context.Background())
 	if len(logs) != 0 {
 		t.Error("expected 0 log, got", len(logs))
+	}
+
+	// "pending" is served from the latest block.
+	filter = NewRangeFilter(backend, rpc.PendingBlockNumber.Int64(), rpc.PendingBlockNumber.Int64(), []util.Address{addr}, [][]util.Hash{{hash4}})
+	logs, err := filter.Logs(context.Background())
+	if err != nil {
+		t.Fatal("unexpected error for pending range:", err)
+	}
+	if len(logs) != 1 {
+		t.Error("expected 1 log, got", len(logs))
+	}
+
+	// Special block numbers which cannot be resolved must not be treated as
+	// raw block numbers.
+	filter = NewRangeFilter(backend, rpc.FinalizedBlockNumber.Int64(), rpc.LatestBlockNumber.Int64(), nil, nil)
+	if _, err := filter.Logs(context.Background()); err == nil {
+		t.Error("expected error for unknown finalized block")
 	}
 }
