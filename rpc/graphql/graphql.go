@@ -1193,6 +1193,9 @@ func (r *Resolver) Blocks(ctx context.Context, args struct {
 	To   *Long
 },
 ) ([]*Block, error) {
+	if args.From == nil {
+		return nil, errors.New("from block number must be specified")
+	}
 	from := rpc.BlockNumber(*args.From)
 
 	var to rpc.BlockNumber

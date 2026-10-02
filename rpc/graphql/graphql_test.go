@@ -142,6 +142,11 @@ func TestGraphQLBlockSerialization(t *testing.T) {
 			code: 200,
 		},
 		{
+			body: `{"query": "{blocks {number}}"}`,
+			want: `{"errors":[{"message":"from block number must be specified","path":["blocks"]}],"data":null}`,
+			code: 400,
+		},
+		{
 			body: `{"query": "{blocks(from: 2, to: 1) {number}}"}`,
 			want: `{"errors":[{"message":"invalid from and to block combination: from \u003e to","path":["blocks"]}],"data":null}`,
 			code: 400,
