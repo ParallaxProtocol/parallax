@@ -73,6 +73,21 @@ func TestVerifySignature(t *testing.T) {
 	if VerifySignature(wrongkey, testmsg, sig) {
 		t.Errorf("signature valid with with wrong public key")
 	}
+	if VerifySignature(testpubkey, append(util.CopyBytes(testmsg), 0), sig) {
+		t.Errorf("signature valid with extra bytes at the end of the hash")
+	}
+	if VerifySignature(testpubkey, testmsg[:len(testmsg)-1], sig) {
+		t.Errorf("signature valid with truncated hash")
+	}
+}
+
+func TestEcrecoverInvalidHashLength(t *testing.T) {
+	if _, err := Ecrecover(append(util.CopyBytes(testmsg), 0), testsig); err == nil {
+		t.Errorf("expected error for hash with extra bytes")
+	}
+	if _, err := Ecrecover(testmsg[:len(testmsg)-1], testsig); err == nil {
+		t.Errorf("expected error for truncated hash")
+	}
 }
 
 // This test checks that VerifySignature rejects malleable signatures with s > N/2.
