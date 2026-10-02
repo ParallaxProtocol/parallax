@@ -128,7 +128,7 @@ func TestRejectCacheCapEviction(t *testing.T) {
 // verifyAndAdd / lookup-time ENR verification paths are exercised.
 func newTestFilterTable(t transport) (*Table, *enode.DB) {
 	db, _ := enode.OpenDB("")
-	tab, _ := newTable(t, db, nil, func(*enode.Node) bool { return true }, logging.Root())
+	tab, _ := newTable(t, db, nil, nil, func(*enode.Node) bool { return true }, logging.Root())
 	go tab.loop()
 	return tab, db
 }

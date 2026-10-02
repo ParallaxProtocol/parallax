@@ -80,6 +80,7 @@ type Table struct {
 	closed        chan struct{}
 	nodeAddedHook func(*node) // for testing
 	nodeFilter    func(*enode.Node) bool
+	netrestrict   *netutil.Netlist
 	verifySlots   chan struct{} // bounds concurrent async ENR verifications
 	rejects       *rejectCache  // suppresses repeat verifyAndAdd on rejected/failed IDs
 }
@@ -106,7 +107,7 @@ type bucket struct {
 	ips          netutil.DistinctNetSet
 }
 
-func newTable(t transport, db *enode.DB, bootnodes []*enode.Node, nodeFilter func(*enode.Node) bool, log logging.Logger) (*Table, error) {
+func newTable(t transport, db *enode.DB, bootnodes []*enode.Node, netrestrict *netutil.Netlist, nodeFilter func(*enode.Node) bool, log logging.Logger) (*Table, error) {
 	tab := &Table{
 		net:         t,
 		db:          db,
@@ -118,6 +119,7 @@ func newTable(t transport, db *enode.DB, bootnodes []*enode.Node, nodeFilter fun
 		ips:         netutil.DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit},
 		log:         log,
 		nodeFilter:  nodeFilter,
+		netrestrict: netrestrict,
 		verifySlots: make(chan struct{}, maxConcurrentVerifications),
 		rejects:     newRejectCache(),
 	}
@@ -195,12 +197,18 @@ func (tab *Table) close() {
 // are used to connect to the network if the table is empty and there
 // are no known nodes in the database.
 func (tab *Table) setFallbackNodes(nodes []*enode.Node) error {
+	nursery := make([]*node, 0, len(nodes))
 	for _, n := range nodes {
 		if err := n.ValidateComplete(); err != nil {
 			return fmt.Errorf("bad bootstrap node %q: %v", n, err)
 		}
+		if tab.netrestrict != nil && !tab.netrestrict.Contains(n.IP()) {
+			tab.log.Error("Bootstrap node filtered by netrestrict", "id", n.ID(), "ip", n.IP())
+			continue
+		}
+		nursery = append(nursery, wrapNode(n))
 	}
-	tab.nursery = wrapNodes(nodes)
+	tab.nursery = nursery
 	return nil
 }
 

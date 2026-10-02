@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/ParallaxProtocol/parallax/v2/crypto"
+	"github.com/ParallaxProtocol/parallax/v2/logging"
 	"github.com/ParallaxProtocol/parallax/v2/p2p/enode"
 	"github.com/ParallaxProtocol/parallax/v2/p2p/enr"
 	"github.com/ParallaxProtocol/parallax/v2/p2p/netutil"
@@ -140,6 +141,25 @@ func TestBucket_bumpNoDuplicates(t *testing.T) {
 }
 
 // This checks that the table-wide IP limit is applied correctly.
+// This checks that bootstrap nodes outside the netrestrict list are dropped.
+func TestTable_setFallbackNodesNetRestrict(t *testing.T) {
+	db, _ := enode.OpenDB("")
+	defer db.Close()
+
+	restrict := new(netutil.Netlist)
+	restrict.Add("10.0.0.0/8")
+	allowed := enode.NewV4(&newkey().PublicKey, net.IP{10, 0, 0, 1}, 30303, 30303)
+	blocked := enode.NewV4(&newkey().PublicKey, net.IP{192, 168, 0, 1}, 30303, 30303)
+
+	tab, err := newTable(newPingRecorder(), db, []*enode.Node{allowed, blocked}, restrict, nil, logging.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tab.nursery) != 1 || tab.nursery[0].ID() != allowed.ID() {
+		t.Fatalf("wrong nursery after netrestrict filtering: %v", tab.nursery)
+	}
+}
+
 func TestTable_IPLimit(t *testing.T) {
 	transport := newPingRecorder()
 	tab, db := newTestTable(transport)

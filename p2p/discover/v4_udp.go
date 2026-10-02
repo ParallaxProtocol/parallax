@@ -166,7 +166,7 @@ func ListenV4(c UDPConn, ln *enode.LocalNode, cfg Config) (*UDPv4, error) {
 		recoverBondCache: rbCache,
 	}
 
-	tab, err := newTable(t, ln.Database(), cfg.Bootnodes, cfg.NodeFilter, t.log)
+	tab, err := newTable(t, ln.Database(), cfg.Bootnodes, cfg.NetRestrict, cfg.NodeFilter, t.log)
 	if err != nil {
 		return nil, err
 	}
