@@ -573,7 +573,7 @@ func (t *UDPv4) readLoop(unhandled chan<- ReadPacket) {
 		}
 		if t.handlePacket(from, buf[:nbytes]) != nil && unhandled != nil {
 			select {
-			case unhandled <- ReadPacket{buf[:nbytes], from}:
+			case unhandled <- ReadPacket{bytes.Clone(buf[:nbytes]), from}:
 			default:
 			}
 		}
