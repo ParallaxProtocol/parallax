@@ -416,11 +416,16 @@ func (h *handler) runParallaxPeer(peer *prl.Peer, handler prl.Handler) error {
 	if h.checkpointHash != (util.Hash{}) {
 		// Request the peer's checkpoint header for chain height/weight validation
 		resCh := make(chan *prl.Response)
-		if _, err := peer.RequestHeadersByNumber(h.checkpointNumber, 1, 0, false, resCh); err != nil {
+
+		req, err := peer.RequestHeadersByNumber(h.checkpointNumber, 1, 0, false, resCh)
+		if err != nil {
 			return err
 		}
 		// Start a timer to disconnect if the peer doesn't reply in time
 		go func() {
+			// Ensure the request gets cancelled in case of error/drop
+			defer req.Close()
+
 			timeout := time.NewTimer(syncChallengeTimeout)
 			defer timeout.Stop()
 
@@ -462,10 +467,15 @@ func (h *handler) runParallaxPeer(peer *prl.Peer, handler prl.Handler) error {
 	// If we have any explicit peer required block hashes, request them
 	for number, hash := range h.requiredBlocks {
 		resCh := make(chan *prl.Response)
-		if _, err := peer.RequestHeadersByNumber(number, 1, 0, false, resCh); err != nil {
+
+		req, err := peer.RequestHeadersByNumber(number, 1, 0, false, resCh)
+		if err != nil {
 			return err
 		}
-		go func(number uint64, hash util.Hash) {
+		go func(number uint64, hash util.Hash, req *prl.Request) {
+			// Ensure the request gets cancelled in case of error/drop
+			defer req.Close()
+
 			timeout := time.NewTimer(syncChallengeTimeout)
 			defer timeout.Stop()
 
@@ -496,7 +506,7 @@ func (h *handler) runParallaxPeer(peer *prl.Peer, handler prl.Handler) error {
 			case <-dead:
 				// Peer handler terminated, abort all goroutines
 			}
-		}(number, hash)
+		}(number, hash, req)
 	}
 	// Handle incoming messages until the connection is torn down
 	return handler(peer)
