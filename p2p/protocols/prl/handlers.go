@@ -241,10 +241,12 @@ func ServiceGetBlockBodiesQuery(chain *validation.BlockChain, query GetBlockBodi
 			lookups >= 2*maxBodiesServe {
 			break
 		}
-		if data := chain.GetBodyRLP(hash); len(data) != 0 {
-			bodies = append(bodies, data)
-			bytes += len(data)
+		data := chain.GetBodyRLP(hash)
+		if len(data) == 0 {
+			break // If we don't have this block's body, stop serving.
 		}
+		bodies = append(bodies, data)
+		bytes += len(data)
 	}
 	return bodies
 }
@@ -313,16 +315,17 @@ func ServiceGetReceiptsQuery(chain *validation.BlockChain, query GetReceiptsPack
 		results := chain.GetReceiptsByHash(hash)
 		if results == nil {
 			if header := chain.GetHeaderByHash(hash); header == nil || header.ReceiptHash != types.EmptyRootHash {
-				continue
+				break // Don't have this block's receipts, stop serving.
 			}
 		}
 		// If known, encode and queue for response packet
-		if encoded, err := rlp.EncodeToBytes(results); err != nil {
+		encoded, err := rlp.EncodeToBytes(results)
+		if err != nil {
 			logging.Error("Failed to encode receipt", "err", err)
-		} else {
-			receipts = append(receipts, encoded)
-			bytes += len(encoded)
+			break
 		}
+		receipts = append(receipts, encoded)
+		bytes += len(encoded)
 	}
 	return receipts
 }
