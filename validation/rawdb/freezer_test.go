@@ -283,6 +283,43 @@ func TestFreezerReadonlyValidate(t *testing.T) {
 	}
 }
 
+// TestFreezerReadonlyTail checks that a readonly freezer reports the tail of
+// its tables after validation.
+func TestFreezerReadonlyTail(t *testing.T) {
+	tables := map[string]bool{"a": true, "b": true}
+	dir := t.TempDir()
+	f, err := NewFreezer(dir, "", false, 2049, tables)
+	if err != nil {
+		t.Fatal("can't open freezer", err)
+	}
+	item := make([]byte, 1024)
+	_, err = f.ModifyAncients(func(op dbstore.AncientWriteOp) error {
+		for i := uint64(0); i < 4; i++ {
+			if err := op.AppendRaw("a", i, item); err != nil {
+				return err
+			}
+			if err := op.AppendRaw("b", i, item); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	require.NoError(t, f.TruncateTail(2))
+	require.NoError(t, f.Close())
+
+	f, err = NewFreezer(dir, "", true, 2049, tables)
+	if err != nil {
+		t.Fatal("can't open readonly freezer", err)
+	}
+	defer f.Close()
+	tail, err := f.Tail()
+	require.NoError(t, err)
+	if tail != 2 {
+		t.Fatalf("readonly freezer tail mismatch: have %d, want %d", tail, 2)
+	}
+}
+
 func newFreezerForTesting(t *testing.T, tables map[string]bool) (*Freezer, string) {
 	t.Helper()
 
