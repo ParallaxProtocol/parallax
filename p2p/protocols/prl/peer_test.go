@@ -86,3 +86,41 @@ func TestPeerSet(t *testing.T) {
 		t.Fatalf("bad size")
 	}
 }
+
+// Tests that transaction hashes are only marked as known to the peer once the
+// announcement or reply carrying them was actually sent.
+func TestTxTrackingAfterSend(t *testing.T) {
+	app, net := p2p.MsgPipe()
+	var id enode.ID
+	rand.Read(id[:])
+	peer := NewPeer(Parallax66, p2p.NewPeer(id, "peer", nil), net, nil)
+	defer peer.Close()
+
+	// Successful sends mark the hashes known.
+	sent := []util.Hash{{0x01}}
+	go func() {
+		if msg, err := app.ReadMsg(); err == nil {
+			msg.Discard()
+		}
+	}()
+	if err := peer.sendPooledTransactionHashes(sent); err != nil {
+		t.Fatal("announcement failed:", err)
+	}
+	if !peer.KnownTransaction(sent[0]) {
+		t.Fatal("announced hash not marked as known")
+	}
+	// Failed sends must not mark anything.
+	app.Close()
+	failed := []util.Hash{{0x02}, {0x03}}
+	if err := peer.sendPooledTransactionHashes(failed[:1]); err == nil {
+		t.Fatal("announcement on closed pipe succeeded")
+	}
+	if err := peer.ReplyPooledTransactionsRLP(1, failed[1:], nil); err == nil {
+		t.Fatal("reply on closed pipe succeeded")
+	}
+	for _, hash := range failed {
+		if peer.KnownTransaction(hash) {
+			t.Fatalf("hash %x marked as known after failed send", hash)
+		}
+	}
+}
