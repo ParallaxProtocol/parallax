@@ -20,6 +20,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"math/rand"
 	"os"
@@ -309,6 +310,23 @@ func TestInvalidTransactions(t *testing.T) {
 	}
 	if err := pool.AddLocal(tx); err != nil {
 		t.Error("expected", nil, "got", err)
+	}
+}
+
+// Tests that transactions with the maximum nonce are rejected per EIP-2681.
+func TestTransactionNonceMax(t *testing.T) {
+	t.Parallel()
+
+	pool, key := setupTxPool()
+	defer pool.Stop()
+
+	testAddBalance(pool, crypto.PubkeyToAddress(key.PublicKey), big.NewInt(1000000000))
+
+	if err := pool.AddRemote(transaction(math.MaxUint64, 100000, key)); !errors.Is(err, ErrNonceMax) {
+		t.Errorf("max nonce: have %v, want %v", err, ErrNonceMax)
+	}
+	if err := pool.AddRemote(transaction(math.MaxUint64-1, 100000, key)); err != nil {
+		t.Errorf("max nonce - 1: have %v, want nil", err)
 	}
 }
 
