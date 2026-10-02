@@ -75,6 +75,13 @@ func TestUnmarshalPubkey(t *testing.T) {
 	if err != errInvalidPubkey || key != nil {
 		t.Fatalf("expected error, got %v, %v", err, key)
 	}
+	// The all-zero point is not on the curve and must be rejected.
+	zero := make([]byte, 65)
+	zero[0] = 4
+	key, err = UnmarshalPubkey(zero)
+	if err != errInvalidPubkey || key != nil {
+		t.Fatalf("expected error for zero pubkey, got %v, %v", err, key)
+	}
 
 	var (
 		enc, _ = hex.DecodeString("04760c4460e5336ac9bbd87952a3c7ec4363fc0a97bd31c86430806e287b437fd1b01abc6e1db640cf3106b520344af1d58b00b57823db3e1407cbc433e1b6d04d")
