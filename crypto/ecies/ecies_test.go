@@ -427,3 +427,37 @@ func decode(s string) []byte {
 	}
 	return bytes
 }
+
+// TestDecryptShortMessage checks that a ciphertext with a valid MAC but a
+// body shorter than the cipher block size (no room for the IV) is rejected
+// instead of crashing symDecrypt.
+func TestDecryptShortMessage(t *testing.T) {
+	prv, err := GenerateKey(rand.Reader, DefaultCurve, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	params, err := pubkeyParams(&prv.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ephemeral, err := GenerateKey(rand.Reader, DefaultCurve, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	z, err := ephemeral.GenerateShared(&prv.PublicKey, params.KeyLen, params.KeyLen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, Km := deriveKeys(params.Hash(), z, nil, params.KeyLen)
+	Rb := elliptic.Marshal(DefaultCurve, ephemeral.PublicKey.X, ephemeral.PublicKey.Y)
+
+	for bodyLen := 1; bodyLen < params.BlockSize; bodyLen++ {
+		em := make([]byte, bodyLen)
+		d := messageTag(params.Hash, Km, em, nil)
+		ct := append(append(append([]byte{}, Rb...), em...), d...)
+
+		if _, err := prv.Decrypt(ct, nil, nil); err != ErrInvalidMessage {
+			t.Fatalf("body length %d: expected ErrInvalidMessage, got %v", bodyLen, err)
+		}
+	}
+}
