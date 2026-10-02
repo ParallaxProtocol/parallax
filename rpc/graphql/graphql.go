@@ -481,7 +481,7 @@ func (t *Transaction) Logs(ctx context.Context) (*[]*Log, error) {
 
 func (t *Transaction) Type(ctx context.Context) (*int32, error) {
 	tx, _, err := t.resolve(ctx)
-	if err != nil {
+	if err != nil || tx == nil {
 		return nil, err
 	}
 	txType := int32(tx.Type())
