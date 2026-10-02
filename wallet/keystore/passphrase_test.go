@@ -17,16 +17,47 @@
 package keystore
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"testing"
 
 	"github.com/ParallaxProtocol/parallax/v2/util"
+	"github.com/google/uuid"
 )
 
 const (
 	veryLightScryptN = 2
 	veryLightScryptP = 1
 )
+
+// Tests that decrypting a key file whose payload is not a valid secp256k1
+// private key returns an error instead of panicking.
+func TestDecryptInvalidKey(t *testing.T) {
+	id, _ := uuid.NewRandom()
+	for _, keyBytes := range [][]byte{
+		make([]byte, 32),               // zero key
+		bytes.Repeat([]byte{0xff}, 32), // key >= N
+		{0x01},                         // wrong length
+	} {
+		cryptoStruct, err := EncryptDataV3(keyBytes, []byte("foo"), veryLightScryptN, veryLightScryptP)
+		if err != nil {
+			t.Fatal(err)
+		}
+		keyjson, err := json.Marshal(encryptedKeyJSONV3{
+			Address: "0000000000000000000000000000000000000000",
+			Crypto:  cryptoStruct,
+			Id:      id.String(),
+			Version: version,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := DecryptKey(keyjson, "foo"); err == nil {
+			t.Errorf("key %x: expected error, got nil", keyBytes)
+		}
+	}
+}
 
 // Tests that a json key file can be decrypted and encrypted in multiple rounds.
 func TestKeyEncryptDecrypt(t *testing.T) {
