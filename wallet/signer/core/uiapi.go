@@ -111,7 +111,11 @@ func (api *UIServerAPI) DeriveAccount(url string, path string, pin *bool) (walle
 
 // fetchKeystore retrieves the encrypted keystore from the account manager.
 func fetchKeystore(am *wallet.Manager) *keystore.KeyStore {
-	return am.Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
+	ks := am.Backends(keystore.KeyStoreType)
+	if len(ks) == 0 {
+		return nil
+	}
+	return ks[0].(*keystore.KeyStore)
 }
 
 // ImportRawKey stores the given hex encoded ECDSA key into the key directory,
@@ -126,8 +130,12 @@ func (api *UIServerAPI) ImportRawKey(privkey string, password string) (wallet.Ac
 	if err := ValidatePasswordFormat(password); err != nil {
 		return wallet.Account{}, fmt.Errorf("password requirements not met: %v", err)
 	}
+	ks := fetchKeystore(api.am)
+	if ks == nil {
+		return wallet.Account{}, errors.New("password based accounts not supported")
+	}
 	// No error
-	return fetchKeystore(api.am).ImportECDSA(key, password)
+	return ks.ImportECDSA(key, password)
 }
 
 // OpenWallet initiates a hardware wallet opening procedure, establishing a USB
