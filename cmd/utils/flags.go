@@ -1578,7 +1578,7 @@ func SetPrlConfig(ctx *cli.Context, stack *node.Node, cfg *nodeconfig.Config) {
 
 	// Cap the cache allowance and tune the garbage collector
 	mem, err := gopsutil.VirtualMemory()
-	if err == nil {
+	if err == nil && mem.Total > 0 {
 		if 32<<(^uintptr(0)>>63) == 32 && mem.Total > 2*1024*1024*1024 {
 			logging.Warn("Lowering memory allowance on 32bit arch", "available", mem.Total/1024/1024, "addressable", 2*1024)
 			mem.Total = 2 * 1024 * 1024 * 1024
