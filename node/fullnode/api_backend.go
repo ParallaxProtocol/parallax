@@ -75,7 +75,11 @@ func (b *PrlAPIBackend) HeaderByNumber(ctx context.Context, number rpc.BlockNumb
 		return b.eth.blockchain.CurrentBlock().Header(), nil
 	}
 	if number == rpc.FinalizedBlockNumber {
-		return b.eth.blockchain.CurrentFinalizedBlock().Header(), nil
+		block := b.eth.blockchain.CurrentFinalizedBlock()
+		if block == nil {
+			return nil, errors.New("finalized block not found")
+		}
+		return block.Header(), nil
 	}
 	return b.eth.blockchain.GetHeaderByNumber(uint64(number)), nil
 }
@@ -112,7 +116,11 @@ func (b *PrlAPIBackend) BlockByNumber(ctx context.Context, number rpc.BlockNumbe
 		return b.eth.blockchain.CurrentBlock(), nil
 	}
 	if number == rpc.FinalizedBlockNumber {
-		return b.eth.blockchain.CurrentFinalizedBlock(), nil
+		block := b.eth.blockchain.CurrentFinalizedBlock()
+		if block == nil {
+			return nil, errors.New("finalized block not found")
+		}
+		return block, nil
 	}
 	return b.eth.blockchain.GetBlockByNumber(uint64(number)), nil
 }
