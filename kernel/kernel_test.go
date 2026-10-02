@@ -204,6 +204,24 @@ func TestVerifyEip1559HeaderPreLondonParent(t *testing.T) {
 	}
 }
 
+// TestVerifyEip1559HeaderMissingParentBaseFee verifies that a malformed London
+// parent without a base fee is rejected instead of crashing the verifier.
+func TestVerifyEip1559HeaderMissingParentBaseFee(t *testing.T) {
+	parent := &types.Header{
+		Number:   big.NewInt(1),
+		GasLimit: 10000000,
+		GasUsed:  5000000,
+	}
+	header := &types.Header{
+		Number:   big.NewInt(2),
+		GasLimit: 10000000,
+		BaseFee:  big.NewInt(chainparams.InitialBaseFee),
+	}
+	if err := VerifyEip1559Header(chainparams.TestChainConfig, parent, header); err == nil {
+		t.Fatal("expected error for parent missing baseFee, got nil")
+	}
+}
+
 // TestVerifyGaslimit checks the parent-relative gas limit bounds. With a
 // parent gas limit of 20M the bound is 20000000/1024 = 19531, and a diff of
 // 19531 or more is rejected.
