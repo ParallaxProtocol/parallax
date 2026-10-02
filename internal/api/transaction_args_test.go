@@ -279,14 +279,21 @@ func TestSetDefaultsFields(t *testing.T) {
 			t.Errorf("chainId: have %v, want %v", args.ChainID, b.config.ChainID)
 		}
 	})
-	t.Run("explicit chain id kept", func(t *testing.T) {
+	t.Run("matching explicit chain id kept", func(t *testing.T) {
 		b := newLondonBackendMock()
-		args := TransactionArgs{To: &to, Gas: gas, ChainID: newHexBig(1234)}
+		args := TransactionArgs{To: &to, Gas: gas, ChainID: (*hexutil.Big)(new(big.Int).Set(b.config.ChainID))}
 		if err := args.setDefaults(context.Background(), b); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if args.ChainID.ToInt().Int64() != 1234 {
-			t.Errorf("chainId: have %v, want 1234", args.ChainID)
+		if args.ChainID.ToInt().Cmp(b.config.ChainID) != 0 {
+			t.Errorf("chainId: have %v, want %v", args.ChainID, b.config.ChainID)
+		}
+	})
+	t.Run("mismatched explicit chain id rejected", func(t *testing.T) {
+		b := newLondonBackendMock()
+		args := TransactionArgs{To: &to, Gas: gas, ChainID: newHexBig(1234)}
+		if err := args.setDefaults(context.Background(), b); err == nil {
+			t.Fatal("expected error for chain id mismatch")
 		}
 	})
 	t.Run("data and input differing rejected", func(t *testing.T) {
