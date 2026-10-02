@@ -318,8 +318,12 @@ func TestExp(t *testing.T) {
 		{base: big.NewInt(2), exponent: big.NewInt(255), result: MustParseBig256("57896044618658097711785492504343953926634992332820282019728792003956564819968")},
 	}
 	for _, test := range tests {
+		base := new(big.Int).Set(test.base)
 		if result := Exp(test.base, test.exponent); result.Cmp(test.result) != 0 {
 			t.Errorf("Exp(%d, %d) = %d, want %d", test.base, test.exponent, result, test.result)
+		}
+		if test.base.Cmp(base) != 0 {
+			t.Errorf("Exp modified base: got %d, want %d", test.base, base)
 		}
 	}
 }
