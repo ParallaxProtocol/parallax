@@ -25,6 +25,22 @@ import (
 	"github.com/ParallaxProtocol/parallax/v2/crypto/ecies"
 )
 
+// TestHandshakeMessageTooBig checks that oversized handshake messages are
+// rejected before the packet body is read.
+func TestHandshakeMessageTooBig(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Size prefix of 0xFFFF followed by no body: the read must fail on the
+	// size check, not by waiting for (or buffering) 64KB of input.
+	var h handshakeState
+	_, err = h.readMsg(new(authMsgV4), key, bytes.NewReader([]byte{0xFF, 0xFF}))
+	if err == nil || err.Error() != "message too big" {
+		t.Fatalf("expected 'message too big' error, got %v", err)
+	}
+}
+
 func TestHandshakeECIESInvalidCurveOracle(t *testing.T) {
 	initKey, err := crypto.GenerateKey()
 	if err != nil {
