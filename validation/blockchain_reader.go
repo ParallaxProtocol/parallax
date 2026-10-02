@@ -131,6 +131,9 @@ func (bc *BlockChain) HasBlock(hash util.Hash, number uint64) bool {
 	if bc.blockCache.Contains(hash) {
 		return true
 	}
+	if !bc.HasHeader(hash, number) {
+		return false
+	}
 	return rawdb.HasBody(bc.db, hash, number)
 }
 
