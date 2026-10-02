@@ -469,6 +469,11 @@ var (
 		Usage: "Maximum number of alternative addresses or topics allowed per search position in eth_getLogs filter criteria (0 = no cap)",
 		Value: nodeconfig.Defaults.LogQueryLimit,
 	}
+	RPCGlobalRangeLimitFlag = cli.Uint64Flag{
+		Name:  "rpc.rangelimit",
+		Usage: "Maximum block range (end - begin) allowed for range queries (0 = unlimited)",
+		Value: nodeconfig.Defaults.RangeLimit,
+	}
 	// Authenticated RPC HTTP settings
 	AuthListenFlag = cli.StringFlag{
 		Name:  "authrpc.addr",
@@ -1698,6 +1703,9 @@ func SetPrlConfig(ctx *cli.Context, stack *node.Node, cfg *nodeconfig.Config) {
 	}
 	if ctx.GlobalIsSet(RPCGlobalLogQueryLimit.Name) {
 		cfg.LogQueryLimit = ctx.GlobalInt(RPCGlobalLogQueryLimit.Name)
+	}
+	if ctx.GlobalIsSet(RPCGlobalRangeLimitFlag.Name) {
+		cfg.RangeLimit = ctx.GlobalUint64(RPCGlobalRangeLimitFlag.Name)
 	}
 	if cfg.RPCGasCap != 0 {
 		logging.Info("Set global gas cap", "cap", cfg.RPCGasCap)

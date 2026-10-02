@@ -187,6 +187,10 @@ type Config struct {
 	// search position in log filter criteria (0 = no cap).
 	LogQueryLimit int
 
+	// RangeLimit restricts the maximum range (end - start) for log range
+	// queries (0 = unlimited).
+	RangeLimit uint64 `toml:",omitempty"`
+
 	// Checkpoint is a hardcoded checkpoint which can be nil.
 	Checkpoint *chainparams.TrustedCheckpoint `toml:",omitempty"`
 

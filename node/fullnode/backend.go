@@ -327,7 +327,7 @@ func (s *Parallax) APIs() []rpc.API {
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   filters.NewPublicFilterAPI(s.APIBackend, false, 5*time.Minute, s.config.LogQueryLimit),
+			Service:   filters.NewPublicFilterAPI(s.APIBackend, false, 5*time.Minute, s.config.LogQueryLimit, s.config.RangeLimit),
 			Public:    true,
 		}, {
 			Namespace: "admin",

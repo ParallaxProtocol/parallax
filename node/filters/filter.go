@@ -19,6 +19,7 @@ package filters
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ParallaxProtocol/parallax/v2/dbstore"
@@ -57,6 +58,7 @@ type Filter struct {
 
 	block      util.Hash // Block hash if filtering a single block
 	begin, end int64     // Range interval if filtering multiple blocks
+	rangeLimit uint64    // Maximum range (end - begin) of a range filter, 0 = unlimited
 
 	matcher *bloombits.Matcher
 }
@@ -161,6 +163,9 @@ func (f *Filter) Logs(ctx context.Context) ([]*types.Log, error) {
 	}
 	if f.begin > f.end {
 		return nil, errInvalidBlockRange
+	}
+	if f.rangeLimit != 0 && uint64(f.end-f.begin) > f.rangeLimit {
+		return nil, fmt.Errorf("exceed maximum block range: %d", f.rangeLimit)
 	}
 	// Gather all indexed logs, and finish with non indexed ones
 	var (
