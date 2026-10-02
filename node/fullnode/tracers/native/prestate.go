@@ -49,9 +49,9 @@ type prestateTracer struct {
 	prestate  prestate
 	create    bool
 	to        util.Address
-	gasLimit  uint64 // Amount of gas bought for the whole tx
-	interrupt uint32 // Atomic flag to signal execution interruption
-	reason    error  // Textual reason for the interruption
+	gasLimit  uint64                // Amount of gas bought for the whole tx
+	interrupt uint32                // Atomic flag to signal execution interruption
+	reason    atomic.Pointer[error] // Reason for the interruption, populated by Stop
 }
 
 func newPrestateTracer(ctx *tracers.Context) tracers.Tracer {
@@ -154,12 +154,15 @@ func (t *prestateTracer) GetResult() (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.RawMessage(res), t.reason
+	if p := t.reason.Load(); p != nil {
+		return json.RawMessage(res), *p
+	}
+	return json.RawMessage(res), nil
 }
 
 // Stop terminates execution of the tracer at the first opportune moment.
 func (t *prestateTracer) Stop(err error) {
-	t.reason = err
+	t.reason.Store(&err)
 	atomic.StoreUint32(&t.interrupt, 1)
 }
 

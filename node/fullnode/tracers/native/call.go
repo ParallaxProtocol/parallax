@@ -50,8 +50,8 @@ type callFrame struct {
 type callTracer struct {
 	env       *script.PVM
 	callstack []callFrame
-	interrupt uint32 // Atomic flag to signal execution interruption
-	reason    error  // Textual reason for the interruption
+	interrupt uint32                // Atomic flag to signal execution interruption
+	reason    atomic.Pointer[error] // Reason for the interruption, populated by Stop
 }
 
 // newCallTracer returns a native go tracer which tracks
@@ -156,12 +156,15 @@ func (t *callTracer) GetResult() (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.RawMessage(res), t.reason
+	if p := t.reason.Load(); p != nil {
+		return json.RawMessage(res), *p
+	}
+	return json.RawMessage(res), nil
 }
 
 // Stop terminates execution of the tracer at the first opportune moment.
 func (t *callTracer) Stop(err error) {
-	t.reason = err
+	t.reason.Store(&err)
 	atomic.StoreUint32(&t.interrupt, 1)
 }
 
