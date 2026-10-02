@@ -117,8 +117,8 @@ type StructLogger struct {
 	gasLimit uint64
 	usedGas  uint64
 
-	interrupt uint32 // Atomic flag to signal execution interruption
-	reason    error  // Textual reason for the interruption
+	interrupt uint32                // Atomic flag to signal execution interruption
+	reason    atomic.Pointer[error] // Reason for the interruption, populated by Stop
 }
 
 // NewStructLogger returns a new logger
@@ -239,8 +239,8 @@ func (l *StructLogger) CaptureExit(output []byte, gasUsed uint64, err error) {
 
 func (l *StructLogger) GetResult() (json.RawMessage, error) {
 	// Tracing aborted
-	if l.reason != nil {
-		return nil, l.reason
+	if p := l.reason.Load(); p != nil {
+		return nil, *p
 	}
 	failed := l.err != nil
 	returnData := util.CopyBytes(l.output)
@@ -259,7 +259,7 @@ func (l *StructLogger) GetResult() (json.RawMessage, error) {
 
 // Stop terminates execution of the tracer at the first opportune moment.
 func (l *StructLogger) Stop(err error) {
-	l.reason = err
+	l.reason.Store(&err)
 	atomic.StoreUint32(&l.interrupt, 1)
 }
 
