@@ -19,6 +19,8 @@ package filters
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"strings"
 	"testing"
 
 	"github.com/ParallaxProtocol/parallax/v2/rpc"
@@ -181,5 +183,24 @@ func TestUnmarshalJSONNewFilterArgs(t *testing.T) {
 	}
 	if len(test7.Topics[2]) != 0 {
 		t.Fatalf("expected 0 topics, got %d topics", len(test7.Topics[2]))
+	}
+}
+
+func TestUnmarshalJSONNewFilterArgsTopicLimits(t *testing.T) {
+	// more than maxTopics topic positions
+	var crit FilterCriteria
+	vector := `{"topics": [null, null, null, null, null]}`
+	if err := json.Unmarshal([]byte(vector), &crit); err != errExceedMaxTopics {
+		t.Fatal("expected errExceedMaxTopics, got", err)
+	}
+
+	// more than maxSubTopics alternatives in a single position
+	topics := make([]string, maxSubTopics+1)
+	for i := range topics {
+		topics[i] = fmt.Sprintf(`"%s"`, util.BigToHash(big.NewInt(int64(i))).Hex())
+	}
+	vector = fmt.Sprintf(`{"topics": [[%s]]}`, strings.Join(topics, ","))
+	if err := json.Unmarshal([]byte(vector), &crit); err != errExceedMaxTopics {
+		t.Fatal("expected errExceedMaxTopics, got", err)
 	}
 }
