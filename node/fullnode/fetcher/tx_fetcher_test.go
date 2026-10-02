@@ -1274,6 +1274,49 @@ func TestTransactionFetcherFuzzCrash04(t *testing.T) {
 	})
 }
 
+func TestTransactionFetcherDropAlternates(t *testing.T) {
+	testTransactionFetcherParallel(t, txFetcherTest{
+		init: func() *TxFetcher {
+			return NewTxFetcher(
+				func(util.Hash) bool { return false },
+				func(txs []*types.Transaction) []error {
+					return make([]error, len(txs))
+				},
+				func(string, []util.Hash) error { return nil },
+			)
+		},
+		steps: []any{
+			doTxNotify{peer: "A", hashes: []util.Hash{testTxsHashes[0]}},
+			doWait{time: txArriveTimeout, step: true},
+			doTxNotify{peer: "B", hashes: []util.Hash{testTxsHashes[0]}},
+
+			isScheduled{
+				tracking: map[string][]util.Hash{
+					"A": {testTxsHashes[0]},
+					"B": {testTxsHashes[0]},
+				},
+				fetching: map[string][]util.Hash{
+					"A": {testTxsHashes[0]},
+				},
+			},
+			doDrop("B"),
+
+			isScheduled{
+				tracking: map[string][]util.Hash{
+					"A": {testTxsHashes[0]},
+				},
+				fetching: map[string][]util.Hash{
+					"A": {testTxsHashes[0]},
+				},
+			},
+			doDrop("A"),
+			isScheduled{
+				tracking: nil, fetching: nil,
+			},
+		},
+	})
+}
+
 func testTransactionFetcherParallel(t *testing.T, tt txFetcherTest) {
 	t.Parallel()
 	testTransactionFetcher(t, tt)
