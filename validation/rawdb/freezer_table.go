@@ -220,7 +220,9 @@ func (t *freezerTable) repair() error {
 		if t.readonly {
 			return fmt.Errorf("index file(path: %s, name: %s) size is not a multiple of %d", t.path, t.name, indexEntrySize)
 		}
-		truncateFreezerFile(t.index, stat.Size()-overflow) // New file can't trigger this path
+		if err := truncateFreezerFile(t.index, stat.Size()-overflow); err != nil {
+			return err
+		} // New file can't trigger this path
 	}
 	// Retrieve the file sizes and prepare for truncation
 	if stat, err = t.index.Stat(); err != nil {
@@ -409,6 +411,9 @@ func (t *freezerTable) truncateHead(items uint64) error {
 	if err := truncateFreezerFile(t.index, int64(length+1)*indexEntrySize); err != nil {
 		return err
 	}
+	if err := t.index.Sync(); err != nil {
+		return err
+	}
 	// Calculate the new expected size of the data file and truncate it
 	var expected indexEntry
 	if length == 0 {
@@ -436,6 +441,9 @@ func (t *freezerTable) truncateHead(items uint64) error {
 		t.headId = expected.filenum
 	}
 	if err := truncateFreezerFile(t.head, int64(expected.offset)); err != nil {
+		return err
+	}
+	if err := t.head.Sync(); err != nil {
 		return err
 	}
 	// All data files truncated, set internal counters and return
