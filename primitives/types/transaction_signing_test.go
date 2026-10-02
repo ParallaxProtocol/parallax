@@ -135,3 +135,30 @@ func TestChainId(t *testing.T) {
 		t.Error("expected no error")
 	}
 }
+
+func TestSignatureValuesError(t *testing.T) {
+	chainID := big.NewInt(1)
+	txs := []*Transaction{
+		NewTransaction(0, util.Address{}, big.NewInt(0), 0, big.NewInt(0), nil),
+		NewTx(&AccessListTx{ChainID: chainID, GasPrice: big.NewInt(0)}),
+		NewTx(&DynamicFeeTx{ChainID: chainID, GasTipCap: big.NewInt(0), GasFeeCap: big.NewInt(0)}),
+	}
+	signers := []Signer{HomesteadSigner{}, NewEIP155Signer(chainID), NewLondonSigner(chainID)}
+
+	// Signatures of invalid length must be rejected with an error, not a panic.
+	invalidSig := make([]byte, 64)
+	for _, signer := range signers {
+		for _, tx := range txs {
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						t.Fatalf("signer %T, tx type %d: panicked for invalid signature length: %v", signer, tx.Type(), r)
+					}
+				}()
+				if _, err := tx.WithSignature(signer, invalidSig); err == nil {
+					t.Fatalf("signer %T, tx type %d: expected error for invalid signature length", signer, tx.Type())
+				}
+			}()
+		}
+	}
+}
