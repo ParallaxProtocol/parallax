@@ -17,7 +17,9 @@
 package discover
 
 import (
+	"container/list"
 	"crypto/ecdsa"
+	"iter"
 	"net"
 
 	"github.com/ParallaxProtocol/parallax/v2/logging"
@@ -73,4 +75,18 @@ func ListenUDP(c UDPConn, ln *enode.LocalNode, cfg Config) (*UDPv4, error) {
 type ReadPacket struct {
 	Data []byte
 	Addr *net.UDPAddr
+}
+
+// iterList iterates over the elements of the given list. It is safe to
+// remove the current element during iteration.
+func iterList[T any](l *list.List) iter.Seq2[T, *list.Element] {
+	return func(yield func(T, *list.Element) bool) {
+		for el := l.Front(); el != nil; {
+			next := el.Next()
+			if !yield(el.Value.(T), el) {
+				return
+			}
+			el = next
+		}
+	}
 }
