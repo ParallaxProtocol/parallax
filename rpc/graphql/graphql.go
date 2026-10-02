@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"sync"
 
 	parallax "github.com/ParallaxProtocol/parallax/v2"
 	"github.com/ParallaxProtocol/parallax/v2/internal/api"
@@ -182,31 +183,38 @@ func (at *AccessTuple) StorageKeys(ctx context.Context) []util.Hash {
 // backend and hash are mandatory; all others will be fetched when required.
 type Transaction struct {
 	backend api.Backend
-	hash    util.Hash
-	tx      *types.Transaction
-	block   *Block
-	index   uint64
+	hash    util.Hash // Must be present after initialization
+	mu      sync.Mutex
+	// mu protects following resources
+	tx    *types.Transaction
+	block *Block
+	index uint64
 }
 
 // resolve returns the internal transaction object, fetching it if needed.
-func (t *Transaction) resolve(ctx context.Context) (*types.Transaction, error) {
-	if t.tx == nil {
-		// Try to return an already finalized transaction
-		tx, blockHash, _, index, err := t.backend.GetTransaction(ctx, t.hash)
-		if err == nil && tx != nil {
-			t.tx = tx
-			blockNrOrHash := rpc.BlockNumberOrHashWithHash(blockHash, false)
-			t.block = &Block{
-				backend:      t.backend,
-				numberOrHash: &blockNrOrHash,
-			}
-			t.index = index
-			return t.tx, nil
-		}
-		// No finalized transaction, try to retrieve it from the pool
-		t.tx = t.backend.GetPoolTransaction(t.hash)
+// It also returns the block the tx belongs to, unless it is a pending tx.
+func (t *Transaction) resolve(ctx context.Context) (*types.Transaction, *Block, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.tx != nil {
+		return t.tx, t.block, nil
 	}
-	return t.tx, nil
+	// Try to return an already finalized transaction
+	tx, blockHash, _, index, err := t.backend.GetTransaction(ctx, t.hash)
+	if err == nil && tx != nil {
+		t.tx = tx
+		blockNrOrHash := rpc.BlockNumberOrHashWithHash(blockHash, false)
+		t.block = &Block{
+			backend:      t.backend,
+			numberOrHash: &blockNrOrHash,
+			hash:         blockHash,
+		}
+		t.index = index
+		return t.tx, t.block, nil
+	}
+	// No finalized transaction, try to retrieve it from the pool
+	t.tx = t.backend.GetPoolTransaction(t.hash)
+	return t.tx, nil, nil
 }
 
 func (t *Transaction) Hash(ctx context.Context) util.Hash {
@@ -214,7 +222,7 @@ func (t *Transaction) Hash(ctx context.Context) util.Hash {
 }
 
 func (t *Transaction) InputData(ctx context.Context) (hexutil.Bytes, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return hexutil.Bytes{}, err
 	}
@@ -222,7 +230,7 @@ func (t *Transaction) InputData(ctx context.Context) (hexutil.Bytes, error) {
 }
 
 func (t *Transaction) Gas(ctx context.Context) (hexutil.Uint64, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return 0, err
 	}
@@ -230,7 +238,7 @@ func (t *Transaction) Gas(ctx context.Context) (hexutil.Uint64, error) {
 }
 
 func (t *Transaction) GasPrice(ctx context.Context) (hexutil.Big, error) {
-	tx, err := t.resolve(ctx)
+	tx, block, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return hexutil.Big{}, err
 	}
@@ -238,8 +246,8 @@ func (t *Transaction) GasPrice(ctx context.Context) (hexutil.Big, error) {
 	case types.AccessListTxType:
 		return hexutil.Big(*tx.GasPrice()), nil
 	case types.DynamicFeeTxType:
-		if t.block != nil {
-			if baseFee, _ := t.block.BaseFeePerGas(ctx); baseFee != nil {
+		if block != nil {
+			if baseFee, _ := block.BaseFeePerGas(ctx); baseFee != nil {
 				// price = min(tip, gasFeeCap - baseFee) + baseFee
 				return (hexutil.Big)(*math.BigMin(new(big.Int).Add(tx.GasTipCap(), baseFee.ToInt()), tx.GasFeeCap())), nil
 			}
@@ -251,15 +259,15 @@ func (t *Transaction) GasPrice(ctx context.Context) (hexutil.Big, error) {
 }
 
 func (t *Transaction) EffectiveGasPrice(ctx context.Context) (*hexutil.Big, error) {
-	tx, err := t.resolve(ctx)
+	tx, block, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return nil, err
 	}
 	// Pending tx
-	if t.block == nil {
+	if block == nil {
 		return nil, nil
 	}
-	header, err := t.block.resolveHeader(ctx)
+	header, err := block.resolveHeader(ctx)
 	if err != nil || header == nil {
 		return nil, err
 	}
@@ -270,7 +278,7 @@ func (t *Transaction) EffectiveGasPrice(ctx context.Context) (*hexutil.Big, erro
 }
 
 func (t *Transaction) MaxFeePerGas(ctx context.Context) (*hexutil.Big, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return nil, err
 	}
@@ -285,7 +293,7 @@ func (t *Transaction) MaxFeePerGas(ctx context.Context) (*hexutil.Big, error) {
 }
 
 func (t *Transaction) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return nil, err
 	}
@@ -300,15 +308,15 @@ func (t *Transaction) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big, e
 }
 
 func (t *Transaction) EffectiveTip(ctx context.Context) (*hexutil.Big, error) {
-	tx, err := t.resolve(ctx)
+	tx, block, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return nil, err
 	}
 	// Pending tx
-	if t.block == nil {
+	if block == nil {
 		return nil, nil
 	}
-	header, err := t.block.resolveHeader(ctx)
+	header, err := block.resolveHeader(ctx)
 	if err != nil || header == nil {
 		return nil, err
 	}
@@ -324,7 +332,7 @@ func (t *Transaction) EffectiveTip(ctx context.Context) (*hexutil.Big, error) {
 }
 
 func (t *Transaction) Value(ctx context.Context) (hexutil.Big, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return hexutil.Big{}, err
 	}
@@ -335,7 +343,7 @@ func (t *Transaction) Value(ctx context.Context) (hexutil.Big, error) {
 }
 
 func (t *Transaction) Nonce(ctx context.Context) (hexutil.Uint64, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return 0, err
 	}
@@ -343,7 +351,7 @@ func (t *Transaction) Nonce(ctx context.Context) (hexutil.Uint64, error) {
 }
 
 func (t *Transaction) To(ctx context.Context, args BlockNumberArgs) (*Account, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return nil, err
 	}
@@ -359,7 +367,7 @@ func (t *Transaction) To(ctx context.Context, args BlockNumberArgs) (*Account, e
 }
 
 func (t *Transaction) From(ctx context.Context, args BlockNumberArgs) (*Account, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return nil, err
 	}
@@ -373,17 +381,20 @@ func (t *Transaction) From(ctx context.Context, args BlockNumberArgs) (*Account,
 }
 
 func (t *Transaction) Block(ctx context.Context) (*Block, error) {
-	if _, err := t.resolve(ctx); err != nil {
+	_, block, err := t.resolve(ctx)
+	if err != nil {
 		return nil, err
 	}
-	return t.block, nil
+	return block, nil
 }
 
 func (t *Transaction) Index(ctx context.Context) (*int32, error) {
-	if _, err := t.resolve(ctx); err != nil {
+	_, block, err := t.resolve(ctx)
+	if err != nil {
 		return nil, err
 	}
-	if t.block == nil {
+	// Pending tx
+	if block == nil {
 		return nil, nil
 	}
 	index := int32(t.index)
@@ -392,13 +403,15 @@ func (t *Transaction) Index(ctx context.Context) (*int32, error) {
 
 // getReceipt returns the receipt associated with this transaction, if any.
 func (t *Transaction) getReceipt(ctx context.Context) (*types.Receipt, error) {
-	if _, err := t.resolve(ctx); err != nil {
+	_, block, err := t.resolve(ctx)
+	if err != nil {
 		return nil, err
 	}
-	if t.block == nil {
+	// Pending tx
+	if block == nil {
 		return nil, nil
 	}
-	receipts, err := t.block.resolveReceipts(ctx)
+	receipts, err := block.resolveReceipts(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -464,7 +477,7 @@ func (t *Transaction) Logs(ctx context.Context) (*[]*Log, error) {
 }
 
 func (t *Transaction) Type(ctx context.Context) (*int32, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -473,7 +486,7 @@ func (t *Transaction) Type(ctx context.Context) (*int32, error) {
 }
 
 func (t *Transaction) AccessList(ctx context.Context) (*[]*AccessTuple, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return nil, err
 	}
@@ -489,7 +502,7 @@ func (t *Transaction) AccessList(ctx context.Context) (*[]*AccessTuple, error) {
 }
 
 func (t *Transaction) R(ctx context.Context) (hexutil.Big, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return hexutil.Big{}, err
 	}
@@ -498,7 +511,7 @@ func (t *Transaction) R(ctx context.Context) (hexutil.Big, error) {
 }
 
 func (t *Transaction) S(ctx context.Context) (hexutil.Big, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return hexutil.Big{}, err
 	}
@@ -507,7 +520,7 @@ func (t *Transaction) S(ctx context.Context) (hexutil.Big, error) {
 }
 
 func (t *Transaction) V(ctx context.Context) (hexutil.Big, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return hexutil.Big{}, err
 	}
@@ -516,7 +529,7 @@ func (t *Transaction) V(ctx context.Context) (hexutil.Big, error) {
 }
 
 func (t *Transaction) Raw(ctx context.Context) (hexutil.Bytes, error) {
-	tx, err := t.resolve(ctx)
+	tx, _, err := t.resolve(ctx)
 	if err != nil || tx == nil {
 		return hexutil.Bytes{}, err
 	}
@@ -539,15 +552,19 @@ type BlockType int
 type Block struct {
 	backend      api.Backend
 	numberOrHash *rpc.BlockNumberOrHash
-	hash         util.Hash
-	header       *types.Header
-	block        *types.Block
-	receipts     []*types.Receipt
+	mu           sync.Mutex
+	// mu protects following resources
+	hash     util.Hash
+	header   *types.Header
+	block    *types.Block
+	receipts []*types.Receipt
 }
 
 // resolve returns the internal Block object representing this block, fetching
 // it if necessary.
 func (b *Block) resolve(ctx context.Context) (*types.Block, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if b.block != nil {
 		return b.block, nil
 	}
@@ -557,10 +574,10 @@ func (b *Block) resolve(ctx context.Context) (*types.Block, error) {
 	}
 	var err error
 	b.block, err = b.backend.BlockByNumberOrHash(ctx, *b.numberOrHash)
-	if b.block != nil && b.header == nil {
-		b.header = b.block.Header()
-		if hash, ok := b.numberOrHash.Hash(); ok {
-			b.hash = hash
+	if b.block != nil {
+		b.hash = b.block.Hash()
+		if b.header == nil {
+			b.header = b.block.Header()
 		}
 	}
 	return b.block, err
@@ -570,39 +587,50 @@ func (b *Block) resolve(ctx context.Context) (*types.Block, error) {
 // if necessary. Call this function instead of `resolve` unless you need the
 // additional data (transactions and uncles).
 func (b *Block) resolveHeader(ctx context.Context) (*types.Header, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.header != nil {
+		return b.header, nil
+	}
 	if b.numberOrHash == nil && b.hash == (util.Hash{}) {
 		return nil, errBlockInvariant
 	}
 	var err error
-	if b.header == nil {
-		if b.hash != (util.Hash{}) {
-			b.header, err = b.backend.HeaderByHash(ctx, b.hash)
-		} else {
-			b.header, err = b.backend.HeaderByNumberOrHash(ctx, *b.numberOrHash)
-		}
+	if b.hash != (util.Hash{}) {
+		b.header, err = b.backend.HeaderByHash(ctx, b.hash)
+	} else {
+		b.header, err = b.backend.HeaderByNumberOrHash(ctx, *b.numberOrHash)
 	}
-	return b.header, err
+	if err != nil {
+		return nil, err
+	}
+	if b.header == nil {
+		return nil, nil
+	}
+	if b.hash == (util.Hash{}) {
+		b.hash = b.header.Hash()
+	}
+	return b.header, nil
 }
 
 // resolveReceipts returns the list of receipts for this block, fetching them
 // if necessary.
 func (b *Block) resolveReceipts(ctx context.Context) ([]*types.Receipt, error) {
-	if b.receipts == nil {
-		hash := b.hash
-		if hash == (util.Hash{}) {
-			header, err := b.resolveHeader(ctx)
-			if err != nil {
-				return nil, err
-			}
-			hash = header.Hash()
-		}
-		receipts, err := b.backend.GetReceipts(ctx, hash)
-		if err != nil {
-			return nil, err
-		}
-		b.receipts = receipts
+	hash, err := b.Hash(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return b.receipts, nil
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.receipts != nil {
+		return b.receipts, nil
+	}
+	receipts, err := b.backend.GetReceipts(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+	b.receipts = receipts
+	return receipts, nil
 }
 
 func (b *Block) Number(ctx context.Context) (Long, error) {
@@ -615,14 +643,20 @@ func (b *Block) Number(ctx context.Context) (Long, error) {
 }
 
 func (b *Block) Hash(ctx context.Context) (util.Hash, error) {
-	if b.hash == (util.Hash{}) {
-		header, err := b.resolveHeader(ctx)
-		if err != nil {
-			return util.Hash{}, err
-		}
-		b.hash = header.Hash()
+	b.mu.Lock()
+	hash := b.hash
+	b.mu.Unlock()
+	if hash != (util.Hash{}) {
+		return hash, nil
 	}
-	return b.hash, nil
+	header, err := b.resolveHeader(ctx)
+	if err != nil {
+		return util.Hash{}, err
+	}
+	if header == nil {
+		return util.Hash{}, errors.New("block not found")
+	}
+	return header.Hash(), nil
 }
 
 func (b *Block) GasLimit(ctx context.Context) (Long, error) {
@@ -669,17 +703,18 @@ func (b *Block) NextBaseFeePerGas(ctx context.Context) (*hexutil.Big, error) {
 }
 
 func (b *Block) Parent(ctx context.Context) (*Block, error) {
-	if _, err := b.resolveHeader(ctx); err != nil {
+	header, err := b.resolveHeader(ctx)
+	if err != nil {
 		return nil, err
 	}
-	if b.header == nil || b.header.Number.Uint64() < 1 {
+	if header == nil || header.Number.Uint64() < 1 {
 		return nil, nil
 	}
-	num := rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(b.header.Number.Uint64() - 1))
+	num := rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(header.Number.Uint64() - 1))
 	return &Block{
 		backend:      b.backend,
 		numberOrHash: &num,
-		hash:         b.header.ParentHash,
+		hash:         header.ParentHash,
 	}, nil
 }
 
@@ -774,17 +809,13 @@ func (b *Block) LogsBloom(ctx context.Context) (hexutil.Bytes, error) {
 }
 
 func (b *Block) TotalDifficulty(ctx context.Context) (hexutil.Big, error) {
-	h := b.hash
-	if h == (util.Hash{}) {
-		header, err := b.resolveHeader(ctx)
-		if err != nil {
-			return hexutil.Big{}, err
-		}
-		h = header.Hash()
+	h, err := b.Hash(ctx)
+	if err != nil {
+		return hexutil.Big{}, err
 	}
 	td := b.backend.GetTd(ctx, h)
 	if td == nil {
-		return hexutil.Big{}, fmt.Errorf("total difficulty not found %x", b.hash)
+		return hexutil.Big{}, fmt.Errorf("total difficulty not found %x", h)
 	}
 	return hexutil.Big(*td), nil
 }
@@ -937,13 +968,9 @@ func (b *Block) Logs(ctx context.Context, args struct{ Filter BlockFilterCriteri
 	if args.Filter.Topics != nil {
 		topics = *args.Filter.Topics
 	}
-	hash := b.hash
-	if hash == (util.Hash{}) {
-		header, err := b.resolveHeader(ctx)
-		if err != nil {
-			return nil, err
-		}
-		hash = header.Hash()
+	hash, err := b.Hash(ctx)
+	if err != nil {
+		return nil, err
 	}
 	// Construct the range filter
 	filter := filters.NewBlockFilter(b.backend, hash, addresses, topics)
@@ -1203,7 +1230,7 @@ func (r *Resolver) Transaction(ctx context.Context, args struct{ Hash util.Hash 
 		hash:    args.Hash,
 	}
 	// Resolve the transaction; if it doesn't exist, return nil.
-	t, err := tx.resolve(ctx)
+	t, _, err := tx.resolve(ctx)
 	if err != nil {
 		return nil, err
 	} else if t == nil {
