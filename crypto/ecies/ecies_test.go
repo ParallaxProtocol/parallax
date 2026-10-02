@@ -428,6 +428,22 @@ func decode(s string) []byte {
 	return bytes
 }
 
+// TestEncryptEmptyMessage checks that Encrypt reports an error instead of
+// returning a nil ciphertext with a nil error for an empty plaintext.
+func TestEncryptEmptyMessage(t *testing.T) {
+	prv, err := GenerateKey(rand.Reader, DefaultCurve, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ct, err := Encrypt(rand.Reader, &prv.PublicKey, nil, nil, nil)
+	if err != ErrInvalidMessage {
+		t.Fatalf("expected ErrInvalidMessage, got %v", err)
+	}
+	if ct != nil {
+		t.Fatalf("expected nil ciphertext, got %x", ct)
+	}
+}
+
 // TestGenerateSharedInvalidPoint checks that ECDH refuses public keys that
 // are not on the curve, so they cannot be used for invalid-curve attacks.
 func TestGenerateSharedInvalidPoint(t *testing.T) {
