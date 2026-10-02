@@ -103,7 +103,7 @@ func TestSanitation(t *testing.T) {
 	msg4 := "Space Message"
 	msg5 := "Enter\nMessage"
 	msg6 := "🔷 Block found"
-	msg7 := "Bidi ‮ Message"
+	msg7 := "Bidi \u202e Message"
 
 	for i, tt := range []struct {
 		msg  string
