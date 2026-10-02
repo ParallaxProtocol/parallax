@@ -25,6 +25,7 @@ import (
 
 	"github.com/ParallaxProtocol/parallax/v2/crypto"
 	"github.com/ParallaxProtocol/parallax/v2/util"
+	"github.com/ParallaxProtocol/parallax/v2/util/math"
 )
 
 // MakeTopics converts a filter query argument list into a filter topic set.
@@ -41,8 +42,7 @@ func MakeTopics(query ...[]any) ([][]util.Hash, error) {
 			case util.Address:
 				copy(topic[util.HashLength-util.AddressLength:], rule[:])
 			case *big.Int:
-				blob := rule.Bytes()
-				copy(topic[util.HashLength-len(blob):], blob)
+				copy(topic[:], math.U256Bytes(new(big.Int).Set(rule)))
 			case bool:
 				if rule {
 					topic[util.HashLength-1] = 1
