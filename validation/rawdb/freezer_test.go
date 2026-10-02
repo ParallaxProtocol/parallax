@@ -327,6 +327,21 @@ func checkAncientCount(t *testing.T, f *Freezer, kind string, n uint64) {
 	}
 }
 
+// TestFreezerLstatError checks that opening a freezer whose datadir cannot be
+// stat-ed (for reasons other than not existing) fails instead of panicking.
+func TestFreezerLstatError(t *testing.T) {
+	file := path.Join(t.TempDir(), "file")
+	if err := os.WriteFile(file, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	// Using a regular file as a path component fails with ENOTDIR.
+	f, err := NewFreezer(path.Join(file, "ancient"), "", false, 2049, map[string]bool{"a": true})
+	if err == nil {
+		f.Close()
+		t.Fatal("expected error opening freezer below a regular file")
+	}
+}
+
 func TestRenameWindows(t *testing.T) {
 	var (
 		fname   = "file.bin"
