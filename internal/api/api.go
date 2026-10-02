@@ -684,8 +684,28 @@ type StorageResult struct {
 	Proof []string     `json:"proof"`
 }
 
+// maxGetProofKeys is the maximum number of storage keys that can be
+// requested in a single eth_getProof call.
+const maxGetProofKeys = 1024
+
+// proofList implements dbstore.KeyValueWriter and collects the proofs as
+// hex-strings for delivery to rpc-caller.
+type proofList []string
+
+func (n *proofList) Put(key []byte, value []byte) error {
+	*n = append(*n, hexutil.Encode(value))
+	return nil
+}
+
+func (n *proofList) Delete(key []byte) error {
+	panic("not supported")
+}
+
 // GetProof returns the Merkle-proof for a given account and optionally some storage keys.
 func (api *PublicBlockChainAPI) GetProof(ctx context.Context, address util.Address, storageKeys []string, blockNrOrHash rpc.BlockNumberOrHash) (*AccountResult, error) {
+	if len(storageKeys) > maxGetProofKeys {
+		return nil, fmt.Errorf("too many storage keys requested (max %d, got %d)", maxGetProofKeys, len(storageKeys))
+	}
 	state, _, err := api.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
 		return nil, err
@@ -704,17 +724,22 @@ func (api *PublicBlockChainAPI) GetProof(ctx context.Context, address util.Addre
 		codeHash = crypto.Keccak256Hash(nil)
 	}
 
-	// create the proof for the storageKeys
-	for i, key := range storageKeys {
-		if storageTrie != nil {
-			proof, storageError := state.GetStorageProof(address, util.HexToHash(key))
-			if storageError != nil {
-				return nil, storageError
-			}
-			storageProof[i] = StorageResult{key, (*hexutil.Big)(state.GetState(address, util.HexToHash(key)).Big()), toHexSlice(proof)}
-		} else {
-			storageProof[i] = StorageResult{key, &hexutil.Big{}, []string{}}
+	// create the proof for the storageKeys, reusing the single storage trie
+	// copy instead of deep-copying it for every key
+	for i, hexKey := range storageKeys {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
+		if storageTrie == nil {
+			storageProof[i] = StorageResult{hexKey, &hexutil.Big{}, []string{}}
+			continue
+		}
+		key := util.HexToHash(hexKey)
+		proof := proofList{}
+		if err := storageTrie.Prove(crypto.Keccak256(key.Bytes()), 0, &proof); err != nil {
+			return nil, err
+		}
+		storageProof[i] = StorageResult{hexKey, (*hexutil.Big)(state.GetState(address, key).Big()), proof}
 	}
 
 	// create the accountProof

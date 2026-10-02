@@ -293,6 +293,9 @@ func TestEthClient(t *testing.T) {
 		"TransactionSender": {
 			func(t *testing.T) { testTransactionSender(t, client) },
 		},
+		"GetProof": {
+			func(t *testing.T) { testGetProof(t, client) },
+		},
 	}
 
 	t.Parallel()
@@ -338,6 +341,45 @@ func testHeader(t *testing.T, chain []*types.Block, client *rpc.Client) {
 				t.Fatalf("HeaderByNumber(%v)\n   = %v\nwant %v", tt.block, got, tt.want)
 			}
 		})
+	}
+}
+
+func testGetProof(t *testing.T, client *rpc.Client) {
+	ec := NewClient(client)
+	ctx := context.Background()
+
+	keys := []string{"0x00", "0x01"}
+	result, err := ec.GetProof(ctx, testAddr, keys, big.NewInt(0))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Address != testAddr {
+		t.Fatalf("unexpected address, want %v have %v", testAddr, result.Address)
+	}
+	if result.Balance.Cmp(testBalance) != 0 {
+		t.Fatalf("unexpected balance, want %v have %v", testBalance, result.Balance)
+	}
+	if len(result.AccountProof) == 0 {
+		t.Fatal("missing account proof")
+	}
+	if len(result.StorageProof) != len(keys) {
+		t.Fatalf("wrong number of storage proofs, want %d have %d", len(keys), len(result.StorageProof))
+	}
+	for i, proof := range result.StorageProof {
+		if proof.Key != keys[i] {
+			t.Fatalf("storage proof %d: wrong key, want %v have %v", i, keys[i], proof.Key)
+		}
+		if proof.Value.Sign() != 0 {
+			t.Fatalf("storage proof %d: unexpected value %v", i, proof.Value)
+		}
+	}
+	// Requesting more keys than allowed must be rejected up front.
+	tooMany := make([]string, 1025)
+	for i := range tooMany {
+		tooMany[i] = fmt.Sprintf("%#x", i)
+	}
+	if _, err := ec.GetProof(ctx, testAddr, tooMany, big.NewInt(0)); err == nil {
+		t.Fatal("expected error for too many storage keys")
 	}
 }
 
