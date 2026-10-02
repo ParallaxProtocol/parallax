@@ -23,6 +23,7 @@ import (
 	"io"
 	"math"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
 	godebug "runtime/debug"
@@ -1865,7 +1866,7 @@ func SetupMetrics(ctx *cli.Context) {
 		}
 
 		if ctx.GlobalIsSet(MetricsHTTPFlag.Name) {
-			address := fmt.Sprintf("%s:%d", ctx.GlobalString(MetricsHTTPFlag.Name), ctx.GlobalInt(MetricsPortFlag.Name))
+			address := net.JoinHostPort(ctx.GlobalString(MetricsHTTPFlag.Name), fmt.Sprintf("%d", ctx.GlobalInt(MetricsPortFlag.Name)))
 			logging.Info("Enabling stand-alone metrics HTTP endpoint", "address", address)
 			exp.Setup(address)
 		}
