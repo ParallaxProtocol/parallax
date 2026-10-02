@@ -312,7 +312,8 @@ func TestStressPoolEvictionUnderPressure(t *testing.T) {
 			e := min(s+stressEvictBatch, len(txs))
 			for i, err := range pool.AddRemotesSync(txs[s:e]) {
 				switch err {
-				case nil, ErrUnderpriced, ErrTxPoolOverflow:
+				case nil, ErrUnderpriced, ErrTxPoolOverflow, ErrFutureReplacePending:
+					// Gapped remote transactions may not evict pending ones
 				default:
 					t.Fatalf("wave %d: tx %d: unexpected add error: %v", wave, s+i, err)
 				}
