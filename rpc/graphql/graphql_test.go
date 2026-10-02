@@ -195,6 +195,38 @@ func TestGraphQLBlockSerializationEIP2718(t *testing.T) {
 	}
 }
 
+// Tests that fields which are resolved concurrently by the graphql library do
+// not race on the lazily loaded block and transaction data.
+func TestGraphQLConcurrentResolvers(t *testing.T) {
+	stack := createNode(t, true, true)
+	defer stack.Close()
+	if err := stack.Start(); err != nil {
+		t.Fatalf("could not start node: %v", err)
+	}
+	for i, query := range []string{
+		// Multiple txes race to get/set the block hash and receipts.
+		`{block { transactions { status gasUsed logs { index } } } }`,
+		// Multiple fields of a block race to resolve header and body.
+		`{block { number hash gasLimit ommerCount transactionCount totalDifficulty parent { number } } }`,
+		// Multiple fields of a tx race to resolve it.
+		`{block { transactions { block { number hash transactionCount } nonce value gasPrice index status } } }`,
+	} {
+		body := fmt.Sprintf(`{"query": %q}`, query)
+		resp, err := http.Post(fmt.Sprintf("%s/graphql", stack.HTTPEndpoint()), "application/json", strings.NewReader(body))
+		if err != nil {
+			t.Fatalf("could not post: %v", err)
+		}
+		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			t.Fatalf("could not read from response body: %v", err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("testcase %d: wrong status code %d, response %s", i, resp.StatusCode, bodyBytes)
+		}
+	}
+}
+
 // Tests that a graphQL request is not handled successfully when graphql is not enabled on the specified endpoint
 func TestGraphQLHTTPOnSamePort_GQLRequest_Unsuccessful(t *testing.T) {
 	stack := createNode(t, false, false)
