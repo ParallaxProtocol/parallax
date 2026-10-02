@@ -428,6 +428,25 @@ func decode(s string) []byte {
 	return bytes
 }
 
+// TestGenerateSharedInvalidPoint checks that ECDH refuses public keys that
+// are not on the curve, so they cannot be used for invalid-curve attacks.
+func TestGenerateSharedInvalidPoint(t *testing.T) {
+	prv, err := GenerateKey(rand.Reader, DefaultCurve, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalid := []*PublicKey{
+		{Curve: DefaultCurve, X: new(big.Int), Y: new(big.Int)},
+		{Curve: DefaultCurve, X: big.NewInt(1), Y: big.NewInt(1)},
+		{Curve: DefaultCurve, X: nil, Y: nil},
+	}
+	for i, pub := range invalid {
+		if _, err := prv.GenerateShared(pub, 16, 16); err != ErrInvalidPublicKey {
+			t.Errorf("key %d: expected ErrInvalidPublicKey, got %v", i, err)
+		}
+	}
+}
+
 // TestDecryptShortMessage checks that a ciphertext with a valid MAC but a
 // body shorter than the cipher block size (no room for the IV) is rejected
 // instead of crashing symDecrypt.
