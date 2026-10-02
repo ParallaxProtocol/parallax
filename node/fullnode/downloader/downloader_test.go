@@ -121,6 +121,7 @@ func (dl *downloadTester) newPeer(id string, version uint, blocks []*types.Block
 		id:              id,
 		chain:           newTestBlockchain(blocks),
 		withholdHeaders: make(map[util.Hash]struct{}),
+		dropped:         make(chan error, 1),
 	}
 	dl.peers[id] = peer
 
@@ -149,6 +150,9 @@ type downloadTesterPeer struct {
 	chain *validation.BlockChain
 
 	withholdHeaders map[util.Hash]struct{}
+	corruptBodies   bool // if set, the peer serves incorrect blocks
+
+	dropped chan error // signaled when res.Done receives an error
 }
 
 // Head constructs a function to retrieve a peer's current head hash
@@ -277,6 +281,11 @@ func (dlp *downloadTesterPeer) RequestBodies(hashes []util.Hash, sink chan *prl.
 	for i, body := range bodies {
 		txsHashes[i] = types.DeriveSha(types.Transactions(body.Transactions), hasher)
 	}
+	if dlp.corruptBodies {
+		for i := range txsHashes {
+			txsHashes[i] = util.Hash{0xff}
+		}
+	}
 	req := &prl.Request{
 		Peer: dlp.id,
 	}
@@ -285,10 +294,16 @@ func (dlp *downloadTesterPeer) RequestBodies(hashes []util.Hash, sink chan *prl.
 		Res:  (*prl.BlockBodiesPacket)(&bodies),
 		Meta: [][]util.Hash{txsHashes, uncleHashes},
 		Time: 1,
-		Done: make(chan error, 1), // Ignore the returned status
+		Done: make(chan error),
 	}
 	go func() {
 		sink <- res
+		if err := <-res.Done; err != nil {
+			select {
+			case dlp.dropped <- err:
+			default:
+			}
+		}
 	}()
 	return req, nil
 }
@@ -1460,4 +1475,30 @@ func testCheckpointEnforcement(t *testing.T, protocol uint, mode SyncMode) {
 	} else {
 		assertOwnChain(t, tester, len(chain.blocks))
 	}
+}
+
+// Tests that peers delivering block bodies not matching the requested headers
+// are reported to the dispatcher, so they get dropped.
+func TestInvalidBodyPeerDrop(t *testing.T) {
+	tester := newTester(t)
+	defer tester.terminate()
+
+	chain := testChainBase.shorten(blockCacheMaxItems - 15)
+	peer := tester.newPeer("corrupt", prl.Parallax66, chain.blocks[1:])
+	peer.corruptBodies = true
+
+	errc := make(chan error, 1)
+	go func() {
+		errc <- tester.downloader.synchronise("corrupt", chain.blocks[len(chain.blocks)-1].Hash(), nil, FullSync)
+	}()
+	select {
+	case err := <-peer.dropped:
+		if !errors.Is(err, errInvalidBody) {
+			t.Fatalf("unexpected drop reason: have %v, want %v", err, errInvalidBody)
+		}
+	case <-time.After(time.Minute):
+		t.Fatal("peer was not dropped")
+	}
+	tester.downloader.Cancel()
+	<-errc
 }
