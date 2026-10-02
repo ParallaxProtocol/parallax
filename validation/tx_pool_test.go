@@ -330,6 +330,31 @@ func TestTransactionNonceMax(t *testing.T) {
 	}
 }
 
+// Tests that replacing a pending transaction of an account without queued
+// transactions does not leave a dangling heartbeat behind.
+func TestTransactionPendingReplaceNoHeartbeat(t *testing.T) {
+	t.Parallel()
+
+	pool, key := setupTxPool()
+	defer pool.Stop()
+
+	from := crypto.PubkeyToAddress(key.PublicKey)
+	testAddBalance(pool, from, big.NewInt(1000000000))
+
+	if err := pool.addRemoteSync(pricedTransaction(0, 100000, big.NewInt(1), key)); err != nil {
+		t.Fatalf("failed to add transaction: %v", err)
+	}
+	if err := pool.addRemoteSync(pricedTransaction(0, 100000, big.NewInt(2), key)); err != nil {
+		t.Fatalf("failed to replace transaction: %v", err)
+	}
+	pool.mu.RLock()
+	_, ok := pool.beats[from]
+	pool.mu.RUnlock()
+	if ok {
+		t.Fatalf("heartbeat recorded for account without queued transactions")
+	}
+}
+
 func TestTransactionQueue(t *testing.T) {
 	t.Parallel()
 
