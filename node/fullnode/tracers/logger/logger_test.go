@@ -17,9 +17,11 @@
 package logger
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 	"testing"
 
 	"github.com/ParallaxProtocol/parallax/v2/kernel/chainparams"
@@ -72,6 +74,36 @@ func TestStoreCapture(t *testing.T) {
 	exp := util.BigToHash(big.NewInt(1))
 	if logger.storage[contract.Address()][index] != exp {
 		t.Errorf("expected %x, got %x", exp, logger.storage[contract.Address()][index])
+	}
+}
+
+// Tests that the JSON logger stops emitting step logs once the configured
+// limit is reached.
+func TestJSONLoggerLimit(t *testing.T) {
+	for _, tc := range []struct {
+		limit int
+		want  int // step lines + end line
+	}{
+		{0, 4},
+		{1, 2},
+		{2, 3},
+		{10, 4},
+	} {
+		var (
+			buf      bytes.Buffer
+			logger   = NewJSONLogger(&Config{Limit: tc.limit}, &buf)
+			env      = script.NewPVM(script.BlockContext{}, script.TxContext{}, &dummyStatedb{}, chainparams.TestChainConfig, script.Config{Debug: true, Tracer: logger})
+			contract = script.NewContract(&dummyContractRef{}, &dummyContractRef{}, new(big.Int), 100000)
+		)
+		contract.Code = []byte{byte(script.PUSH1), 0x1, byte(script.PUSH1), 0x0, byte(script.STOP)}
+		logger.CaptureStart(env, util.Address{}, contract.Address(), false, nil, 0, nil)
+		if _, err := env.Interpreter().Run(contract, []byte{}, false); err != nil {
+			t.Fatal(err)
+		}
+		logger.CaptureEnd(nil, 0, 0, nil)
+		if have := strings.Count(buf.String(), "\n"); have != tc.want {
+			t.Errorf("limit %d: have %d lines, want %d\n%s", tc.limit, have, tc.want, buf.String())
+		}
 	}
 }
 
