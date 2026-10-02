@@ -859,6 +859,36 @@ func TestTransactionFetcherDoSProtection(t *testing.T) {
 	})
 }
 
+// Tests that when an announcement overflows the per-peer limit, the allowed
+// part of it is kept rather than the overflowing part.
+func TestTransactionFetcherDoSProtectionOverflow(t *testing.T) {
+	var hashes []util.Hash
+	for i := 0; i < maxTxAnnounces+2; i++ {
+		hashes = append(hashes, util.Hash{0x03, byte(i / 256), byte(i % 256)})
+	}
+	testTransactionFetcherParallel(t, txFetcherTest{
+		init: func() *TxFetcher {
+			return NewTxFetcher(
+				func(util.Hash) bool { return false },
+				nil,
+				func(string, []util.Hash) error { return nil },
+			)
+		},
+		steps: []any{
+			// Fill the wait list up to one below the limit
+			doTxNotify{peer: "C", hashes: hashes[:maxTxAnnounces-1]},
+			isWaiting(map[string][]util.Hash{
+				"C": hashes[:maxTxAnnounces-1],
+			}),
+			// Announce three more, only one of which fits
+			doTxNotify{peer: "C", hashes: hashes[maxTxAnnounces-1 : maxTxAnnounces+2]},
+			isWaiting(map[string][]util.Hash{
+				"C": hashes[:maxTxAnnounces],
+			}),
+		},
+	})
+}
+
 // Tests that underpriced transactions don't get rescheduled after being rejected.
 func TestTransactionFetcherUnderpricedDedup(t *testing.T) {
 	testTransactionFetcherParallel(t, txFetcherTest{
