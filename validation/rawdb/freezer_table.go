@@ -563,21 +563,31 @@ func (t *freezerTable) Close() error {
 	defer t.lock.Unlock()
 
 	var errs []error
-	if err := t.index.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	t.index = nil
-
-	if err := t.meta.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	t.meta = nil
-
-	for _, f := range t.files {
-		if err := f.Close(); err != nil {
-			errs = append(errs, err)
+	doClose := func(f *os.File, sync bool, close bool) {
+		if sync && !t.readonly {
+			if err := f.Sync(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		if close {
+			if err := f.Close(); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
+	// Trying to fsync a file opened in rdonly causes "Access denied"
+	// error on Windows.
+	doClose(t.index, true, true)
+	doClose(t.meta, true, true)
+	// The preopened non-head data-files are all opened in readonly.
+	// The head is opened in rw-mode, so we sync it here - but since it's also
+	// part of t.files, it will be closed in the loop below.
+	doClose(t.head, true, false) // sync but do not close
+	for _, f := range t.files {
+		doClose(f, false, true) // close but do not sync
+	}
+	t.index = nil
+	t.meta = nil
 	t.head = nil
 
 	if errs != nil {
@@ -734,7 +744,7 @@ func (t *freezerTable) retrieveItems(start, count, maxBytes uint64) ([]byte, []i
 	defer t.lock.RUnlock()
 
 	// Ensure the table and the item are accessible
-	if t.index == nil || t.head == nil {
+	if t.index == nil || t.head == nil || t.meta == nil {
 		return nil, nil, errClosed
 	}
 	var (
@@ -883,6 +893,9 @@ func (t *freezerTable) advanceHead() error {
 func (t *freezerTable) Sync() error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
+	if t.index == nil || t.head == nil || t.meta == nil {
+		return errClosed
+	}
 	var err error
 
 	trackError := func(e error) {
