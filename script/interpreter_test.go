@@ -74,3 +74,14 @@ func TestLoopInterrupt(t *testing.T) {
 		}
 	}
 }
+
+// TestExtraEipsActivation checks that only successfully activated extra EIPs
+// are reported back in the interpreter config.
+func TestExtraEipsActivation(t *testing.T) {
+	statedb, _ := state.New(util.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()), nil)
+	pvm := NewPVM(BlockContext{}, TxContext{}, statedb, chainparams.AllXHashProtocolChanges, Config{ExtraEips: []int{1, 2, 3855}})
+
+	if have := pvm.interpreter.cfg.ExtraEips; len(have) != 1 || have[0] != 3855 {
+		t.Fatalf("activated extra eips mismatch: have %v, want [3855]", have)
+	}
+}

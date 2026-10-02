@@ -90,15 +90,18 @@ func NewPVMInterpreter(pvm *PVM, cfg Config) *PVMInterpreter {
 		default:
 			cfg.JumpTable = &frontierInstructionSet
 		}
-		for i, eip := range cfg.ExtraEips {
+		var extraEips []int
+		for _, eip := range cfg.ExtraEips {
 			copy := *cfg.JumpTable
 			if err := EnableEIP(eip, &copy); err != nil {
 				// Disable it, so caller can check if it's activated or not
-				cfg.ExtraEips = append(cfg.ExtraEips[:i], cfg.ExtraEips[i+1:]...)
 				logging.Error("EIP activation failed", "eip", eip, "error", err)
+			} else {
+				extraEips = append(extraEips, eip)
 			}
 			cfg.JumpTable = &copy
 		}
+		cfg.ExtraEips = extraEips
 	}
 
 	return &PVMInterpreter{
