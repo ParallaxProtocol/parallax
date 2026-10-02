@@ -286,6 +286,11 @@ func isBatch(raw json.RawMessage) bool {
 	return false
 }
 
+// isJSONNull reports whether the given JSON value is null.
+func isJSONNull(v json.RawMessage) bool {
+	return bytes.Equal(bytes.TrimSpace(v), []byte("null"))
+}
+
 // parsePositionalArguments tries to parse the given args to an array of values with the
 // given types. It returns the parsed values or an error when the args could not be
 // parsed. Missing optional arguments are returned as reflect.Zero values.
@@ -323,12 +328,16 @@ func parseArgumentArray(dec *json.Decoder, types []reflect.Type) ([]reflect.Valu
 		if i >= len(types) {
 			return args, fmt.Errorf("too many arguments, want at most %d", len(types))
 		}
-		argval := reflect.New(types[i])
-		if err := dec.Decode(argval.Interface()); err != nil {
+		var elem json.RawMessage
+		if err := dec.Decode(&elem); err != nil {
 			return args, fmt.Errorf("invalid argument %d: %v", i, err)
 		}
-		if argval.IsNil() && types[i].Kind() != reflect.Ptr {
+		if types[i].Kind() != reflect.Ptr && isJSONNull(elem) {
 			return args, fmt.Errorf("missing value for required argument %d", i)
+		}
+		argval := reflect.New(types[i])
+		if err := json.Unmarshal(elem, argval.Interface()); err != nil {
+			return args, fmt.Errorf("invalid argument %d: %v", i, err)
 		}
 		args = append(args, argval.Elem())
 	}
