@@ -210,7 +210,7 @@ func TestClientWebsocketLargeMessage(t *testing.T) {
 	defer srv.Stop()
 	defer httpsrv.Close()
 
-	respLength := wsMessageSizeLimit - 50
+	respLength := wsDefaultReadLimit - 50
 	srv.RegisterName("test", largeRespService{respLength})
 
 	c, err := DialWebsocket(context.Background(), wsURL, "")
