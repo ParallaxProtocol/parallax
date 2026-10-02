@@ -377,7 +377,7 @@ func TestJWT(t *testing.T) {
 		if err := wsRequest(t, wsUrl, "Authorization", token); err == nil {
 			t.Errorf("tc %d-ws, token '%v': expected not to allow,  got ok", i, token)
 		}
-		if resp := rpcRequest(t, htUrl, "Authorization", token); resp.StatusCode != 403 {
+		if resp := rpcRequest(t, htUrl, "Authorization", token); resp.StatusCode != http.StatusUnauthorized {
 			t.Errorf("tc %d-http, token '%v': expected not to allow,  got %v", i, token, resp.StatusCode)
 		}
 	}
