@@ -236,6 +236,18 @@ func TestFilters(t *testing.T) {
 		}
 	}
 
+	// Ranges exceeding the configured limit are rejected.
+	filter = NewRangeFilter(backend, 0, 10, nil, nil)
+	filter.rangeLimit = 5
+	if _, err := filter.Logs(context.Background()); err == nil {
+		t.Error("expected error for range exceeding the limit")
+	}
+	filter = NewRangeFilter(backend, 5, 10, []util.Address{addr}, nil)
+	filter.rangeLimit = 5
+	if _, err := filter.Logs(context.Background()); err != nil {
+		t.Error("unexpected error for range within the limit:", err)
+	}
+
 	// Special block numbers which cannot be resolved must not be treated as
 	// raw block numbers.
 	filter = NewRangeFilter(backend, rpc.FinalizedBlockNumber.Int64(), rpc.LatestBlockNumber.Int64(), nil, nil)

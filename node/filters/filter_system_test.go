@@ -166,7 +166,7 @@ func TestBlockSubscription(t *testing.T) {
 	var (
 		db          = rawdb.NewMemoryDatabase()
 		backend     = &testBackend{db: db}
-		api         = NewPublicFilterAPI(backend, false, deadline, 1000)
+		api         = NewPublicFilterAPI(backend, false, deadline, 1000, 0)
 		genesis     = (&validation.Genesis{BaseFee: big.NewInt(chainparams.InitialBaseFee)}).MustCommit(db)
 		chain, _    = validation.GenerateChain(chainparams.TestChainConfig, genesis, xhash.NewFaker(), db, 10, func(i int, gen *validation.BlockGen) {})
 		chainEvents = []validation.ChainEvent{}
@@ -218,7 +218,7 @@ func TestPendingTxFilter(t *testing.T) {
 	var (
 		db      = rawdb.NewMemoryDatabase()
 		backend = &testBackend{db: db}
-		api     = NewPublicFilterAPI(backend, false, deadline, 1000)
+		api     = NewPublicFilterAPI(backend, false, deadline, 1000, 0)
 
 		transactions = []*types.Transaction{
 			types.NewTransaction(0, util.HexToAddress("0xb794f5ea0ba39494ce83a213fffba74279579268"), new(big.Int), 0, new(big.Int), nil),
@@ -273,7 +273,7 @@ func TestLogFilterCreation(t *testing.T) {
 	var (
 		db      = rawdb.NewMemoryDatabase()
 		backend = &testBackend{db: db}
-		api     = NewPublicFilterAPI(backend, false, deadline, 1000)
+		api     = NewPublicFilterAPI(backend, false, deadline, 1000, 0)
 
 		testCases = []struct {
 			crit    FilterCriteria
@@ -322,7 +322,7 @@ func TestInvalidLogFilterCreation(t *testing.T) {
 	var (
 		db      = rawdb.NewMemoryDatabase()
 		backend = &testBackend{db: db}
-		api     = NewPublicFilterAPI(backend, false, deadline, 1000)
+		api     = NewPublicFilterAPI(backend, false, deadline, 1000, 0)
 	)
 
 	// different situations where log filter creation should fail.
@@ -347,7 +347,7 @@ func TestInvalidGetLogsRequest(t *testing.T) {
 	var (
 		db        = rawdb.NewMemoryDatabase()
 		backend   = &testBackend{db: db}
-		api       = NewPublicFilterAPI(backend, false, deadline, 1000)
+		api       = NewPublicFilterAPI(backend, false, deadline, 1000, 0)
 		blockHash = util.HexToHash("0x1111111111111111111111111111111111111111111111111111111111111111")
 	)
 
@@ -375,7 +375,7 @@ func TestLogFilter(t *testing.T) {
 	var (
 		db      = rawdb.NewMemoryDatabase()
 		backend = &testBackend{db: db}
-		api     = NewPublicFilterAPI(backend, false, deadline, 1000)
+		api     = NewPublicFilterAPI(backend, false, deadline, 1000, 0)
 
 		firstAddr      = util.HexToAddress("0x1111111111111111111111111111111111111111")
 		secondAddr     = util.HexToAddress("0x2222222222222222222222222222222222222222")
@@ -489,7 +489,7 @@ func TestPendingLogsSubscription(t *testing.T) {
 	var (
 		db      = rawdb.NewMemoryDatabase()
 		backend = &testBackend{db: db}
-		api     = NewPublicFilterAPI(backend, false, deadline, 1000)
+		api     = NewPublicFilterAPI(backend, false, deadline, 1000, 0)
 
 		firstAddr      = util.HexToAddress("0x1111111111111111111111111111111111111111")
 		secondAddr     = util.HexToAddress("0x2222222222222222222222222222222222222222")
@@ -673,7 +673,7 @@ func TestPendingTxFilterDeadlock(t *testing.T) {
 	var (
 		db      = rawdb.NewMemoryDatabase()
 		backend = &testBackend{db: db}
-		api     = NewPublicFilterAPI(backend, false, timeout, 1000)
+		api     = NewPublicFilterAPI(backend, false, timeout, 1000, 0)
 		done    = make(chan struct{})
 	)
 
