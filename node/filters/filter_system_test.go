@@ -295,6 +295,8 @@ func TestLogFilterCreation(t *testing.T) {
 			{FilterCriteria{FromBlock: big.NewInt(rpc.PendingBlockNumber.Int64()), ToBlock: big.NewInt(100)}, false},
 			// from block "higher" than to block
 			{FilterCriteria{FromBlock: big.NewInt(rpc.PendingBlockNumber.Int64()), ToBlock: big.NewInt(rpc.LatestBlockNumber.Int64())}, false},
+			// topics more than 4
+			{FilterCriteria{Topics: [][]util.Hash{{}, {}, {}, {}, {}}}, false},
 		}
 	)
 
@@ -329,6 +331,7 @@ func TestInvalidLogFilterCreation(t *testing.T) {
 		0: {FromBlock: big.NewInt(rpc.PendingBlockNumber.Int64()), ToBlock: big.NewInt(rpc.LatestBlockNumber.Int64())},
 		1: {FromBlock: big.NewInt(rpc.PendingBlockNumber.Int64()), ToBlock: big.NewInt(100)},
 		2: {FromBlock: big.NewInt(rpc.LatestBlockNumber.Int64()), ToBlock: big.NewInt(100)},
+		3: {Topics: [][]util.Hash{{}, {}, {}, {}, {}}},
 	}
 
 	for i, test := range testCases {
@@ -351,6 +354,7 @@ func TestInvalidGetLogsRequest(t *testing.T) {
 		0: {BlockHash: &blockHash, FromBlock: big.NewInt(100)},
 		1: {BlockHash: &blockHash, ToBlock: big.NewInt(500)},
 		2: {BlockHash: &blockHash, FromBlock: big.NewInt(rpc.LatestBlockNumber.Int64())},
+		3: {BlockHash: &blockHash, Topics: [][]util.Hash{{}, {}, {}, {}, {}}},
 	}
 
 	for i, test := range testCases {
