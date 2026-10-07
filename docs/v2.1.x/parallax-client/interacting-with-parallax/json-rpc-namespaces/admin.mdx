@@ -246,6 +246,8 @@ The peers administrative property can be queried for all the information known a
 | Console | admin.peers                              |
 | RPC     | \{method": "admin\_peers"\}              |
 
+`minPing` is the smallest ping/pong round-trip time observed with the peer during the current session, in seconds. It is omitted until the peer has answered its first ping.
+
 #### Example
 
 ```javascript
@@ -254,6 +256,7 @@ The peers administrative property can be queried for all the information known a
     caps: ["parallax/66", "snap/1"],
     enode: "enode://c8d58742fef51a70267a916949cefd0d7ba5bdb75393bbfcbcbc959b3eebf16353ac15d1f7493d749f7f452ff2bec894b8a8c469306e247d265f4f305c5740f7@69.62.94.166:32110",
     id: "2048d5ae22f7206bc8ad6476a2918bd7558776b0438e0cde4eb579d5d85d8886",
+    minPing: 0.142318,
     name: "Parallax/v0.1.1-stable-78d2f22b/linux-amd64/go1.25.1",
     network: {
       inbound: false,
@@ -276,6 +279,7 @@ The peers administrative property can be queried for all the information known a
     caps: ["parallax/66", "snap/1"],
     enode: "enode://d3440cdb8f942e1f01dac2292b7a8f886831800e301c41cf943a4ba4c68e37513920cd94c421fa5e073ed7329d9c3194e3911c857b9ded1677a5234441d9950d@54.94.191.104:32110",
     id: "4dd1f03a46b51083b7fa10bda14a92ddd0c1e80ec1ef3320c229a098e5f81865",
+    minPing: 0.198731,
     name: "Parallax/v0.1.1-stable-78d2f22b/linux-arm64/go1.25.1",
     network: {
       inbound: false,

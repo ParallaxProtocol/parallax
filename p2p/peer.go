@@ -912,6 +912,10 @@ type PeerInfo struct {
 		Trusted bool   `json:"trusted"`
 		Static  bool   `json:"static"`
 	} `json:"network"`
+	// MinPing is the smallest ping/pong RTT observed on this session,
+	// in seconds. Omitted until the first pong arrives. Core's
+	// getpeerinfo "minping" analog.
+	MinPing   float64        `json:"minPing,omitempty"`
 	Protocols map[string]any `json:"protocols"` // Sub-protocol specific metadata fields
 }
 
@@ -947,6 +951,7 @@ func (p *Peer) Info() *PeerInfo {
 	info.Network.Inbound = p.rw.is(inboundConn)
 	info.Network.Trusted = p.rw.is(trustedConn)
 	info.Network.Static = p.rw.is(staticDialedConn)
+	info.MinPing = p.MinPing().Seconds()
 	target := p.rw.dialTarget()
 	if target.Network != 0 {
 		info.Network.Address = target.String()
