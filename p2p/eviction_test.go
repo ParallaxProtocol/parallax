@@ -17,8 +17,10 @@
 package p2p
 
 import (
+	"encoding/json"
 	"net"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -712,5 +714,25 @@ func TestPostHandshakeChecksHardRejectsWhenEvictionFails(t *testing.T) {
 	err := srv.postHandshakeChecks(peers, srv.maxInboundConns(), 0, newConn)
 	if err != DiscTooManyPeers {
 		t.Fatalf("postHandshakeChecks = %v, want DiscTooManyPeers", err)
+	}
+}
+
+// TestPeerInfoMinPing checks that Info reports the session's minimum
+// ping RTT in seconds, and omits it before any pong has arrived.
+func TestPeerInfoMinPing(t *testing.T) {
+	silent := makeEvictionPeer(t, evictionOpts{})
+	if got := silent.Info().MinPing; got != 0 {
+		t.Fatalf("MinPing without samples = %v, want 0", got)
+	}
+	blob, err := json.Marshal(silent.Info())
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(blob), "minPing") {
+		t.Fatalf("minPing should be omitted without samples: %s", blob)
+	}
+	pinged := makeEvictionPeer(t, evictionOpts{minPing: int64(25 * time.Millisecond)})
+	if got := pinged.Info().MinPing; got != 0.025 {
+		t.Fatalf("MinPing = %v, want 0.025", got)
 	}
 }
