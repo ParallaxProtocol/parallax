@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	protocol "github.com/ParallaxProtocol/parallax/v2/node/fullnode"
 )
 
 func TestParseEthstatsURL(t *testing.T) {
@@ -100,3 +102,7 @@ func TestMedianMinPing(t *testing.T) {
 		}
 	}
 }
+
+// The full node API backend must satisfy fullNodeBackend, or reportStats
+// silently falls back to the reduced stats path.
+var _ fullNodeBackend = (*protocol.PrlAPIBackend)(nil)
