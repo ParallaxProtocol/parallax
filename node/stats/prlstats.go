@@ -25,6 +25,7 @@ import (
 	"math/big"
 	"net/http"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -753,6 +754,30 @@ type nodeStats struct {
 	Peers    int  `json:"peers"`
 	GasPrice int  `json:"gasPrice"`
 	Uptime   int  `json:"uptime"`
+	// PeerLatency is the median of the connected peers' minimum
+	// ping RTTs, in milliseconds. Zero when no peer has answered a
+	// ping yet.
+	PeerLatency int `json:"peerLatency"`
+}
+
+// medianMinPing returns the median of the non-zero minimum ping RTTs
+// in pings, or zero if none has been measured.
+func medianMinPing(pings []time.Duration) time.Duration {
+	measured := make([]time.Duration, 0, len(pings))
+	for _, ping := range pings {
+		if ping > 0 {
+			measured = append(measured, ping)
+		}
+	}
+	if len(measured) == 0 {
+		return 0
+	}
+	slices.Sort(measured)
+	mid := len(measured) / 2
+	if len(measured)%2 == 0 {
+		return (measured[mid-1] + measured[mid]) / 2
+	}
+	return measured[mid]
 }
 
 // reportStats retrieves various stats about the node at the networking and
@@ -783,6 +808,11 @@ func (s *Service) reportStats(conn *connWrapper) error {
 		sync := s.backend.SyncProgress()
 		syncing = s.backend.CurrentHeader().Number.Uint64() >= sync.HighestBlock
 	}
+	peers := s.server.Peers()
+	pings := make([]time.Duration, len(peers))
+	for i, peer := range peers {
+		pings[i] = peer.MinPing()
+	}
 	// Assemble the node stats and send it to the server
 	logging.Trace("Sending node details to prlstats")
 
@@ -792,10 +822,12 @@ func (s *Service) reportStats(conn *connWrapper) error {
 			Active:   true,
 			Mining:   mining,
 			Hashrate: hashrate,
-			Peers:    s.server.PeerCount(),
+			Peers:    len(peers),
 			GasPrice: gasprice,
 			Syncing:  syncing,
 			Uptime:   100,
+
+			PeerLatency: int(medianMinPing(pings).Milliseconds()),
 		},
 	}
 	report := map[string][]any{

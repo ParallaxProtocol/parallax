@@ -19,6 +19,7 @@ package stats
 import (
 	"strconv"
 	"testing"
+	"time"
 )
 
 func TestParseEthstatsURL(t *testing.T) {
@@ -77,6 +78,25 @@ func TestParseEthstatsURL(t *testing.T) {
 		}
 		if host != c.host {
 			t.Errorf("case=%d mismatch host value, got: %v ,want: %v", i, host, c.host)
+		}
+	}
+}
+
+func TestMedianMinPing(t *testing.T) {
+	ms := time.Millisecond
+	cases := []struct {
+		pings []time.Duration
+		want  time.Duration
+	}{
+		{nil, 0},
+		{[]time.Duration{0, 0}, 0},
+		{[]time.Duration{30 * ms}, 30 * ms},
+		{[]time.Duration{50 * ms, 0, 10 * ms, 30 * ms}, 30 * ms},
+		{[]time.Duration{40 * ms, 10 * ms, 0, 20 * ms, 30 * ms}, 25 * ms},
+	}
+	for i, c := range cases {
+		if got := medianMinPing(c.pings); got != c.want {
+			t.Errorf("case %d: medianMinPing(%v) = %v, want %v", i, c.pings, got, c.want)
 		}
 	}
 }
