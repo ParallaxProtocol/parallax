@@ -17,12 +17,19 @@
 package stats
 
 import (
+	"math/big"
 	"strconv"
 	"testing"
 	"time"
 
 	protocol "github.com/ParallaxProtocol/parallax/v2/node/fullnode"
+	"github.com/ParallaxProtocol/parallax/v2/primitives/types"
 )
+
+// The full node backend must keep satisfying fullNodeBackend: the reporter
+// detects full nodes by type assertion and would silently report as a
+// light node otherwise.
+var _ fullNodeBackend = (*protocol.PrlAPIBackend)(nil)
 
 func TestParseEthstatsURL(t *testing.T) {
 	cases := []struct {
@@ -106,3 +113,23 @@ func TestMedianMinPing(t *testing.T) {
 // The full node API backend must satisfy fullNodeBackend, or reportStats
 // silently falls back to the reduced stats path.
 var _ fullNodeBackend = (*protocol.PrlAPIBackend)(nil)
+
+func TestBlockFees(t *testing.T) {
+	tx := func(gasPrice int64) *types.Transaction {
+		return types.NewTx(&types.LegacyTx{Gas: 100000, GasPrice: big.NewInt(gasPrice)})
+	}
+	txs := types.Transactions{tx(1_000_000_000), tx(2_500_000_000), tx(0)}
+	receipts := types.Receipts{{GasUsed: 21000}, {GasUsed: 50000}, {GasUsed: 30000}}
+
+	want := big.NewInt(21000*1_000_000_000 + 50000*2_500_000_000)
+	if got := blockFees(txs, receipts); got == nil || got.Cmp(want) != 0 {
+		t.Errorf("fees: have %v, want %v", got, want)
+	}
+	if got := blockFees(types.Transactions{}, types.Receipts{}); got == nil || got.Sign() != 0 {
+		t.Errorf("empty block fees: have %v, want 0", got)
+	}
+	// Receipts that do not match the transactions give no figure, not 0
+	if got := blockFees(txs, receipts[:2]); got != nil {
+		t.Errorf("mismatched receipts: have %v, want nil", got)
+	}
+}

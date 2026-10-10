@@ -76,6 +76,7 @@ type fullNodeBackend interface {
 	backend
 	Miner() *miner.Miner
 	BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Block, error)
+	GetReceipts(ctx context.Context, hash util.Hash) (types.Receipts, error)
 	CurrentBlock() *types.Block
 	SuggestGasTipCap(ctx context.Context) (*big.Int, error)
 	Synced() bool
@@ -573,6 +574,10 @@ type blockStats struct {
 	TxHash     util.Hash    `json:"transactionsRoot"`
 	Root       util.Hash    `json:"stateRoot"`
 	Uncles     uncleStats   `json:"uncles"`
+	// Fees is the total transaction fees paid to the miner, in wei, as a
+	// decimal string so it survives JSON number precision. It is omitted
+	// when the receipts are not available (light nodes).
+	Fees string `json:"fees,omitempty"`
 }
 
 // txStats is the information to report about individual transactions.
@@ -618,6 +623,7 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		td     *big.Int
 		txs    []txStats
 		uncles []*types.Header
+		fees   string
 	)
 
 	// check if backend is a full node
@@ -632,6 +638,11 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		txs = make([]txStats, len(block.Transactions()))
 		for i, tx := range block.Transactions() {
 			txs[i].Hash = tx.Hash()
+		}
+		if receipts, err := fullBackend.GetReceipts(context.Background(), header.Hash()); err == nil {
+			if total := blockFees(block.Transactions(), receipts); total != nil {
+				fees = total.String()
+			}
 		}
 	} else {
 		// Light nodes would need on-demand lookups for transactions/uncles, skip
@@ -661,7 +672,26 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		TxHash:     header.TxHash,
 		Root:       header.Root,
 		Uncles:     uncles,
+		Fees:       fees,
 	}
+}
+
+// blockFees returns the transaction fees a block paid its miner: each
+// transaction's gas used times its gas price, as the state transition
+// credits the coinbase without a base fee. It returns nil when the receipts
+// do not match the transactions, so a missing figure is never reported as 0.
+func blockFees(txs types.Transactions, receipts types.Receipts) *big.Int {
+	if len(receipts) != len(txs) {
+		return nil
+	}
+	total := new(big.Int)
+	fee := new(big.Int)
+	for i, tx := range txs {
+		fee.SetUint64(receipts[i].GasUsed)
+		fee.Mul(fee, tx.GasPrice())
+		total.Add(total, fee)
+	}
+	return total
 }
 
 // reportHistory retrieves the most recent batch of blocks and reports it to the
