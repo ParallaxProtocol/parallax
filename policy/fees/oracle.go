@@ -70,6 +70,12 @@ const (
 
 	// OLDEST_ESTIMATE_HISTORY: max blocks of history before data is considered stale.
 	oldestEstimateHistory = 6 * 1008 // ~6 weeks
+
+	// uncongestedBlocks is how many recent blocks FloorWhenUncongested looks
+	// at, and uncongestedFullness the share of their gas limit they may use
+	// between them for block space to count as free.
+	uncongestedBlocks   = 12
+	uncongestedFullness = 0.5
 )
 
 var (
@@ -97,6 +103,16 @@ type Config struct {
 	// (spacing is always 1.05 per Bitcoin Core).
 	MinBucketFee *big.Int `toml:",omitempty"`
 	MaxBucketFee *big.Int `toml:",omitempty"`
+
+	// FloorWhenUncongested makes SuggestTipCap return the minimum price
+	// (Default) while recent blocks have plenty of room and the pending
+	// block does too, as any fee that clears the miners' minimum then
+	// confirms in the next block. Fee estimators learn only from the fees
+	// transactions actually pay, so on a quiet chain they cannot see that
+	// lower fees would also confirm, and keep recommending whatever the few
+	// senders paid, which, when those senders follow the recommendation,
+	// never comes down. Estimates resume as blocks fill.
+	FloorWhenUncongested bool `toml:",omitempty"`
 }
 
 // OracleBackend includes all necessary background APIs for oracle.
@@ -160,6 +176,8 @@ type Oracle struct {
 	txPool  TxPoolAccessor // may be nil
 
 	enableSmartFee bool
+	// floorWhenUncongested mirrors Config.FloorWhenUncongested.
+	floorWhenUncongested bool
 
 	// Common price bounds.
 	maxPrice     *big.Int
@@ -263,19 +281,20 @@ func NewOracle(backend OracleBackend, txPool TxPoolAccessor, params Config) *Ora
 
 	cache, _ := lru.New(2048)
 	oracle := &Oracle{
-		backend:          backend,
-		txPool:           txPool,
-		enableSmartFee:   params.EnableSmartFeeEstimator,
-		maxPrice:         maxPrice,
-		defaultPrice:     defaultPrice,
-		ignorePrice:      ignorePrice,
-		checkBlocks:      blocks,
-		percentile:       percent,
-		maxHeaderHistory: maxHeaderHistory,
-		maxBlockHistory:  maxBlockHistory,
-		historyCache:     cache,
-		lastPrice:        new(big.Int).Set(defaultPrice),
-		closeCh:          make(chan struct{}),
+		backend:              backend,
+		txPool:               txPool,
+		enableSmartFee:       params.EnableSmartFeeEstimator,
+		floorWhenUncongested: params.FloorWhenUncongested,
+		maxPrice:             maxPrice,
+		defaultPrice:         defaultPrice,
+		ignorePrice:          ignorePrice,
+		checkBlocks:          blocks,
+		percentile:           percent,
+		maxHeaderHistory:     maxHeaderHistory,
+		maxBlockHistory:      maxBlockHistory,
+		historyCache:         cache,
+		lastPrice:            new(big.Int).Set(defaultPrice),
+		closeCh:              make(chan struct{}),
 	}
 
 	if params.EnableSmartFeeEstimator {
@@ -1170,8 +1189,44 @@ func (oracle *Oracle) estimateSmartFeeBitcoin(ctx context.Context, confTarget in
 // =============================================================================
 //
 
+// blockSpaceFree reports whether the last uncongestedBlocks blocks used at
+// most uncongestedFullness of their combined gas limit and the pending block,
+// when there is one, is no fuller: then the next block has room for every
+// transaction waiting and a minimum-price transaction confirms in it.
+func (oracle *Oracle) blockSpaceFree(ctx context.Context) bool {
+	head, err := oracle.backend.HeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if err != nil || head == nil {
+		return false
+	}
+	var used, limit float64
+	for number, i := head.Number.Uint64(), 0; i < uncongestedBlocks; number, i = number-1, i+1 {
+		header, err := oracle.backend.HeaderByNumber(ctx, rpc.BlockNumber(number))
+		if err != nil || header == nil {
+			return false
+		}
+		used += float64(header.GasUsed)
+		limit += float64(header.GasLimit)
+		if number == 0 {
+			break
+		}
+	}
+	if limit == 0 || used > limit*uncongestedFullness {
+		return false
+	}
+	if pending, _ := oracle.backend.PendingBlockAndReceipts(); pending != nil && pending.GasLimit() > 0 {
+		if float64(pending.GasUsed()) > float64(pending.GasLimit())*uncongestedFullness {
+			return false
+		}
+	}
+	return true
+}
+
 // SuggestTipCap returns a tip cap so that newly created transactions have a
 // high chance of being included in the next few blocks.
+//
+// With FloorWhenUncongested, it first returns the minimum price while block
+// space is free (see blockSpaceFree): estimators cannot see that cheaper
+// transactions would confirm when nobody sends them.
 //
 // When EnableSmartFeeEstimator is false, uses the legacy percentile algorithm.
 // When true, uses the Bitcoin Core-style smart fee estimator with a 2-block
@@ -1180,6 +1235,9 @@ func (oracle *Oracle) estimateSmartFeeBitcoin(ctx context.Context, confTarget in
 // percentile oracle for a market-aware answer rather than returning the
 // configured minimum.
 func (oracle *Oracle) SuggestTipCap(ctx context.Context) (*big.Int, error) {
+	if oracle.floorWhenUncongested && oracle.blockSpaceFree(ctx) {
+		return new(big.Int).Set(oracle.defaultPrice), nil
+	}
 	if !oracle.enableSmartFee {
 		return oracle.suggestTipCapLegacy(ctx)
 	}

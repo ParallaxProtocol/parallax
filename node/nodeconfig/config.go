@@ -48,6 +48,7 @@ var FullNodeGPO = fees.Config{
 	MaxPrice:                fees.DefaultMaxPrice,
 	IgnorePrice:             fees.DefaultIgnorePrice,
 	EnableSmartFeeEstimator: true,
+	FloorWhenUncongested:    true,
 }
 
 // Note: The new Bitcoin Core-style fee estimation fields (NumBuckets, BucketMultiplier,
