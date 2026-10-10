@@ -100,6 +100,13 @@ func (b *testBackend) SubscribeChainHeadEvent(ch chan<- validation.ChainHeadEven
 func (b *testBackend) Synced() bool { return true }
 
 func newTestBackend(t *testing.T, londonBlock *big.Int, pending bool) *testBackend {
+	return newTestBackendWithGasLimit(t, londonBlock, pending, 0)
+}
+
+// newTestBackendWithGasLimit builds the test chain with a genesis gas limit,
+// or the default when zero. Each block holds one 21000 gas transfer, so a
+// small limit gives full blocks.
+func newTestBackendWithGasLimit(t *testing.T, londonBlock *big.Int, pending bool, gasLimit uint64) *testBackend {
 	var (
 		key, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 		addr   = crypto.PubkeyToAddress(key.PublicKey)
@@ -111,6 +118,9 @@ func newTestBackend(t *testing.T, londonBlock *big.Int, pending bool) *testBacke
 		signer = types.LatestSigner(gspec.Config)
 	)
 	config.LondonBlock = londonBlock
+	if gasLimit > 0 {
+		gspec.GasLimit = gasLimit
+	}
 	engine := xhash.NewFaker()
 	db := rawdb.NewMemoryDatabase()
 	genesis, err := gspec.Commit(db)
@@ -661,5 +671,81 @@ func TestCircularBuffer(t *testing.T) {
 	stats.removeTx(5, 20, bucketIdx, true)
 	if stats.oldUnconfTxs[bucketIdx] != 0 {
 		t.Errorf("oldUnconfTxs should be 0 after removeTx, got %d", stats.oldUnconfTxs[bucketIdx])
+	}
+}
+
+// floorConfig is the legacy oracle with FloorWhenUncongested, whose estimate
+// on the test chain (30 gwei) differs from the floor (1 gwei).
+func floorConfig() Config {
+	return Config{
+		Blocks:               3,
+		Percentile:           60,
+		Default:              big.NewInt(chainparams.GWei),
+		FloorWhenUncongested: true,
+	}
+}
+
+// TestSuggestTipCapFloorWhenUncongested checks that nearly empty blocks get
+// the minimum price instead of an estimate learned from what few
+// transactions paid.
+func TestSuggestTipCapFloorWhenUncongested(t *testing.T) {
+	backend := newTestBackend(t, nil, false)
+	oracle := NewOracle(backend, nil, floorConfig())
+	defer oracle.Close()
+
+	got, err := oracle.SuggestTipCap(context.Background())
+	if err != nil {
+		t.Fatalf("SuggestTipCap error: %v", err)
+	}
+	if want := big.NewInt(chainparams.GWei); got.Cmp(want) != 0 {
+		t.Fatalf("uncongested blocks: want the floor %v, got %v", want, got)
+	}
+}
+
+// TestSuggestTipCapEstimatesWhenCongested checks that blocks over half full
+// get the estimator's answer.
+func TestSuggestTipCapEstimatesWhenCongested(t *testing.T) {
+	// One 21000 gas transfer in a 30000 limit: 70% full
+	backend := newTestBackendWithGasLimit(t, nil, false, 30000)
+	oracle := NewOracle(backend, nil, floorConfig())
+	defer oracle.Close()
+
+	got, err := oracle.SuggestTipCap(context.Background())
+	if err != nil {
+		t.Fatalf("SuggestTipCap error: %v", err)
+	}
+	if want := big.NewInt(30 * chainparams.GWei); got.Cmp(want) != 0 {
+		t.Fatalf("congested blocks: want the estimate %v, got %v", want, got)
+	}
+}
+
+// fullPendingBackend reports quiet history but a full pending block, as when
+// a burst of transactions is waiting.
+type fullPendingBackend struct {
+	*testBackend
+	pending *types.Block
+}
+
+func (b *fullPendingBackend) PendingBlockAndReceipts() (*types.Block, types.Receipts) {
+	return b.pending, nil
+}
+
+// TestSuggestTipCapEstimatesWhenPendingIsFull checks that a full pending
+// block overrides quiet history, so a burst gets estimates at once.
+func TestSuggestTipCapEstimatesWhenPendingIsFull(t *testing.T) {
+	congested := newTestBackendWithGasLimit(t, nil, false, 30000)
+	backend := &fullPendingBackend{
+		testBackend: newTestBackend(t, nil, false),
+		pending:     congested.chain.GetBlockByNumber(testHead),
+	}
+	oracle := NewOracle(backend, nil, floorConfig())
+	defer oracle.Close()
+
+	got, err := oracle.SuggestTipCap(context.Background())
+	if err != nil {
+		t.Fatalf("SuggestTipCap error: %v", err)
+	}
+	if floor := big.NewInt(chainparams.GWei); got.Cmp(floor) == 0 {
+		t.Fatalf("full pending block: want an estimate above the floor, got %v", got)
 	}
 }
