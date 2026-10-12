@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -218,6 +219,20 @@ func New(node *node.Node, backend backend, engine kernel.Engine, url string) err
 	return nil
 }
 
+// dialHost is the websocket dialer's NetDialContext: it connects to the
+// stats server through the p2p server's proxy policy.
+func (s *Service) dialHost(ctx context.Context, network, addr string) (net.Conn, error) {
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
+	port, err := strconv.ParseUint(portStr, 10, 16)
+	if err != nil {
+		return nil, fmt.Errorf("invalid stats server port %q", portStr)
+	}
+	return s.server.DialHost(ctx, host, uint16(port))
+}
+
 // statsNameFile holds the generated stats name, in the instance directory.
 const statsNameFile = "prlstats_name"
 
@@ -343,7 +358,15 @@ func (s *Service) loop(chainHeadCh chan validation.ChainHeadEvent, txEventCh cha
 				conn *connWrapper
 				err  error
 			)
-			dialer := websocket.Dialer{HandshakeTimeout: 5 * time.Second}
+			// Dial through the p2p proxy policy: a direct connection
+			// would reveal the address of a node that reaches the
+			// network through --proxy or only over Tor. The timeout
+			// covers the whole dial, and a Tor circuit can take most of
+			// the proxy's own 20s negotiation budget.
+			dialer := websocket.Dialer{
+				HandshakeTimeout: 30 * time.Second,
+				NetDialContext:   s.dialHost,
+			}
 			header := make(http.Header)
 			header.Set("origin", "http://localhost")
 			for _, url := range urls {
@@ -353,6 +376,10 @@ func (s *Service) loop(chainHeadCh chan validation.ChainHeadEvent, txEventCh cha
 					conn = newConnectionWrapper(c)
 					break
 				}
+			}
+			if errors.Is(err, p2p.ErrHostHidden) {
+				logging.Error("Stats reporting disabled: the stats server would learn this node's address. Route clearnet through --proxy to report", "host", s.host)
+				return
 			}
 			if err != nil {
 				logging.Warn("Stats server unreachable", "err", err)

@@ -269,3 +269,78 @@ func TestConnectorDialerProxiesV1Dials(t *testing.T) {
 		t.Fatal("proxy never saw the v1 dial")
 	}
 }
+
+// TestDialHostViaProxy — under --proxy a service host (the stats
+// reporter's) goes through the proxy by name, so neither the
+// connection nor the DNS lookup reveals the node.
+func TestDialHostViaProxy(t *testing.T) {
+	proxy := startFakeSocksProxy(t)
+	pol, err := newNetPolicy(&Config{ProxyAddr: proxy.ln.Addr().String(), ProxyNoRandomize: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := &Server{}
+	srv.netpol.Store(pol)
+
+	conn, err := srv.DialHost(context.Background(), "status.parallaxprotocol.org", 443)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn.Close()
+	select {
+	case dest := <-proxy.destC:
+		if dest != "status.parallaxprotocol.org" {
+			t.Errorf("proxy saw target %q, want the hostname unresolved", dest)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("proxy never saw a CONNECT")
+	}
+}
+
+// TestDialHostOnionOnly — an onion-only node has no clearnet route
+// that keeps its address hidden, so a clearnet host is refused rather
+// than dialed directly; an onion host goes through the onion proxy.
+func TestDialHostOnionOnly(t *testing.T) {
+	proxy := startFakeSocksProxy(t)
+	pol, err := newNetPolicy(&Config{OnlyNet: []string{"onion"}, OnionProxyAddr: proxy.ln.Addr().String(), ProxyNoRandomize: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := &Server{}
+	srv.netpol.Store(pol)
+
+	if _, err := srv.DialHost(context.Background(), "status.parallaxprotocol.org", 443); !errors.Is(err, ErrHostHidden) {
+		t.Fatalf("clearnet host on an onion-only node: got %v, want ErrHostHidden", err)
+	}
+	const onion = "2gzyxa5ihm7nsggfxnu52rck2vv4rvmdlkiu3zzui5du4xyclen53wid.onion"
+	conn, err := srv.DialHost(context.Background(), onion, 80)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn.Close()
+	if dest := <-proxy.destC; dest != onion {
+		t.Errorf("proxy saw target %q, want %q", dest, onion)
+	}
+}
+
+// TestDialHostDirect — with no proxy configured the host is dialed
+// directly, as before.
+func TestDialHostDirect(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	pol, err := newNetPolicy(&Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := &Server{}
+	srv.netpol.Store(pol)
+
+	conn, err := srv.DialHost(context.Background(), "127.0.0.1", uint16(ln.Addr().(*net.TCPAddr).Port))
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn.Close()
+}

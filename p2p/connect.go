@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ParallaxProtocol/parallax/v2/p2p/addrman"
@@ -51,6 +53,12 @@ var (
 	errProxyDialFailed = errors.New("p2p: proxy connection failed")
 
 	errNoEndpoint = errors.New("p2p: address has no dialable endpoint")
+
+	// ErrHostHidden is returned by DialHost for a clearnet host when
+	// this node keeps its clearnet address hidden and has no proxy to
+	// reach the host through: a direct connection would reveal the
+	// address. It is a configuration state, not a transient failure.
+	ErrHostHidden = errors.New("p2p: clearnet is hidden and not proxied; refusing a direct connection")
 )
 
 // dialCountsAsFailure classifies a Connect error for addrman accounting:
@@ -184,6 +192,40 @@ func (srv *Server) NetworkReachable(net addrman.NetID) bool {
 // through a SOCKS5 proxy.
 func (srv *Server) networkProxied(net addrman.NetID) bool {
 	return srv.policy().proxyFor(net) != nil
+}
+
+// DialHost opens a TCP connection to host:port for a service outside
+// the p2p network, such as the stats reporter, under the same proxy
+// policy as peer dials, so such a service cannot reveal what the
+// policy hides:
+//
+//   - a .onion host goes through the onion proxy, and is unreachable
+//     without one;
+//   - under --proxy, any other host goes through the proxy by name, so
+//     neither the connection nor the DNS lookup leaves it (as the DNS
+//     seeds do);
+//   - a node whose clearnet is otherwise hidden (onion-only) refuses
+//     with ErrHostHidden;
+//   - otherwise the host is dialed directly.
+//
+// Before Start there is no policy yet, and the host is dialed directly.
+func (srv *Server) DialHost(ctx context.Context, host string, port uint16) (net.Conn, error) {
+	pol := srv.policy()
+	if strings.HasSuffix(strings.ToLower(host), ".onion") {
+		pr := pol.proxyFor(addrman.NetTorV3)
+		if pr == nil {
+			return nil, fmt.Errorf("%w: %s", errUnreachableNetwork, addrman.NetTorV3)
+		}
+		return pr.Dial(ctx, host, port)
+	}
+	if pr := pol.nameProxy(); pr != nil {
+		return pr.Dial(ctx, host, port)
+	}
+	if pol.clearnetHidden() {
+		return nil, ErrHostHidden
+	}
+	d := &net.Dialer{Timeout: defaultDialTimeout}
+	return d.DialContext(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(int(port))))
 }
 
 // dialConnector returns the Server's connector, falling back to a
