@@ -646,12 +646,15 @@ func (n *Node) setupAddrManAndDisc() error {
 	// discards the service and advertising must stop with it.
 	n.server.OnOnionService = backend.SetOnionService
 	n.server.OnOnionLost = backend.ClearOnionService
+	// A UPnP/NAT-PMP mapping is advertised until quorum forms and then
+	// supplies the quorum winner's external port; it never outranks
+	// the peer-voted address (see Quorum.SetMapped).
+	n.server.OnNATMapping = backend.SetNATMapping
 	// An operator-pinned external IP (--nat extip:<IP>) short-circuits
 	// quorum: the address is an operator statement, not a guess to be
 	// voted on, so self-advertisement must work even with zero inbound
-	// peers. UPnP/PMP resolutions stay quorum-driven — router answers
-	// are best-effort. Port 0 lets SelfEntry attach the live listen
-	// port at advertise time.
+	// peers. Port 0 lets SelfEntry attach the live listen port at
+	// advertise time.
 	if extip, ok := n.config.P2P.NAT.(nat.ExtIP); ok {
 		ip := net.IP(extip)
 		if v4 := ip.To4(); v4 != nil {

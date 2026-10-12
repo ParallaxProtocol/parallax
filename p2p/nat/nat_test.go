@@ -17,7 +17,9 @@
 package nat
 
 import (
+	"errors"
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -60,4 +62,47 @@ func TestAutoDiscRace(t *testing.T) {
 			}
 		}
 	}
+}
+
+// flakyMapper succeeds, then fails once, then succeeds again.
+type flakyMapper struct {
+	ExtIP
+	calls atomic.Int32
+}
+
+func (m *flakyMapper) AddMapping(protocol string, extport, intport int, name string, lifetime time.Duration) (uint16, error) {
+	if m.calls.Add(1) == 2 {
+		return 0, errors.New("SOAP timeout")
+	}
+	return uint16(extport), nil
+}
+
+// TestMapReportsLostMapping — a failed renewal reports port 0 so the
+// caller stops advertising a mapping the router may have dropped, and
+// the next successful renewal reports the port again.
+func TestMapReportsLostMapping(t *testing.T) {
+	prev := mapRefresh
+	mapRefresh = 5 * time.Millisecond
+	t.Cleanup(func() { mapRefresh = prev })
+
+	m := &flakyMapper{ExtIP: ExtIP{1, 2, 3, 4}}
+	quit := make(chan struct{})
+	ports := make(chan uint16, 8)
+	done := make(chan struct{})
+	go func() {
+		Map(m, quit, "tcp", 32110, 32110, "test", func(p uint16) { ports <- p })
+		close(done)
+	}()
+	for i, want := range []uint16{32110, 0, 32110} {
+		select {
+		case got := <-ports:
+			if got != want {
+				t.Fatalf("report %d: got port %d, want %d", i, got, want)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("report %d: timed out waiting for port %d", i, want)
+		}
+	}
+	close(quit)
+	<-done
 }

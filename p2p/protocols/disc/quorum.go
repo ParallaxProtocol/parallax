@@ -112,12 +112,24 @@ type Quorum struct {
 	// out anyway.
 	connected map[PeerKey]struct{}
 
-	// override* are set when the operator configured --nat extip:<IP>
-	// or UPnP/PMP resolved one. Short-circuits quorum entirely.
+	// override* are set when the operator configured --nat extip:<IP>.
+	// Short-circuits quorum entirely.
 	overrideNet     uint8
 	overrideAddr    []byte
 	overridePort    uint16
 	overrideWinning bool
+
+	// mapped* hold the external endpoint a UPnP/NAT-PMP gateway
+	// reported and forwards to us. Unlike the override it never beats
+	// the tally: it is the address advertised until quorum forms (a
+	// node behind NAT would otherwise announce nothing for its first
+	// minutes online, which is when its outbound sessions open), and it
+	// completes a quorum winner's missing port with the externally
+	// mapped one, which the listen port may not equal. Bitcoin Core
+	// did the same with its UPnP-discovered address (LOCAL_MAPPED).
+	mappedNet  uint8
+	mappedAddr []byte
+	mappedPort uint16
 }
 
 type reportEntry struct {
@@ -155,6 +167,21 @@ func (q *Quorum) SetOverride(net uint8, addr []byte, port uint16) {
 	q.overrideWinning = true
 }
 
+// SetMapped records the external endpoint a NAT gateway maps to us.
+// Pass net==0 or port==0 to clear it (the mapping lapsed or the
+// gateway's address is unusable).
+func (q *Quorum) SetMapped(net uint8, addr []byte, port uint16) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if net == 0 || len(addr) == 0 || port == 0 {
+		q.mappedNet, q.mappedAddr, q.mappedPort = 0, nil, 0
+		return
+	}
+	q.mappedNet = net
+	q.mappedAddr = append([]byte(nil), addr...)
+	q.mappedPort = port
+}
+
 // Report records a peer's YourAddr claim. group is the peer's network
 // group (passed in by the caller so Quorum doesn't depend on addrman's
 // grouping primitive). Returns the address and ok=true if this report
@@ -188,9 +215,9 @@ func (q *Quorum) Disconnect(peerKey PeerKey) {
 	}
 }
 
-// Winner returns the currently-agreed-upon external address, or ok=false
-// if no address has quorum. An operator override is always returned
-// first.
+// Winner returns the external address to advertise, or ok=false if
+// there is none. An operator override is always returned first, then
+// the address with quorum, then the gateway-mapped endpoint.
 func (q *Quorum) Winner() (net uint8, addr []byte, port uint16, ok bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -241,10 +268,19 @@ func (q *Quorum) Winner() (net uint8, addr []byte, port uint16, ok bool) {
 		}
 	}
 	if !found {
+		if q.mappedNet != 0 {
+			return q.mappedNet, append([]byte(nil), q.mappedAddr...), q.mappedPort, true
+		}
 		return 0, nil, 0, false
 	}
 	n, a := unpackReportedAddr(bestKey)
-	return n, append([]byte(nil), a...), q.portForLocked(bestKey), true
+	port = q.portForLocked(bestKey)
+	if port == 0 && n == q.mappedNet && bytes.Equal(a, q.mappedAddr) {
+		// No inbound peer has reported a port yet, but the gateway
+		// told us which external port it forwards for this address.
+		port = q.mappedPort
+	}
+	return n, append([]byte(nil), a...), port, true
 }
 
 // winnerLocked checks whether the specified address has quorum.

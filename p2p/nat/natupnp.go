@@ -105,7 +105,7 @@ func (n *upnp) ExternalIP() (addr net.IP, err error) {
 		logging.Warn("UPnP returned invalid external IP", "service", n.service, "response", ipString)
 		return nil, errors.New("bad IP in response")
 	}
-	logging.Info("UPnP external IP address", "service", n.service, "ip", ip)
+	logging.Debug("UPnP external IP address", "service", n.service, "ip", ip)
 	return ip, nil
 }
 
@@ -319,14 +319,15 @@ func ssdpDiscover() map[string]bool {
 	}
 	defer conn.Close()
 
-	// Resolve destinations: multicast + unicast gateway.
+	// Resolve destinations: multicast + unicast gateways.
 	multicast, _ := net.ResolveUDPAddr("udp4", ssdpMulticastAddr)
 	destinations := []*net.UDPAddr{multicast}
 
-	if gw := defaultGateway(); gw != nil {
-		unicast := &net.UDPAddr{IP: gw, Port: 1900}
-		destinations = append(destinations, unicast)
-		logging.Debug("UPnP SSDP: will search via multicast and unicast", "gateway", gw)
+	if gws := defaultGateways(); len(gws) > 0 {
+		for _, gw := range gws {
+			destinations = append(destinations, &net.UDPAddr{IP: gw, Port: 1900})
+		}
+		logging.Debug("UPnP SSDP: will search via multicast and unicast", "gateways", gws)
 	} else {
 		logging.Debug("UPnP SSDP: will search via multicast only (no gateway detected)")
 	}
@@ -381,10 +382,24 @@ func buildMSearchRequest(searchTarget string) []byte {
 		"\r\n")
 }
 
-// defaultGateway returns the IP of the default gateway by inspecting
-// network interfaces for private network addresses and assuming the
-// gateway is at x.x.x.1. This is a best-effort heuristic.
-func defaultGateway() net.IP {
+// defaultGateways returns the default gateways from the routing table,
+// falling back to guessGateway where the table can't be read.
+func defaultGateways() []net.IP {
+	if gws := routeGateways(); len(gws) > 0 {
+		return gws
+	}
+	if gw := guessGateway(); gw != nil {
+		return []net.IP{gw}
+	}
+	return nil
+}
+
+// guessGateway returns the likely IP of the default gateway by
+// inspecting network interfaces for private network addresses and
+// assuming the gateway is at x.x.x.1. This is a best-effort heuristic
+// for systems whose routing table routeGateways can't read; it misses
+// routers on any other address (commonly x.x.x.254).
+func guessGateway() net.IP {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil

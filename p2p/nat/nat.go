@@ -90,9 +90,15 @@ func Parse(spec string) (Interface, error) {
 	}
 }
 
-const (
-	mapTimeout = 10 * time.Minute
-)
+// mapTimeout is the lease requested for each mapping.
+const mapTimeout = 10 * time.Minute
+
+// mapRefresh is how often the mapping is renewed. Half the lease, so a
+// renewal that is slow or needs a retry still lands before the router
+// expires the entry; renewing exactly at the lease end left a window
+// every cycle in which the port was closed. A variable so tests can
+// shorten it.
+var mapRefresh = mapTimeout / 2
 
 // Map adds a port mapping on m and keeps it alive until c is closed.
 // This function is typically invoked in its own goroutine.
@@ -102,16 +108,25 @@ const (
 // initial mapping). This is required because IGDv2's AddAnyPortMapping and
 // the random-port retry path may assign an external port different from the
 // requested intport, and the caller needs to advertise the assigned port in
-// its node record so that remote peers can reach it.
+// its node record so that remote peers can reach it. When a renewal fails
+// after a mapping was established, onMapped is invoked with 0: the router
+// may already have dropped the entry, so the port must not be advertised
+// until a later renewal succeeds and reports it again.
 func Map(m Interface, c <-chan struct{}, protocol string, extport, intport int, name string, onMapped func(uint16)) {
 	logger := logging.New("proto", protocol, "extport", extport, "intport", intport, "interface", m)
-	refresh := time.NewTimer(mapTimeout)
-	var lastMapped uint16
+	refresh := time.NewTimer(mapRefresh)
+	var (
+		lastMapped uint16 // port currently reported to onMapped, 0 if none
+		deletePort uint16 // last port the router assigned, for the final delete
+	)
 	notify := func(p uint16) {
-		if p == 0 || p == lastMapped {
+		if p == lastMapped {
 			return
 		}
 		lastMapped = p
+		if p != 0 {
+			deletePort = p
+		}
 		if onMapped != nil {
 			onMapped(p)
 		}
@@ -121,7 +136,7 @@ func Map(m Interface, c <-chan struct{}, protocol string, extport, intport int, 
 		// Use the last successfully-mapped external port for the delete; if no
 		// mapping was ever established, fall back to the originally requested
 		// external port (DeleteMapping is harmless on a non-existent entry).
-		delPort := int(lastMapped)
+		delPort := int(deletePort)
 		if delPort == 0 {
 			delPort = extport
 		}
@@ -144,10 +159,11 @@ func Map(m Interface, c <-chan struct{}, protocol string, extport, intport int, 
 			logger.Debug("Refreshing port mapping")
 			if p, err := m.AddMapping(protocol, extport, intport, name, mapTimeout); err != nil {
 				logger.Warn("Couldn't refresh port mapping", "err", err)
+				notify(0)
 			} else {
 				notify(p)
 			}
-			refresh.Reset(mapTimeout)
+			refresh.Reset(mapRefresh)
 		}
 	}
 }
