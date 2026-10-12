@@ -18,7 +18,7 @@ Before you begin, make sure you have:
 - At least **2 GB of RAM** (4 GB recommended for mining)
 - At least 50 GB of space (SSD recommended, 100 GB for mining with DAG storage)
 - A stable internet connection
-- Open `32110` TCP & UDP ports in your router/firewall (recommended)
+- Port `32110` TCP & UDP allowed through your firewall (recommended — see [Accepting incoming connections](#accepting-incoming-connections))
 
 ---
 
@@ -66,10 +66,48 @@ Before you begin, make sure you have:
 
 ---
 
-## Optional Steps
+## Accepting incoming connections
 
-- If you want to help strengthen the network, you can open the peer-to-peer ports `32110 TCP & UDP` on your router/firewall so other nodes can connect to you.  
-- Don’t worry if you skip this step — your node will still work.
+Your node works without this, but it can only connect *out* to other nodes. Letting other nodes connect *in* gives you more peers and helps strengthen the network.
+
+Two things have to let the connection through: your **router** and your computer's **firewall**.
+
+### Router
+
+Most home routers need no setup. The client asks the router to forward port `32110` automatically (UPnP or NAT-PMP), and keeps the mapping alive while it runs. If that fails, the node log shows `Couldn't add port mapping`; in that case, enable UPnP in your router's settings, or forward `32110` TCP & UDP to your computer by hand.
+
+<Note>
+  Some internet providers share one public address between many customers (carrier-grade NAT). Incoming connections can't reach you then, whatever you configure. To check, compare the WAN address shown in your router with the address [ifconfig.me](https://ifconfig.me) shows — if they differ, you're behind carrier-grade NAT.
+</Note>
+
+### Firewall
+
+The router forwarding the port is not enough: your computer's own firewall must allow it too.
+
+- **Windows**: the first time `parallaxd` runs, Windows asks whether to allow it on the network. Tick **both** "Private networks" **and** "Public networks", then click **Allow access**. Windows treats most networks as *Public* by default, so allowing Private alone usually still blocks incoming connections.
+
+  If you already answered the prompt, open **Windows Security → Firewall & network protection → Allow an app through firewall**, click **Change settings**, and tick both columns for `parallaxd`. Or run this in a terminal opened as administrator:
+
+  ```powershell
+  netsh advfirewall firewall add rule name="Parallax P2P TCP" dir=in action=allow protocol=TCP localport=32110
+  netsh advfirewall firewall add rule name="Parallax P2P UDP" dir=in action=allow protocol=UDP localport=32110
+  ```
+
+  If you clicked **Cancel** on the prompt, Windows created a rule that *blocks* `parallaxd`, and block rules win over allow rules. Remove it in the "Allow an app through firewall" list, or under **Advanced settings → Inbound Rules**, before adding the rules above.
+
+- **macOS**: if the firewall is on, allow `parallaxd` when macOS asks whether it may accept incoming connections. To change it later: **System Settings → Network → Firewall → Options**.
+
+- **Linux**: most desktop distributions ship with the firewall off. If you use `ufw` or `firewalld`:
+
+  ```bash
+  sudo ufw allow 32110
+  # or
+  sudo firewall-cmd --permanent --add-port=32110/tcp --add-port=32110/udp && sudo firewall-cmd --reload
+  ```
+
+<Tip>
+  To confirm it works, check port `32110` with an online open-port checker while the node runs, or run `admin.peers` in the console: peers with `"inbound": true` connected to you.
+</Tip>
 
 ---
 
