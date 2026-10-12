@@ -387,3 +387,46 @@ func TestWinnerDeterministicAcrossMultipleQuorums(t *testing.T) {
 		}
 	}
 }
+
+// TestQuorumMappedFallback — the gateway-mapped endpoint is advertised
+// while no address has quorum, yields to the quorum winner once one
+// forms, and supplies that winner's missing port when the addresses
+// agree.
+func TestQuorumMappedFallback(t *testing.T) {
+	q := NewQuorum()
+	mapped := []byte{45, 236, 49, 58}
+	q.SetMapped(NetIPv4, mapped, 40123)
+
+	net, addr, port, ok := q.Winner()
+	if !ok || net != NetIPv4 || string(addr) != string(mapped) || port != 40123 {
+		t.Fatalf("before quorum: got (%d, %v, %d, %v), want the mapped endpoint", net, addr, port, ok)
+	}
+
+	// Quorum on the same address from outbound sessions (port 0):
+	// the mapped port completes it.
+	for i, g := range [][]byte{{1}, {2}, {3}} {
+		q.Report(PeerKey(rune('a'+i)), NetIPv4, mapped, 0, g)
+	}
+	if _, _, port, _ = q.Winner(); port != 40123 {
+		t.Fatalf("quorum on mapped address: port %d, want the mapped 40123", port)
+	}
+
+	// Quorum on a different address outranks the mapping, and its
+	// port is not borrowed from it.
+	q2 := NewQuorum()
+	q2.SetMapped(NetIPv4, mapped, 40123)
+	other := []byte{8, 8, 4, 4}
+	for i, g := range [][]byte{{1}, {2}, {3}} {
+		q2.Report(PeerKey(rune('a'+i)), NetIPv4, other, 0, g)
+	}
+	if _, addr, port, _ = q2.Winner(); string(addr) != string(other) || port != 0 {
+		t.Fatalf("quorum elsewhere: got (%v, %d), want (%v, 0)", addr, port, other)
+	}
+
+	// Clearing withdraws the fallback.
+	q.SetMapped(0, nil, 0)
+	q.Disconnect("a")
+	if _, _, _, ok = q.Winner(); ok {
+		t.Fatal("cleared mapping with no quorum still yields a winner")
+	}
+}

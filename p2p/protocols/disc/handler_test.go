@@ -19,6 +19,7 @@ package disc
 import (
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -1004,4 +1005,116 @@ func TestSelfAdvertisePassesListenPort(t *testing.T) {
 	if got != 32110 {
 		t.Fatalf("SelfEntry called with listenPort %d, want the local Hello's 32110", got)
 	}
+}
+
+// notifyingBackend is a testBackend whose self-address can change
+// mid-session, signalled the way AddrmanBackend signals it.
+type notifyingBackend struct {
+	testBackend
+	changedMu sync.Mutex
+	changed   chan struct{}
+}
+
+func newNotifyingBackend() *notifyingBackend {
+	return &notifyingBackend{
+		testBackend: testBackend{localHello: Hello{ProtoVersion: HelloMinProtoVersion, ListenPort: 32110, Services: ServiceNodeNetwork}},
+		changed:     make(chan struct{}),
+	}
+}
+
+func (b *notifyingBackend) SelfEntriesChanged() <-chan struct{} {
+	b.changedMu.Lock()
+	defer b.changedMu.Unlock()
+	return b.changed
+}
+
+func (b *notifyingBackend) setSelf(e *PeerEntry) {
+	b.mu.Lock()
+	b.self = e
+	b.mu.Unlock()
+	b.changedMu.Lock()
+	close(b.changed)
+	b.changed = make(chan struct{})
+	b.changedMu.Unlock()
+}
+
+// readSelfAdvert reads the next message and asserts it is a Peers
+// message announcing exactly want, failing if none arrives in time.
+func readSelfAdvert(t *testing.T, rw p2p.MsgReader, want PeerEntry) {
+	t.Helper()
+	type result struct {
+		p   Peers
+		err error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		msg, err := rw.ReadMsg()
+		if err != nil {
+			ch <- result{err: err}
+			return
+		}
+		if msg.Code != PeersMsg {
+			msg.Discard()
+			ch <- result{err: fmt.Errorf("got msg 0x%02x, want Peers", msg.Code)}
+			return
+		}
+		var p Peers
+		err = msg.Decode(&p)
+		ch <- result{p: p, err: err}
+	}()
+	var p Peers
+	select {
+	case r := <-ch:
+		if r.err != nil {
+			t.Fatalf("reading self-advertisement: %v", r.err)
+		}
+		p = r.p
+	case <-time.After(2 * time.Second):
+		t.Fatalf("no self-advertisement of %+v within 2s", want)
+	}
+	if len(p.Entries) != 1 || p.Entries[0].TCPPort != want.TCPPort || string(p.Entries[0].Addr) != string(want.Addr) {
+		t.Fatalf("got entries %+v, want [%+v]", p.Entries, want)
+	}
+}
+
+// TestSelfAdvertiseAfterAddressLearned — an outbound session that
+// opened before our address was known must announce it once it
+// becomes known, re-announce it when it changes, and stay quiet when
+// a notification leaves it unchanged. Sending only at session start
+// meant a node behind NAT, whose sessions all open at startup before
+// quorum forms, never announced its address.
+func TestSelfAdvertiseAfterAddressLearned(t *testing.T) {
+	b := newNotifyingBackend()
+	app, _ := runHandler(t, b)
+	drainGreeting(t, app) // no self-entry yet: Hello, YourAddr, GetPeers
+
+	first := PeerEntry{NetworkID: NetIPv4, Addr: []byte{1, 2, 3, 4}, TCPPort: 32110}
+	b.setSelf(&first)
+	readSelfAdvert(t, app, first)
+
+	// Unchanged: nothing may be written. The next message must be the
+	// changed entry below, not a repeat of first.
+	b.setSelf(&first)
+	second := PeerEntry{NetworkID: NetIPv4, Addr: []byte{1, 2, 3, 4}, TCPPort: 40000}
+	b.setSelf(&second)
+	readSelfAdvert(t, app, second)
+}
+
+// TestSelfAdvertiseRebroadcast — the self-entry is re-sent on the
+// Poisson rebroadcast timer even when unchanged (Core's MaybeSendAddr).
+func TestSelfAdvertiseRebroadcast(t *testing.T) {
+	prev := time.Duration(selfAdvertiseInterval.Load())
+	SetSelfAdvertiseInterval(10 * time.Millisecond)
+	t.Cleanup(func() { SetSelfAdvertiseInterval(prev) })
+
+	b := newNotifyingBackend()
+	self := PeerEntry{NetworkID: NetIPv4, Addr: []byte{1, 2, 3, 4}, TCPPort: 32110}
+	b.self = &self
+	app, _ := runHandler(t, b)
+	drainOne(t, app) // Hello
+	drainOne(t, app) // YourAddr
+	readSelfAdvert(t, app, self)
+	drainOne(t, app) // GetPeers
+	readSelfAdvert(t, app, self)
+	readSelfAdvert(t, app, self)
 }

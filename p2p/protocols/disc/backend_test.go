@@ -1166,3 +1166,45 @@ func TestSelfEntryPortFallback(t *testing.T) {
 		t.Fatalf("ported override: entry = %+v ok = %v, want TCPPort 4444", e, ok)
 	}
 }
+
+// TestSetNATMappingIgnoresUnroutable — a gateway that is itself behind
+// NAT reports a private WAN address; advertising it would hand peers
+// an unreachable endpoint, so it must not become our self-entry.
+func TestSetNATMappingIgnoresUnroutable(t *testing.T) {
+	m, err := addrman.New(addrman.Deterministic(11))
+	if err != nil {
+		t.Fatalf("addrman.New: %v", err)
+	}
+	b := NewAddrmanBackend(m, nil, nil, nil, nil)
+
+	changed := b.SelfEntriesChanged()
+	b.SetNATMapping(mustNetAddr(t, []byte{100, 64, 0, 7}, 32110))
+	select {
+	case <-changed:
+	default:
+		t.Fatal("SetNATMapping did not signal a self-entry change")
+	}
+	if e, ok := b.SelfEntry(32110); ok {
+		t.Fatalf("CGNAT gateway address advertised: %+v", e)
+	}
+
+	b.SetNATMapping(mustNetAddr(t, []byte{45, 236, 49, 58}, 40123))
+	e, ok := b.SelfEntry(32110)
+	if !ok || string(e.Addr) != string([]byte{45, 236, 49, 58}) || e.TCPPort != 40123 {
+		t.Fatalf("got (%+v, %v), want the mapped 45.236.49.58:40123", e, ok)
+	}
+
+	b.SetNATMapping(addrman.NetAddr{})
+	if _, ok := b.SelfEntry(32110); ok {
+		t.Fatal("cleared mapping still advertised")
+	}
+}
+
+func mustNetAddr(t *testing.T, ip []byte, port uint16) addrman.NetAddr {
+	t.Helper()
+	a, err := addrman.NewNetAddr(addrman.NetIPv4, ip, port)
+	if err != nil {
+		t.Fatalf("NewNetAddr: %v", err)
+	}
+	return a
+}

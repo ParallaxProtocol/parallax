@@ -92,6 +92,14 @@ type AddrmanBackend struct {
 	onionSelf    addrman.NetAddr
 	onionSelfSet bool
 
+	// selfChanged is closed and replaced whenever an input to
+	// SelfEntries may have changed (a YourAddr report, the NAT
+	// mapping, the onion service), waking every outbound session's
+	// self-advertise loop to re-check what it last announced. Guarded
+	// by selfChangedMu.
+	selfChangedMu sync.Mutex
+	selfChanged   chan struct{}
+
 	mu          sync.Mutex
 	peerBuckets map[PeerKey]*tokenBucket
 	// handshakeByID maps peer enode IDs to the human-readable
@@ -164,6 +172,7 @@ func NewAddrmanBackend(m *addrman.AddrMan, q *Quorum, log logging.Logger, isSelf
 		peerOutboxes:    make(map[PeerKey]*peerRelayState),
 		getPeersPending: make(map[PeerKey]bool),
 		peersReply:      make(map[uint8]peersReplyCache),
+		selfChanged:     make(chan struct{}),
 	}
 	if _, err := rand.Read(b.relayKey[:]); err != nil {
 		// crypto/rand failures are catastrophic (see crypto.io's
@@ -281,6 +290,39 @@ func (b *AddrmanBackend) HandleYourAddr(peer *p2p.Peer, net uint8, addr []byte, 
 		port = 0
 	}
 	b.Q.Report(peerKeyFor(peer), net, addr, port, group)
+	b.notifySelfChanged()
+}
+
+// SelfEntriesChanged returns a channel that is closed the next time an
+// input to SelfEntries may change. Callers fetch a fresh channel after
+// each wake-up, and fetch it before reading SelfEntries so a change
+// landing in between is not missed.
+func (b *AddrmanBackend) SelfEntriesChanged() <-chan struct{} {
+	b.selfChangedMu.Lock()
+	defer b.selfChangedMu.Unlock()
+	return b.selfChanged
+}
+
+func (b *AddrmanBackend) notifySelfChanged() {
+	b.selfChangedMu.Lock()
+	close(b.selfChanged)
+	b.selfChanged = make(chan struct{})
+	b.selfChangedMu.Unlock()
+}
+
+// SetNATMapping records the external endpoint our NAT gateway
+// (UPnP/NAT-PMP) forwards to the listener, or clears it when addr is
+// the zero value. Addresses that aren't publicly routable — a gateway
+// that is itself behind NAT or CGNAT reports its private WAN address
+// — are treated as cleared: advertising them would only hand peers an
+// endpoint they can't reach.
+func (b *AddrmanBackend) SetNATMapping(addr addrman.NetAddr) {
+	if (addr.Network == addrman.NetIPv4 || addr.Network == addrman.NetIPv6) && addr.Valid() {
+		b.Q.SetMapped(uint8(addr.Network), addr.Bytes(), addr.Port)
+	} else {
+		b.Q.SetMapped(0, nil, 0)
+	}
+	b.notifySelfChanged()
 }
 
 // ancientLastSeen is the garbage-timestamp sentinel threshold: any
@@ -520,7 +562,7 @@ func (b *AddrmanBackend) SamplePeers(peer *p2p.Peer, max int) []PeerEntry {
 
 // SelfEntry returns the PeerEntry we should advertise to newly-connected
 // outbound peers (Bitcoin's addr(self) + getaddr sequence). Empty if no
-// self-address has quorum or an override, or if --onlynet excludes the
+// self-address has quorum, an override or a NAT mapping, or if --onlynet excludes the
 // winner's network — Core's AddLocal refuses addresses on unreachable
 // networks (net.cpp), so an --onlynet=onion node never advertises its
 // IP. Called by handler.Run on outbound sessions.
@@ -557,6 +599,7 @@ func (b *AddrmanBackend) SetOnionService(addr addrman.NetAddr) {
 	b.onionSelfMu.Lock()
 	b.onionSelf, b.onionSelfSet = addr, addr.Network == addrman.NetTorV3
 	b.onionSelfMu.Unlock()
+	b.notifySelfChanged()
 }
 
 // ClearOnionService stops advertising the onion address — the control
@@ -565,6 +608,7 @@ func (b *AddrmanBackend) ClearOnionService() {
 	b.onionSelfMu.Lock()
 	b.onionSelf, b.onionSelfSet = addrman.NetAddr{}, false
 	b.onionSelfMu.Unlock()
+	b.notifySelfChanged()
 }
 
 // onionSelfEntry renders the onion service as a PeerEntry, ok=false

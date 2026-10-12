@@ -17,6 +17,7 @@
 package disc
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math"
@@ -169,12 +170,37 @@ func Run(backend Backend, peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	// addr or addr_v2 relay). Self-advertise leaks our endpoint to
 	// a peer that won't gossip it; GetPeers solicits gossip from a
 	// peer we shouldn't accept gossip from.
+	//
+	// Our self-address is often unknown when an outbound session
+	// opens — at startup every session opens before the quorum forms —
+	// so the advertisement is repeated for the life of the session:
+	// whenever the address changes, and on Core's ~24h rebroadcast
+	// cadence. Sending it only at session start left a node behind
+	// NAT, whose outbound sessions are long-lived, effectively never
+	// announced, so peers never learned to dial its open port.
 	if !peer.Inbound() && !peer.BlockRelayOnly() {
-		if err := sendSelfAdvertise(backend, peer, rw); err != nil {
+		var changed <-chan struct{}
+		notifier, canNotify := backend.(selfEntriesNotifier)
+		if canNotify {
+			changed = notifier.SelfEntriesChanged()
+		}
+		announced, err := sendSelfAdvertise(backend, peer, rw, st, nil)
+		if err != nil {
 			log.Debug("parallax-disc/1: self-advertise send failed", "err", err)
 		}
 		if err := RequestPeers(backend, peer, st, rw); err != nil {
 			log.Debug("parallax-disc/1: GetPeers send failed", "err", err)
+		}
+		if canNotify {
+			advStop, advDone := make(chan struct{}), make(chan struct{})
+			go func() {
+				defer close(advDone)
+				runSelfAdvertise(backend, notifier, peer, rw, st, announced, changed, advStop, log)
+			}()
+			defer func() {
+				close(advStop)
+				<-advDone
+			}()
 		}
 	}
 
@@ -299,22 +325,105 @@ func runRelayDrain(peer *p2p.Peer, rw p2p.MsgReadWriter, st *state, outbox <-cha
 	}
 }
 
+// selfEntriesNotifier is implemented by backends that signal changes
+// to their self-address set (AddrmanBackend). Backends without it get
+// the session-start advertisement only.
+type selfEntriesNotifier interface {
+	SelfEntriesChanged() <-chan struct{}
+}
+
+// selfAdvertiseInterval is the mean (in nanoseconds) of the Poisson
+// delay between unconditional re-advertisements of our address on a
+// session. Atomic so tests can shorten it. Production value matches
+// Bitcoin Core's AVG_LOCAL_ADDRESS_BROADCAST_INTERVAL.
+var selfAdvertiseInterval atomic.Int64
+
+func init() { selfAdvertiseInterval.Store(int64(24 * time.Hour)) }
+
+// SetSelfAdvertiseInterval overrides the mean re-advertisement
+// interval. Exposed for tests.
+func SetSelfAdvertiseInterval(d time.Duration) { selfAdvertiseInterval.Store(int64(d)) }
+
+// runSelfAdvertise keeps an outbound session's view of our address
+// current. It re-sends our self-entries when they change from what was
+// last announced on the session (announced, as returned by
+// sendSelfAdvertise), and unconditionally on a Poisson timer so peers
+// that dropped the entry relearn it — Bitcoin Core's MaybeSendAddr
+// rebroadcast. Returns when stop is closed or a write fails.
+func runSelfAdvertise(backend Backend, notifier selfEntriesNotifier, peer *p2p.Peer, rw p2p.MsgReadWriter, st *state, announced [][]byte, changed <-chan struct{}, stop <-chan struct{}, log logging.Logger) {
+	rebroadcast := time.NewTimer(poissonDelay(time.Duration(selfAdvertiseInterval.Load())))
+	defer rebroadcast.Stop()
+	for {
+		force := false
+		select {
+		case <-stop:
+			return
+		case <-changed:
+		case <-rebroadcast.C:
+			force = true
+			rebroadcast.Reset(poissonDelay(time.Duration(selfAdvertiseInterval.Load())))
+		}
+		// Re-arm before reading the entries, so a change landing
+		// between the read and the next select still wakes us.
+		changed = notifier.SelfEntriesChanged()
+		last := announced
+		if force {
+			last = nil
+		}
+		var err error
+		if announced, err = sendSelfAdvertise(backend, peer, rw, st, last); err != nil {
+			log.Trace("parallax-disc/1: self-advertise write failed; ending loop", "peer", peer.ID(), "err", err)
+			return
+		}
+	}
+}
+
 // sendSelfAdvertise writes a Peers message containing our current
 // self-address claims to an outbound peer. Mirrors Bitcoin's
 // addr(self) sequence on outbound-full-relay peers, extended
 // per-network by PIP-0007 §3.3 (at most two entries: IP and onion).
 // Skipped silently if no self-address is available (no quorum, no
-// override, no onion service). The local listen port is passed so
-// SelfEntries can complete a port-less quorum winner (e.g. a --nat
-// extip override without a port): advertising TCPPort 0 would fail
-// Validate() on every receiver and get this node discouraged on
-// sight.
-func sendSelfAdvertise(backend Backend, peer *p2p.Peer, rw p2p.MsgReadWriter) error {
+// mapping, no override, no onion service), or if the entries equal
+// last, the keys this session was last sent (nil forces a send). The
+// local listen port is passed so SelfEntries can complete a port-less
+// quorum winner (e.g. a --nat extip override without a port):
+// advertising TCPPort 0 would fail Validate() on every receiver and
+// get this node discouraged on sight.
+//
+// Returns the address keys now announced on the session: the entries
+// sent, last when the send was skipped as unchanged, or nil when there
+// is nothing to advertise.
+func sendSelfAdvertise(backend Backend, peer *p2p.Peer, rw p2p.MsgReadWriter, st *state, last [][]byte) ([][]byte, error) {
 	entries := backend.SelfEntries(peer, backend.LocalHello().ListenPort)
 	if len(entries) == 0 {
-		return nil
+		return nil, nil
 	}
-	return p2p.Send(rw, PeersMsg, Peers{Entries: entries})
+	keys := make([][]byte, len(entries))
+	for i, e := range entries {
+		keys[i] = addressKey(e.NetworkID, e.Addr, e.TCPPort)
+	}
+	if last != nil && sameKeys(keys, last) {
+		return last, nil
+	}
+	if err := p2p.Send(rw, PeersMsg, Peers{Entries: entries}); err != nil {
+		return last, err
+	}
+	for _, k := range keys {
+		st.knownAddr.Add(k)
+	}
+	return keys, nil
+}
+
+func sameKeys(a, b [][]byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !bytes.Equal(a[i], b[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // handleOne reads and dispatches one inbound message. Returns on read

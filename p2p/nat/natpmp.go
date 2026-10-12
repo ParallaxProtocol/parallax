@@ -105,9 +105,22 @@ var (
 	_, lan192, _ = net.ParseCIDR("192.168.0.0/16")
 )
 
-// TODO: improve this. We currently assume that (on most networks)
-// the router is X.X.X.1 in a local LAN range.
-func potentialGateways() (gws []net.IP) {
+// potentialGateways returns the NAT-PMP candidates: the default
+// gateways from the routing table first, then a guess of X.X.X.1 on
+// every private interface for systems whose table can't be read or
+// whose router isn't the default route.
+func potentialGateways() []net.IP {
+	gws := routeGateways()
+	for _, gw := range guessedGateways() {
+		if !containsIP(gws, gw) {
+			gws = append(gws, gw)
+		}
+	}
+	return gws
+}
+
+// guessedGateways assumes the router is X.X.X.1 in each local LAN range.
+func guessedGateways() (gws []net.IP) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil

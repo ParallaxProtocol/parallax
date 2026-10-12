@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -260,6 +261,14 @@ type Config struct {
 	OnOnionService func(addrman.NetAddr) `toml:"-"`
 	OnOnionLost    func()                `toml:"-"`
 
+	// OnNATMapping notifies the wiring layer (the disc backend) of the
+	// external TCP endpoint a UPnP/NAT-PMP gateway forwards to our
+	// listener, whenever its address or mapped port changes. Called
+	// with the zero NetAddr when the endpoint becomes unknown (the
+	// mapping lapsed). Not called for --nat extip, which the wiring
+	// layer handles as an operator override. Optional.
+	OnNATMapping func(addrman.NetAddr) `toml:"-"`
+
 	// If NoDial is true, the server will not dial any peers.
 	NoDial bool `toml:",omitempty"`
 
@@ -402,6 +411,15 @@ type Server struct {
 	onionSelfMu  sync.Mutex
 	onionSelf    addrman.NetAddr
 	onionSelfSet bool
+
+	// natIP / natTCPPort are the gateway's external address and the
+	// external port it maps to our TCP listener, as last reported by
+	// the NAT mechanism; zero while unknown. Combined into the
+	// OnNATMapping endpoint by setNATEndpoint.
+	natMu      sync.Mutex
+	natIP      net.IP
+	natTCPPort uint16
+	natLast    addrman.NetAddr
 
 	nodedb    *enode.DB
 	localnode *enode.LocalNode
@@ -1176,15 +1194,82 @@ func (srv *Server) setupLocalNode() error {
 		srv.loopWG.Add(1)
 		go func() {
 			defer srv.loopWG.Done()
-			if ip, err := srv.NAT.ExternalIP(); err == nil {
-				srv.log.Info("NAT external IP discovered", "ip", ip)
-				srv.localnode.SetStaticIP(ip)
-			} else {
-				srv.log.Warn("NAT external IP discovery failed", "err", err)
-			}
+			srv.natExternalIPLoop()
 		}()
 	}
 	return nil
+}
+
+// natIPRefreshInterval is how often the gateway is re-asked for its
+// external address. Residential WAN addresses change (PPPoE reconnects,
+// DHCP lease turnover), and an advertisement of the old one sends every
+// peer to a dead endpoint until the quorum catches up.
+const natIPRefreshInterval = 5 * time.Minute
+
+// natExternalIPLoop asks the NAT gateway for its external address at
+// startup and every natIPRefreshInterval, publishing changes to the
+// local node record and the OnNATMapping hook. A failed query keeps the
+// last known address: gateways drop the odd SOAP request, and a mapping
+// that genuinely lapsed is withdrawn through the port mapping instead.
+func (srv *Server) natExternalIPLoop() {
+	var (
+		last   net.IP
+		warned bool
+	)
+	tick := time.NewTicker(natIPRefreshInterval)
+	defer tick.Stop()
+	for {
+		if ip, err := srv.NAT.ExternalIP(); err == nil {
+			if !ip.Equal(last) {
+				srv.log.Info("NAT external IP discovered", "ip", ip)
+				srv.localnode.SetStaticIP(ip)
+				srv.setNATEndpoint(ip, 0)
+				last = ip
+			}
+		} else if !warned {
+			srv.log.Warn("NAT external IP discovery failed", "err", err)
+			warned = true
+		} else {
+			srv.log.Debug("NAT external IP discovery failed", "err", err)
+		}
+		select {
+		case <-srv.quit:
+			return
+		case <-tick.C:
+		}
+	}
+}
+
+// setNATEndpoint records a NAT update — the gateway's external IP
+// (port 0) or the external port mapped to the TCP listener (ip nil;
+// port 0 when the mapping lapsed) — and passes the combined endpoint
+// to OnNATMapping when it changes. The endpoint is the zero NetAddr
+// until both halves are known.
+func (srv *Server) setNATEndpoint(ip net.IP, port uint16) {
+	srv.natMu.Lock()
+	if ip != nil {
+		srv.natIP = ip
+	} else {
+		srv.natTCPPort = port
+	}
+	var ep addrman.NetAddr
+	if srv.natIP != nil && srv.natTCPPort != 0 {
+		if a, ok := netip.AddrFromSlice(srv.natIP); ok {
+			ep, _ = addrman.FromAddrPort(netip.AddrPortFrom(a.Unmap(), srv.natTCPPort))
+		}
+	}
+	if ep == srv.natLast {
+		srv.natMu.Unlock()
+		return
+	}
+	srv.natLast = ep
+	// Called under natMu so concurrent updates reach the hook in the
+	// order they were recorded; the hook must not call back into the
+	// Server's NAT state.
+	if srv.OnNATMapping != nil {
+		srv.OnNATMapping(ep)
+	}
+	srv.natMu.Unlock()
 }
 
 func (srv *Server) setupDiscovery() error {
@@ -1244,6 +1329,11 @@ func (srv *Server) setupDiscovery() error {
 			srv.loopWG.Add(1)
 			go func() {
 				nat.Map(srv.NAT, srv.quit, "udp", realaddr.Port, realaddr.Port, "parallax discovery", func(extport uint16) {
+					if extport == 0 {
+						// A failed renewal leaves the ENR's UDP port as
+						// it was; discv4 has no withdrawal to make.
+						return
+					}
 					// The router may have remapped our requested port to a
 					// different external one (IGDv2 AddAnyPortMapping or our
 					// random-port retry path). Update the local node so the
@@ -2759,6 +2849,12 @@ func (srv *Server) setupListening() error {
 			srv.loopWG.Add(1)
 			go func() {
 				nat.Map(srv.NAT, srv.quit, "tcp", tcp.Port, tcp.Port, "parallax p2p", func(extport uint16) {
+					// Feed the v2 self-advertisement first: it carries
+					// the mapping's loss (extport 0) as well as its port.
+					srv.setNATEndpoint(nil, extport)
+					if extport == 0 {
+						return
+					}
 					// The router may have remapped our requested port to a
 					// different external one. Update the ENR's TCP entry so
 					// remote peers dial the reachable port.
