@@ -18,6 +18,8 @@ package stats
 
 import (
 	"math/big"
+	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -63,6 +65,10 @@ func TestParseEthstatsURL(t *testing.T) {
 		{
 			url:  `:@ws://mordor.dash.fault.dev:3000`,
 			node: "", pass: "", host: "ws://mordor.dash.fault.dev:3000",
+		},
+		{
+			url:  `status.parallaxprotocol.org`,
+			node: "", pass: "", host: "status.parallaxprotocol.org",
 		},
 	}
 
@@ -131,5 +137,33 @@ func TestBlockFees(t *testing.T) {
 	// Receipts that do not match the transactions give no figure, not 0
 	if got := blockFees(txs, receipts[:2]); got != nil {
 		t.Errorf("mismatched receipts: have %v, want nil", got)
+	}
+}
+
+func TestParsePrlstatsURLRejectsEmpty(t *testing.T) {
+	for _, url := range []string{"", "name@"} {
+		if _, err := parsePrlstatsURL(url); err == nil {
+			t.Errorf("%q: parsed without error", url)
+		}
+	}
+}
+
+// TestDefaultNodeName — the generated name is kept in the instance
+// directory, so a restarted node reports under the same name and keeps
+// its dashboard history, while separate nodes get different names.
+func TestDefaultNodeName(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "parallaxd")
+	first := defaultNodeName(dir)
+	if again := defaultNodeName(dir); again != first {
+		t.Fatalf("name changed across calls: %q then %q", first, again)
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, statsNameFile)); err != nil || string(b) != first+"\n" {
+		t.Fatalf("name file holds %q (err %v), want %q", b, err, first+"\n")
+	}
+	if other := defaultNodeName(filepath.Join(t.TempDir(), "parallaxd")); other == first {
+		t.Fatalf("two data directories share the name %q", first)
+	}
+	if a, b := defaultNodeName(""), defaultNodeName(""); a == b {
+		t.Fatalf("no datadir: names repeat (%q)", a)
 	}
 }

@@ -139,6 +139,14 @@ If you’re comfortable with the terminal, here are a few helpful commands:
   ./parallaxd --verbosity 4
   ```
 
+- **Show your node on [status.parallaxprotocol.org](https://status.parallaxprotocol.org)**:
+
+  ```bash
+  ./parallaxd --prlstats
+  ```
+
+  Your node reports under a random name, generated once and kept in the data directory, and is shown under a pseudonym. To report to another stats service, give its address: `--prlstats name@stats.example.org`. Only mainnet nodes can report to status.parallaxprotocol.org.
+
 - **Sync from Parallax testnet**:
 
   ```bash

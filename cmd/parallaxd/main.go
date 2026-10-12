@@ -34,6 +34,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/v2/node/console/prompt"
 	protocol "github.com/ParallaxProtocol/parallax/v2/node/fullnode"
 	"github.com/ParallaxProtocol/parallax/v2/node/fullnode/downloader"
+	"github.com/ParallaxProtocol/parallax/v2/node/stats"
 	client "github.com/ParallaxProtocol/parallax/v2/rpc/client"
 	"github.com/ParallaxProtocol/parallax/v2/support/metrics"
 	"github.com/ParallaxProtocol/parallax/v2/util"
@@ -256,7 +257,7 @@ func init() {
 }
 
 func main() {
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(expandBarePrlStats(os.Args, app.Commands)); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -474,4 +475,38 @@ func unlockAccounts(ctx *cli.Context, stack *node.Node) {
 	for i, account := range unlocks {
 		unlockAccount(ks, account, i, passwords)
 	}
+}
+
+// expandBarePrlStats lets --prlstats be given without a value, meaning
+// "report to the public mainnet stats service". The CLI library has no
+// optional-value flags, so a bare --prlstats is rewritten to
+// --prlstats=<stats.DefaultHost> before parsing. The flag is bare when
+// it is the last argument or is followed by another flag or by a
+// command, as in "parallaxd --prlstats console"; anything else after it
+// is its value, as before. Arguments after "--" are left alone.
+func expandBarePrlStats(args []string, commands cli.Commands) []string {
+	isCommand := func(arg string) bool {
+		if arg == "help" || arg == "h" {
+			return true
+		}
+		for _, c := range commands {
+			if c.HasName(arg) {
+				return true
+			}
+		}
+		return false
+	}
+	out := make([]string, 0, len(args))
+	for i, arg := range args {
+		if arg == "--" {
+			return append(out, args[i:]...)
+		}
+		if i > 0 && (arg == "--"+utils.PrlStatsURLFlag.Name || arg == "-"+utils.PrlStatsURLFlag.Name) {
+			if i+1 == len(args) || strings.HasPrefix(args[i+1], "-") || isCommand(args[i+1]) {
+				arg += "=" + stats.DefaultHost
+			}
+		}
+		out = append(out, arg)
+	}
+	return out
 }
