@@ -497,7 +497,7 @@ var (
 	// Logging and debug settings
 	PrlStatsURLFlag = cli.StringFlag{
 		Name:  "prlstats",
-		Usage: "Reporting URL of a prlstats service (nodename:secret@host:port)",
+		Usage: "Reporting URL of a prlstats service ([nodename[:secret]@]host[:port]). Without a value, reports to status.parallaxprotocol.org; without a nodename, under a generated name kept in the data directory",
 	}
 	FakePoWFlag = cli.BoolFlag{
 		Name:  "fakepow",

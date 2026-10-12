@@ -19,11 +19,15 @@ package stats
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
+	"os"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strconv"
@@ -33,6 +37,7 @@ import (
 
 	parallax "github.com/ParallaxProtocol/parallax/v2"
 	"github.com/ParallaxProtocol/parallax/v2/kernel"
+	"github.com/ParallaxProtocol/parallax/v2/kernel/chainparams"
 	"github.com/ParallaxProtocol/parallax/v2/logging"
 	"github.com/ParallaxProtocol/parallax/v2/node"
 	"github.com/ParallaxProtocol/parallax/v2/node/miner"
@@ -68,6 +73,7 @@ type backend interface {
 	GetTd(ctx context.Context, hash util.Hash) *big.Int
 	Stats() (pending int, queued int)
 	SyncProgress() parallax.SyncProgress
+	ChainConfig() *chainparams.ChainConfig
 }
 
 // fullNodeBackend encompasses the functionality necessary for a full node
@@ -146,14 +152,25 @@ func (w *connWrapper) Close() error {
 	return w.conn.Close()
 }
 
+// DefaultHost is the public mainnet stats service, used by a bare
+// --prlstats.
+const DefaultHost = "status.parallaxprotocol.org"
+
 // parsePrlstatsURL parses the netstats connection url.
-// URL argument should be of the form <nodename:secret@host:port>
+// URL argument should be of the form <[nodename[:secret]@]host[:port]>
 // If non-erroring, the returned slice contains 3 elements: [nodename, pass, host]
+// The nodename is empty when the url names only the host.
 func parsePrlstatsURL(url string) (parts []string, err error) {
-	err = fmt.Errorf("invalid netstats url: \"%s\", should be nodename:secret@host:port", url)
+	err = fmt.Errorf("invalid netstats url: \"%s\", should be [nodename[:secret]@]host[:port]", url)
 
 	hostIndex := strings.LastIndex(url, "@")
-	if hostIndex == -1 || hostIndex == len(url)-1 {
+	if hostIndex == -1 {
+		if url == "" {
+			return nil, err
+		}
+		return []string{"", "", url}, nil
+	}
+	if hostIndex == len(url)-1 {
 		return nil, err
 	}
 	preHost, host := url[:hostIndex], url[hostIndex+1:]
@@ -176,11 +193,21 @@ func New(node *node.Node, backend backend, engine kernel.Engine, url string) err
 	if err != nil {
 		return err
 	}
+	// The public dashboard does not separate networks, so a test or
+	// private network reporting there would show as mainnet.
+	if parts[2] == DefaultHost && backend.ChainConfig().ChainID.Cmp(chainparams.MainnetChainConfig.ChainID) != 0 {
+		return fmt.Errorf("%s only shows mainnet nodes; give --prlstats the stats service for this network", DefaultHost)
+	}
+	name := parts[0]
+	if name == "" {
+		name = defaultNodeName(node.InstanceDir())
+		logging.Info("Reporting stats under a generated name", "name", name, "host", parts[2])
+	}
 	ethstats := &Service{
 		backend: backend,
 		engine:  engine,
 		server:  node.Server(),
-		node:    parts[0],
+		node:    name,
 		pass:    parts[1],
 		host:    parts[2],
 		pongCh:  make(chan struct{}),
@@ -189,6 +216,44 @@ func New(node *node.Node, backend backend, engine kernel.Engine, url string) err
 
 	node.RegisterLifecycle(ethstats)
 	return nil
+}
+
+// statsNameFile holds the generated stats name, in the instance directory.
+const statsNameFile = "prlstats_name"
+
+// defaultNodeName returns the name a node reports under when the url
+// gives none. It is random, generated on first use and kept in dir, so
+// the node keeps its history and uptime on the dashboard across
+// restarts, and differs between nodes, which the server requires of
+// names. It is not derived from the node key: that key only serves the
+// legacy v1.x transport, and a stats name tied to it would change when
+// the key goes and would link the stats service to the node's p2p
+// identity. Without dir (no datadir) the name lasts for the process.
+func defaultNodeName(dir string) string {
+	path := ""
+	if dir != "" {
+		path = filepath.Join(dir, statsNameFile)
+		if b, err := os.ReadFile(path); err == nil {
+			if name := strings.TrimSpace(string(b)); name != "" {
+				return name
+			}
+		}
+	}
+	var id [8]byte
+	if _, err := rand.Read(id[:]); err != nil {
+		panic("prlstats: cannot read randomness for the node name: " + err.Error())
+	}
+	name := "prl-" + hex.EncodeToString(id[:])
+	if path != "" {
+		err := os.MkdirAll(dir, 0700)
+		if err == nil {
+			err = os.WriteFile(path, []byte(name+"\n"), 0600)
+		}
+		if err != nil {
+			logging.Warn("Failed to save the generated stats name; it will change on restart", "path", path, "err", err)
+		}
+	}
+	return name
 }
 
 // Start implements node.Lifecycle, starting up the monitoring and reporting daemon.
