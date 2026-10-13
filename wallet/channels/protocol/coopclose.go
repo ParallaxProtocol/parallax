@@ -13,6 +13,27 @@ import (
 
 var ErrNoPendingClose = errors.New("protocol: no pending cooperative close")
 
+// voucherSkewBlocks is how long past a withdraw voucher's expiry a close
+// proposer waits, absorbing head skew between the two sides' RPCs.
+const voucherSkewBlocks = 6
+
+// voucherBlocksClose reports whether pw may still be submitted at
+// nowBlock-skew, so a cooperative close must wait. An unknown head
+// (nowBlock 0, offline node) cannot judge expiry and nothing sweeps the
+// record offline, so the guard is skipped there, like the close-horizon
+// check: the residual is a close that reverts if the voucher mines first.
+func voucherBlocksClose(pw *proofstore.PendingWithdraw, nowBlock, skew uint64) bool {
+	if nowBlock == 0 {
+		return false
+	}
+	if nowBlock > skew {
+		nowBlock -= skew
+	} else {
+		nowBlock = 1
+	}
+	return voucherLive(pw, nowBlock)
+}
+
 // DefaultCoopCloseHorizonBlocks bounds how far in the future a cooperative
 // close may expire (one week at 10-minute blocks, matching the channel-open
 // accept_challenge_period_max ceiling). A signed close freezes the channel
@@ -91,8 +112,12 @@ func (e *Engine) ProposeCoopClose(key proofstore.ChannelKey, expiryBlock, nowBlo
 	// funds at submission (Part 2 §8). A countersigned withdraw voucher that
 	// mines first shrinks those funds and reverts the close, leaving both
 	// sides frozen until its expiry for nothing. Refuse while any voucher is
-	// still submittable; the sweep clears it after expiry.
-	if voucherLive(meta.PendingWithdraw, nowBlock) || voucherLive(meta.PeerPendingWithdraw, nowBlock) {
+	// still submittable, measured voucherSkewBlocks back so a responder
+	// whose head lags ours still sees it expired (its NACK would leave us
+	// frozen until the close expiry). Our own uncountersigned proposal
+	// counts: the peer's countersignature may be in flight.
+	if voucherBlocksClose(meta.PendingWithdraw, nowBlock, voucherSkewBlocks) ||
+		voucherBlocksClose(meta.PeerPendingWithdraw, nowBlock, voucherSkewBlocks) {
 		return nil, ErrWithdrawPending
 	}
 	if expiryBlock <= nowBlock {
@@ -215,7 +240,15 @@ func (e *Engine) HandleCoopCloseProposal(msg CoopCloseProposalMsg, senderNpub st
 	if frozen(meta, nowBlock) {
 		return Result{Nack: nack(key, KindCoopCloseProposal, 0, NackFrozen, "close already pending")}, nil, nil
 	}
-	if voucherLive(meta.PendingWithdraw, nowBlock) || voucherLive(meta.PeerPendingWithdraw, nowBlock) {
+	// Same voucher guard as ProposeCoopClose, without the skew margin (the
+	// proposer applied it). Our own proposal the peer never countersigned is
+	// not submittable, and the peer, frozen by this close, will no longer
+	// countersign it.
+	own := meta.PendingWithdraw
+	if own != nil && len(own.PeerSig) == 0 {
+		own = nil
+	}
+	if voucherBlocksClose(own, nowBlock, 0) || voucherBlocksClose(meta.PeerPendingWithdraw, nowBlock, 0) {
 		return Result{Nack: nack(key, KindCoopCloseProposal, 0, NackPolicy, "withdraw voucher outstanding")}, nil, nil
 	}
 
