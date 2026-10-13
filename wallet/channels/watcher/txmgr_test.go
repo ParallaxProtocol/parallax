@@ -401,13 +401,16 @@ func TestTxManagerBumpsSurviveRpcOutage(t *testing.T) {
 	}
 }
 
-// TestTxManagerFailedBumpWaitsForNextWindow: a fee bump whose send fails for
-// a non-benign reason is retried once per bump window, not on every tick.
-// Ticks arrive every few seconds while blocks arrive every ten minutes, so
-// an intent whose build fails deterministically (the channel was settled
+// TestTxManagerFailedBumpWaitsForNextBlock: a fee bump whose send fails for
+// a non-benign reason is retried once per block, not on every tick. Ticks
+// arrive every few seconds while blocks arrive every ten minutes, so an
+// intent whose build fails deterministically (the channel was settled
 // under a lingering challenge, so estimateGas reverts) would otherwise
 // rebuild, fail, and alarm ~120 times per block for as long as it lives.
-func TestTxManagerFailedBumpWaitsForNextWindow(t *testing.T) {
+// A transient failure must not cost more than that one block: waiting a
+// whole bump window would delay a challenge's escalation after the RPC
+// recovers.
+func TestTxManagerFailedBumpWaitsForNextBlock(t *testing.T) {
 	e := setupSim(t)
 	erroring := &erroringSendBackend{TxBackend: e.backend}
 	mgr := NewTxManager(erroring, e.bobPriv, big.NewInt(1337))
@@ -440,16 +443,13 @@ func TestTxManagerFailedBumpWaitsForNextWindow(t *testing.T) {
 	if n := failedAfter(10 + bumpAfterBlocks); n != 1 {
 		t.Fatalf("attempts after first bump window: %d, want 1", n)
 	}
-	// Ticks within the same window (same head, next head) must not retry.
+	// Ticks at the same head must not retry.
 	if n := failedAfter(10 + bumpAfterBlocks); n != 1 {
 		t.Fatalf("retried on a same-head tick: %d attempts", n)
 	}
-	if n := failedAfter(10 + bumpAfterBlocks + 1); n != 1 {
-		t.Fatalf("retried before the next bump window: %d attempts", n)
-	}
-	// The next window retries exactly once more.
-	if n := failedAfter(10 + 2*bumpAfterBlocks); n != 2 {
-		t.Fatalf("attempts after second bump window: %d, want 2", n)
+	// The next block retries exactly once more.
+	if n := failedAfter(10 + bumpAfterBlocks + 1); n != 2 {
+		t.Fatalf("attempts at the next block: %d, want 2", n)
 	}
 	if alarms != 2 {
 		t.Fatalf("alarms: %d, want one per attempt (2)", alarms)
@@ -461,5 +461,43 @@ func TestTxManagerFailedBumpWaitsForNextWindow(t *testing.T) {
 	mgr.mu.Unlock()
 	if bumps != 0 {
 		t.Fatalf("failed sends consumed %d bumps", bumps)
+	}
+}
+
+// TestTxManagerFailedBumpRetriesEveryTickNearDeadline: inside the alarm
+// window a deadline-bound intent (a challenge) cannot afford to wait for
+// the next block after a failed send, so every tick retries.
+func TestTxManagerFailedBumpRetriesEveryTickNearDeadline(t *testing.T) {
+	e := setupSim(t)
+	erroring := &erroringSendBackend{TxBackend: e.backend}
+	mgr := NewTxManager(erroring, e.bobPriv, big.NewInt(1337))
+	mgr.Alarm = func(format string, args ...any) {}
+
+	contract, err := registry.NewChannelRegistry(e.regAddr, erroring)
+	if err != nil {
+		t.Fatal(err)
+	}
+	head := uint64(10)
+	deadline := head + alarmBlocksBeforeDeadline + bumpAfterBlocks
+	err = mgr.Submit(context.Background(), "challenge:test", head, deadline,
+		func(auth *bind.TransactOpts) (*types.Transaction, error) {
+			auth.Value = lax(1)
+			return contract.Deposit(auth, big.NewInt(1))
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	erroring.mu.Lock()
+	erroring.failing = true
+	erroring.mu.Unlock()
+
+	near := deadline - alarmBlocksBeforeDeadline + 1
+	mgr.Tick(context.Background(), near)
+	mgr.Tick(context.Background(), near)
+	erroring.mu.Lock()
+	n := erroring.failed
+	erroring.mu.Unlock()
+	if n != 2 {
+		t.Fatalf("attempts on two ticks near the deadline: %d, want 2", n)
 	}
 }

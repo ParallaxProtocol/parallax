@@ -37,6 +37,7 @@ type pendingTx struct {
 	gasPrice    *big.Int
 	txHashes    []util.Hash // every attempt, oldest first: ANY of them mining resolves the intent
 	submittedAt uint64      // head at last (re)submission
+	retryAt     uint64      // earliest head for the next bump after a failed send
 	bumps       int
 	deadline    uint64 // 0 = none; alarm fires as head approaches it
 	noBump      bool   // synchronous Transact intent: the caller owns retries
@@ -264,7 +265,7 @@ func (m *TxManager) Tick(ctx context.Context, head uint64) {
 				id, int64(p.deadline)-int64(head), p.txHashes[len(p.txHashes)-1].Hex(), p.bumps)
 		}
 
-		if !p.noBump && head >= p.submittedAt+bumpAfterBlocks && p.bumps < maxBumps {
+		if !p.noBump && head >= p.submittedAt+bumpAfterBlocks && head >= p.retryAt && p.bumps < maxBumps {
 			// Same nonce, 25% higher price: replaces the stuck transaction.
 			// The bump budget is consumed by a successful handoff to the
 			// RPC, never by the attempt — burning it on failed sends would
@@ -276,17 +277,21 @@ func (m *TxManager) Tick(ctx context.Context, head uint64) {
 			if _, err := m.send(ctx, id, p, head); err != nil {
 				// "already known" / "underpriced" races are benign (the
 				// price sticks so the next tick compounds another 25%);
-				// anything else rolls back the price and waits another
-				// bumpAfterBlocks before the next attempt. A build that
-				// fails deterministically (the channel was settled under
-				// a lingering challenge, so estimateGas reverts) is thereby
-				// retried and alarmed once per bump window, not on every
-				// tick for the life of the intent.
+				// anything else rolls back the price and retries at the
+				// next block. A build that fails deterministically (the
+				// channel was settled under a lingering challenge, so
+				// estimateGas reverts) is thereby retried and alarmed once
+				// per block, not on every tick for the life of the intent,
+				// while a transient RPC failure delays escalation by one
+				// block at most. Near the deadline every tick retries.
 				if benignResubmitError(err) {
 					p.bumps++
 				} else {
 					p.gasPrice.Set(prev)
-					p.submittedAt = head
+					p.retryAt = head + 1
+					if p.deadline > 0 && head+alarmBlocksBeforeDeadline > p.deadline {
+						p.retryAt = head
+					}
 					m.alarm("fee-bump for %s failed: %v", id, err)
 				}
 				continue
