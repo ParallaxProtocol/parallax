@@ -1,0 +1,184 @@
+---
+title: "Ask Parallax with AI"
+sidebarTitle: "AI assistants (MCP)"
+description: "Connect Claude and other AI assistants to the Parallax network with the Parallax MCP server, and ask about blocks, transactions, mining and network health in plain language."
+---
+
+The **Parallax MCP server** lets AI assistants such as Claude read the
+Parallax network directly. Instead of looking things up in the explorer
+yourself, you ask a question in plain language, and the assistant answers
+from live chain data: blocks and transactions, balances and tokens, mining
+and supply, and the health of the network.
+
+It uses the [Model Context Protocol](https://modelcontextprotocol.io)
+(MCP), the open standard assistants use to connect to outside tools. The
+project lives at [github.com/ParallaxProtocol/parallax-mcp](https://github.com/ParallaxProtocol/parallax-mcp).
+
+---
+
+## What you can ask
+
+- *"What's the state of the Parallax network right now?"*
+- *"Explain transaction 0x3afc1e38…24f0 to me."*
+- *"Audit address 0x45a1…0248: what is it and is anything risky about it?"*
+- *"Which token approvals has my address granted, and should I revoke any?"*
+- *"How many confirmations should I wait for before accepting a payment?"*
+- *"When is the next halving, and how much LAX has been issued so far?"*
+- *"Chart daily transactions over the last month."*
+- *"Wait for the next block and tell me who mined it."*
+- *"Summarize PIP-0004 and how the fee estimator works."*
+
+The assistant decides which tools to call and puts the answer together.
+Every figure comes from the network, the [block explorer](https://explorer.parallaxprotocol.org)
+or the [network status page](https://status.parallaxprotocol.org) at the
+moment you ask.
+
+---
+
+## Connect your assistant
+
+A public server runs at `https://mcp.parallaxprotocol.org/mcp`. Nothing to
+install: add it to your assistant and start asking.
+
+### Claude Desktop and claude.ai
+
+Custom connectors are available on Claude plans that support them.
+
+<Steps>
+  <Step title="Open the connector settings">
+    In Claude, go to **Settings → Connectors** and choose **Add custom connector**.
+  </Step>
+  <Step title="Add the Parallax server">
+    Name it `Parallax` and enter the URL `https://mcp.parallaxprotocol.org/mcp`.
+  </Step>
+  <Step title="Ask a question">
+    Start a new chat and ask, for example, *"What's the state of the Parallax network?"*
+  </Step>
+</Steps>
+
+### Claude Code
+
+```bash
+claude mcp add --transport http parallax https://mcp.parallaxprotocol.org/mcp
+```
+
+Run `/mcp` inside Claude Code to check that `parallax` is connected.
+
+### Other assistants
+
+Any MCP client that supports Streamable HTTP can use the same URL. The
+server is also listed in the [MCP Registry](https://registry.modelcontextprotocol.io)
+as `io.github.ParallaxProtocol/parallax-mcp`, which some clients can install
+from directly.
+
+<Note>
+The public server is read-only. It cannot send transactions, sign
+anything or access any wallet, and it never asks for a private key. If an
+assistant or anyone else asks for your private key or seed phrase, do not
+give it.
+</Note>
+
+---
+
+## What it can do
+
+The public server offers over thirty tools in five groups. You don't call them
+yourself: the assistant picks them.
+
+| Group | What it covers |
+|---|---|
+| **Chain** | Blocks, transactions, receipts and their events, balances, contract code and storage, read-only contract calls, gas and fee estimates, event logs, and an audit of the token approvals an address has granted |
+| **Mining** | Hashrate, difficulty, block times, which miners found recent blocks, block rewards, issued supply against the 21,000,000 LAX cap, and the next halving |
+| **Explorer** | Address summaries, token balances and holders, transaction history, verified contract source code, internal transactions, search and charts |
+| **Network** | Network health and alerts, reporting nodes, incidents, block propagation and 7-day trends, from the status page |
+| **Mempool** | Transactions waiting to be mined |
+
+Amounts are given both in **LAX** and in **wei** (1 LAX = 10<sup>18</sup> wei),
+so the assistant can do exact arithmetic.
+
+The server also shares reference material the assistant can read: the
+chain parameters, a glossary, these docs and the PIPs. It can notify
+assistants that support it whenever a new block is mined.
+
+---
+
+## Safety
+
+AI assistants can be misled by text that looks like instructions. On a
+public blockchain anyone can write such text into places a tool reads: a
+token's name, a contract's source code, an event. The Parallax MCP server
+treats all of it as untrusted. It strips hidden characters from that text
+and marks it clearly as data, and it tells the assistant never to follow
+instructions found there.
+
+The server is also built so that it cannot be turned into a way of moving
+funds:
+
+- **Read-only by design.** The public server has no tool that sends
+  transactions. Self-hosted servers can enable transaction building for an
+  external wallet to sign, and broadcasting only with an explicit flag.
+- **No keys.** The server never holds, accepts or asks for private keys.
+- **Bounded.** Every query is limited in size and time, and each user has
+  a rate limit.
+
+<Tip>
+Treat answers as you would any research: the assistant is reading real
+data, but it can still misread it. Before acting on anything that moves
+funds, check the details in your wallet and in the
+[block explorer](https://explorer.parallaxprotocol.org).
+</Tip>
+
+---
+
+## Run your own server
+
+You can run the server yourself, for example to keep your questions off a
+shared server, to point it at your own node, or to enable the transaction
+tools.
+
+### Locally with Docker
+
+```bash
+claude mcp add parallax -- docker run -i --rm ghcr.io/parallaxprotocol/parallax-mcp --transport stdio
+```
+
+For Claude Desktop, add this to `claude_desktop_config.json`
+(**Settings → Developer → Edit Config**):
+
+```json
+{
+  "mcpServers": {
+    "parallax": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "ghcr.io/parallaxprotocol/parallax-mcp", "--transport", "stdio"]
+    }
+  }
+}
+```
+
+### With your own node
+
+By default the server reads the public RPC endpoint, which offers the
+`eth`, `net` and `web3` namespaces. Pointed at your own node, it also
+offers transaction tracing, your node's peers and the mempool's
+transactions. Start the node with the extra namespaces on a local address
+only:
+
+```bash
+parallaxd --http --http.addr 127.0.0.1 \
+  --http.api eth,net,web3,txpool,debug,admin,xhash \
+  --gcmode archive --txlookuplimit 0
+```
+
+Then pass `--rpc-url http://127.0.0.1:8545` to the server. Reading
+balances and tracing transactions at old blocks needs an archive node
+(`--gcmode archive`).
+
+<Note>
+The MCP server only calls read-only RPC methods, so exposing these
+namespaces to it is safe. Never expose them to the internet or to other
+programs.
+</Note>
+
+All options, the HTTP deployment and the security model are documented in
+the [project README](https://github.com/ParallaxProtocol/parallax-mcp#readme).
