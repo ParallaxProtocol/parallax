@@ -7,11 +7,13 @@ package towerd
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/ParallaxProtocol/parallax/v2/primitives/types"
 	"github.com/ParallaxProtocol/parallax/v2/script/abi/bind"
@@ -47,6 +49,13 @@ type Tower struct {
 	contract *registry.ChannelRegistry
 	txmgr    *watcher.TxManager
 
+	// gaveUp holds the CloseStarted events Tick stopped retrying. While an
+	// earlier, still-retryable failure pins the watermark below them they
+	// are re-scanned every tick; skipping them avoids repeating the
+	// give-up check (an RPC) and its alarm. Pruned as the watermark passes.
+	gaveUpMu sync.Mutex
+	gaveUp   map[closeEvent]struct{}
+
 	// Alarm receives operator-grade alerts. Optional.
 	Alarm func(format string, args ...any)
 }
@@ -75,6 +84,7 @@ func New(cfg Config, store *proofstore.Store, backend watcher.TxBackend, txmgr *
 		backend:  backend,
 		contract: contract,
 		txmgr:    txmgr,
+		gaveUp:   make(map[closeEvent]struct{}),
 	}
 	// On a shared manager the node's watcher has already claimed Alarm for
 	// the wallet log; chain onto it rather than skipping — a tower challenge
@@ -198,6 +208,10 @@ func (t *Tower) Tick(ctx context.Context) (uint64, error) {
 			Registry:  t.cfg.Registry,
 			ChannelID: ev.ChannelId.Uint64(),
 		}
+		ce := closeEvent{key: key, block: ev.Raw.BlockNumber}
+		if t.hasGivenUp(ce) {
+			continue
+		}
 		err := t.react(ctx, key, head)
 		if err == nil {
 			continue
@@ -207,6 +221,7 @@ func (t *Tower) Tick(ctx context.Context) (uint64, error) {
 		}
 		if why := t.retryable(ctx, key, head); why != "" {
 			t.alarm("giving up on close of %s at block %d (%s): %v", key, ev.Raw.BlockNumber, why, err)
+			t.giveUp(ce)
 			continue
 		}
 		if firstFailed == 0 || ev.Raw.BlockNumber < firstFailed {
@@ -220,7 +235,42 @@ func (t *Tower) Tick(ctx context.Context) (uint64, error) {
 	if firstFailed > 0 {
 		mark = firstFailed - 1
 	}
-	return head, t.store.SetTowerWatermark(t.cfg.ChainID, t.cfg.Registry.Hex(), mark)
+	if err := t.store.SetTowerWatermark(t.cfg.ChainID, t.cfg.Registry.Hex(), mark); err != nil {
+		return head, err
+	}
+	t.pruneGivenUp(mark)
+	return head, nil
+}
+
+// closeEvent identifies one CloseStarted event by channel and block.
+type closeEvent struct {
+	key   proofstore.ChannelKey
+	block uint64
+}
+
+func (t *Tower) hasGivenUp(ce closeEvent) bool {
+	t.gaveUpMu.Lock()
+	defer t.gaveUpMu.Unlock()
+	_, ok := t.gaveUp[ce]
+	return ok
+}
+
+func (t *Tower) giveUp(ce closeEvent) {
+	t.gaveUpMu.Lock()
+	defer t.gaveUpMu.Unlock()
+	t.gaveUp[ce] = struct{}{}
+}
+
+// pruneGivenUp drops events at or below the watermark, which no scan
+// revisits.
+func (t *Tower) pruneGivenUp(mark uint64) {
+	t.gaveUpMu.Lock()
+	defer t.gaveUpMu.Unlock()
+	for ce := range t.gaveUp {
+		if ce.block <= mark {
+			delete(t.gaveUp, ce)
+		}
+	}
 }
 
 // errQuarantined marks a close whose delegation record is in quarantine:
@@ -250,20 +300,29 @@ func (t *Tower) retryable(ctx context.Context, key proofstore.ChannelKey, head u
 // react evaluates one closing channel against the delegation store.
 func (t *Tower) react(ctx context.Context, key proofstore.ChannelKey, head uint64) error {
 	deleg, err := t.store.Delegation(key)
+	if errors.Is(err, proofstore.ErrQuarantined) {
+		return errQuarantined
+	}
 	if errors.Is(err, proofstore.ErrNotFound) {
-		if _, qerr := t.store.QuarantinedDelegation(key); qerr == nil {
-			return errQuarantined
-		}
 		return nil // nobody delegated this channel: not our watch
 	}
 	if errors.Is(err, proofstore.ErrCorrupt) {
 		// The bytes are present and will fail the same way on every
 		// re-read. Move them aside so a fresh delegation can land and the
 		// operator can inspect them; the close stays pinned meanwhile.
-		if _, qerr := t.store.QuarantineDelegation(key, err); qerr != nil {
+		q, qerr := t.store.QuarantineDelegation(key, err)
+		if qerr != nil {
 			return qerr
 		}
-		t.alarm("quarantined undecodable delegation for %s: %v (inspect with 'tower quarantine list'; the delegator may re-send)", key, err)
+		// The alarm carries the bytes: the quarantine CLI opens the store
+		// this running tower holds locked, so it only works once the tower
+		// is stopped.
+		var raw []byte
+		if q != nil {
+			raw = q.Raw
+		}
+		t.alarm("quarantined undecodable delegation for %s: %v; raw record (%d bytes, base64) %s; the delegator may re-send ('tower quarantine list/clear' with the tower stopped)",
+			key, err, len(raw), base64.StdEncoding.EncodeToString(raw))
 		return errQuarantined
 	}
 	if err != nil {

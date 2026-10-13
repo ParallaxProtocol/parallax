@@ -3,6 +3,7 @@ package towerd_test
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/base64"
 	"fmt"
 	"math/big"
 	"path/filepath"
@@ -44,7 +45,18 @@ type corruptEnv struct {
 	watermark func() uint64
 }
 
-func newCorruptEnv(t *testing.T) *corruptEnv {
+func newCorruptEnv(t *testing.T) *corruptEnv { return buildCorruptEnv(t, false) }
+
+// earlyCloseChannel is the optional second channel: long challenge period,
+// force-closed before channel 1, its delegation also corrupted on disk, so
+// its quarantine pins the watermark below channel 1's close for long after
+// channel 1's own deadline.
+const (
+	earlyCloseChannel = 2
+	earlyClosePeriod  = 1000
+)
+
+func buildCorruptEnv(t *testing.T, earlyClose bool) *corruptEnv {
 	t.Helper()
 	alicePriv, _ := crypto.GenerateKey() // cheater
 	bobPriv, _ := crypto.GenerateKey()   // delegator (victim)
@@ -68,6 +80,11 @@ func newCorruptEnv(t *testing.T) *corruptEnv {
 	auth.Value = lax(10)
 	if _, err := contract.Open(auth, bob, corruptChallengePeriod); err != nil {
 		t.Fatal(err)
+	}
+	if earlyClose {
+		if _, err := contract.Open(auth, bob, earlyClosePeriod); err != nil {
+			t.Fatal(err)
+		}
 	}
 	auth.Value = nil
 	backend.Commit()
@@ -121,6 +138,25 @@ func newCorruptEnv(t *testing.T) *corruptEnv {
 	}
 	env.delegate(env.newTower())
 
+	key2 := proofstore.ChannelKey{ChainID: "1337", Registry: regAddr, ChannelID: earlyCloseChannel}
+	if earlyClose {
+		latest2 := dualSignedState(t, key2, 5, lax(3), alicePriv, bobPriv)
+		if _, err := env.newTower().HandleDelegation(context.Background(), protocol.TowerDelegationMsg{
+			V:         1,
+			Registry:  strings.ToLower(regAddr.Hex()),
+			ChainID:   "1337",
+			ChannelID: fmt.Sprint(earlyCloseChannel),
+			State:     protocol.ToWire(latest2),
+		}, "bob-npub"); err != nil {
+			t.Fatal(err)
+		}
+		stale2 := dualSignedState(t, key2, 2, lax(1), alicePriv, bobPriv)
+		if _, err := contract.StartClose(auth, big.NewInt(earlyCloseChannel), stale2.ContractProof(), stale2.SigA, stale2.SigB); err != nil {
+			t.Fatal(err)
+		}
+		backend.Commit()
+	}
+
 	// Alice force-closes at stale seq 2.
 	stale := dualSignedState(t, env.key, 2, lax(1), alicePriv, bobPriv)
 	if _, err := contract.StartClose(auth, big.NewInt(1), stale.ContractProof(), stale.SigA, stale.SigB); err != nil {
@@ -141,6 +177,11 @@ func newCorruptEnv(t *testing.T) *corruptEnv {
 		t.Fatal(err)
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
+		if earlyClose {
+			if err := tx.Bucket([]byte("towerdb")).Put([]byte(key2.String()), []byte("{corrupt")); err != nil {
+				return err
+			}
+		}
 		return tx.Bucket([]byte("towerdb")).Put([]byte(env.key.String()), []byte("{corrupt"))
 	})
 	if err != nil {
@@ -189,6 +230,11 @@ func TestReactErrorKeepsWatermark(t *testing.T) {
 	}
 	if !e.alarmed("quarantined undecodable delegation") {
 		t.Fatalf("no quarantine alarm: %q", *e.alarms)
+	}
+	// The CLI cannot open the store while the tower runs, so the alarm
+	// itself carries the bytes.
+	if !e.alarmed(base64.StdEncoding.EncodeToString([]byte("{corrupt"))) {
+		t.Fatalf("quarantine alarm lacks the raw record: %q", *e.alarms)
 	}
 
 	// Tick 2: still nothing to evaluate with; the pin holds without
@@ -312,5 +358,41 @@ func TestTickKeepsPinWhenChainUnreadable(t *testing.T) {
 	}
 	if mark := e.watermark(); mark != head-2 {
 		t.Fatalf("watermark %d once the chain is readable past the deadline, want %d", mark, head-2)
+	}
+}
+
+// TestTickRemembersGivenUpCloses: a close the tower gave up on stays in the
+// re-scanned range while an earlier close's retryable failure pins the
+// watermark below it. It must not be re-evaluated and re-alarmed on every
+// tick for as long as that pin holds.
+func TestTickRemembersGivenUpCloses(t *testing.T) {
+	e := buildCorruptEnv(t, true)
+	tower := e.newTower()
+	if _, err := tower.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < corruptChallengePeriod+1; i++ {
+		e.backend.Commit()
+	}
+	countGiveUps := func() int {
+		n := 0
+		for _, a := range *e.alarms {
+			if strings.Contains(a, "giving up on close") {
+				n++
+			}
+		}
+		return n
+	}
+	for i := 0; i < 3; i++ {
+		if _, err := tower.Tick(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := countGiveUps(); n != 1 {
+		t.Fatalf("give-up alarms over three pinned ticks: %d, want 1: %q", n, *e.alarms)
+	}
+	// The earlier close still holds the pin below channel 1's close.
+	if mark := e.watermark(); mark >= e.closeBlk-1 {
+		t.Fatalf("watermark %d, want pinned below %d by the early close", mark, e.closeBlk-1)
 	}
 }

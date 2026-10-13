@@ -54,7 +54,9 @@ A delegation record that no longer decodes is moved out of the live set so
 it neither blocks the delegator's next delegation nor fails every read
 that touches it. The tower alarms when it quarantines one and keeps the
 affected close pinned for re-evaluation until its challenge deadline. The
-raw bytes stay here for inspection until cleared.`,
+raw bytes stay here for inspection until cleared; the alarm also carries
+them (base64), since these commands open the store the running tower holds
+locked and so only work while it is stopped.`,
 			Subcommands: []cli.Command{
 				{
 					Name:      "list",
