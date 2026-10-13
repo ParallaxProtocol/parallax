@@ -1,0 +1,168 @@
+---
+title: "Network status API"
+sidebarTitle: "Network status API"
+description: "The JSON API of status.parallaxprotocol.org: the fields and alerts an exchange's deposit policy can use, what the data can and cannot be trusted for, and a policy sketch in Python."
+---
+
+The [network status page](https://status.parallaxprotocol.org) watches the
+Parallax network continuously: who is mining, how evenly, whether the
+largest miner is publishing its blocks, and every reorganization its nodes
+see. Everything it shows is available as JSON, so your deposit policy can
+read the same figures. [Confirmations](./confirmations) explains what they
+mean; this page is the reference for reading them.
+
+## Endpoint
+
+```
+GET https://status.parallaxprotocol.org/api/v2/stats
+```
+
+No key or account is needed. Responses are JSON, uncached
+(`Cache-Control: no-store`) and allowed from any origin. Each address may
+make **60 requests a minute**; past that the API answers `429` with
+`Retry-After: 60`. Polling every 30 to 60 seconds is plenty: the figures
+change with each block, and blocks are 10 minutes apart.
+
+Units: times are Unix **milliseconds** unless a field name says seconds.
+Shares are fractions from 0 to 1. Difficulties are decimal strings.
+
+## Fields for a deposit policy
+
+| Field | What it is |
+|---|---|
+| `serverTime` | The status page's clock, in ms |
+| `bestBlock.number`, `.hash`, `.timestamp` | The best block reported by the status page's verified nodes. Compare with your own nodes |
+| `confirmations.largestMiner` | `{name, address, share}`: the largest miner of the last 7 days |
+| `confirmations.judged` | `false` while the last 7 days have fewer than 10 blocks. Too few to judge; the page shows "Too early" |
+| `confirmations.majority` | `true` when the largest miner has half the blocks or more |
+| `confirmations.levels` | `[{confidence, blocks, waitSeconds}]` for 0.99, 0.999 and 0.9999, assuming the miner may be mining in secret. `blocks` is `null` with a majority or above 1,000 |
+| `confirmations.openLevels` | The same, for deposits credited while the miner is seen mining in the open |
+| `confirmations.reversalCost` | `[{blocks, lax, usd}]` at 6, 12 and 24 confirmations: what reversing a payment that deep costs the largest miner. `usd` is `null` when no price is available |
+| `confirmations.watch` | The hidden-mining check: `{lastBlock, fromHeight, since, found, expected, chance, open, level}`. `null` while the largest miner has under 25% of the blocks |
+| `decentralization` | `{grade, majorityHolders, distinctMiners, topMiners[]}`. `majorityHolders` is how many miners together found most of the week's blocks: 4 or more grades `healthy`, 3 `fair`, 2 `concentrated`, 1 `critical` |
+| `staleBlocks` | `{reorgs: {count, since}, lastReorg, lastDeepReorg, reorgEvents[], split}`. Each reorganization is `{height, at, nodes, depth}`. `reorgs.count` covers the last 24 hours |
+| `alerts[]` | `{type, level, since, details}`, most severe first. Types below |
+| `incidents.list[]` | `{id, kind, level, start, startKnown, end, detail}` over the last 90 days. `end` is `null` while ongoing |
+| `securityBudget.laxPerDay` | What miners earn per day: roughly the cost of renting enough hashrate to rival them |
+| `blockTime.week.averageSeconds` | Mean block time over the last 7 days |
+| `hashrate.hashesPerSecond` | Network hashrate, over the last 24 hours |
+
+The API does not apply the hold rule for you: `levels` keep their values
+while `watch.level` is `"critical"`. Check `watch` yourself.
+
+## Alerts
+
+| `type` | Raised when | `level` |
+|---|---|---|
+| `split` | The status page's verified nodes follow different chains, each at least 2 blocks past where they part | `critical` |
+| `reorg` | A reorganization 3 or more blocks deep. Shown for 30 minutes at depth 3 to 5, 24 hours at 6 or more | `warn` at 3 to 5, `critical` at 6 or more |
+| `majority` | One miner found more than half of the last 7 days' blocks | `critical` |
+| `withholding` | The largest miner is publishing far fewer blocks than its share predicts ([Hidden mining](./confirmations#hidden-mining)) | `warn`, then `critical` |
+| `propagation` | Blocks take more than 15 seconds to reach 90% of the verified nodes | `warn`, `critical` above 60 seconds |
+| `slow-miner` | One miner's blocks are slow to reach the network while everyone else's are fast | `warn` |
+| `release` | Some reporting nodes run an older release than the latest | `info` |
+
+There is no alert for a long gap between blocks. Compute
+`serverTime − bestBlock.timestamp` yourself, and check your own nodes' head.
+
+## What the status page can and cannot tell you
+
+The status page is a strong second opinion, not a replacement for your own
+nodes.
+
+- **It sees the nodes that report to it.** Its chain data comes from a set of
+  verified nodes run by known operators; anyone else's reports affect only
+  their own rows and a few medians. It does not itself check proof of work.
+- **Miners are identified by payout address.** One operator mining to many
+  addresses looks like many miners unless the status page knows its
+  addresses. The largest miner's share is therefore a lower bound on the
+  largest operator's.
+- **It is one service.** If it is unreachable, your policy should fall back
+  to your own figures, not stop working and not drop its safeguards.
+
+Compute the largest miner's share from your own node too, and use the
+larger of the two:
+
+```python
+import collections, requests
+
+NODE = "http://127.0.0.1:8545"
+
+def rpc(method, *params):
+    r = requests.post(NODE, json={"jsonrpc": "2.0", "id": 1, "method": method, "params": list(params)})
+    return r.json()["result"]
+
+def largest_share(blocks=1008):  # 1008 blocks is about 7 days
+    head = int(rpc("eth_blockNumber"), 16)
+    miners = collections.Counter(
+        rpc("eth_getBlockByNumber", hex(n), False)["miner"].lower()
+        for n in range(head - blocks + 1, head + 1)
+    )
+    address, found = miners.most_common(1)[0]
+    return address, found / blocks
+```
+
+## A policy in code
+
+A sketch in Python that combines the fields above with the rules in
+[Building a policy](./confirmations#building-a-policy). It is a starting point to adapt, not a drop-in risk
+engine: set `FLOOR`, `MARGIN` and the confidence tiers from your own risk
+appetite.
+
+```python
+import math, requests
+
+STATUS = "https://status.parallaxprotocol.org/api/v2/stats"
+FLOOR = 6        # never credit with fewer confirmations than this
+MARGIN = 3       # against a majority: reversing must cost MARGIN times the deposit
+STALL_MS = 2 * 60 * 60 * 1000
+
+def fetch_status():
+    r = requests.get(STATUS, timeout=10)
+    r.raise_for_status()
+    return r.json()
+
+def pause_reasons(s):
+    """Signals that pause all crediting."""
+    reasons = []
+    for alert in s["alerts"]:
+        if alert["type"] == "split":
+            reasons.append("chain split between verified nodes")
+        elif alert["type"] == "reorg":
+            reasons.append(f"reorganization {alert['details']['depth']} blocks deep")
+    best = s.get("bestBlock")
+    if best and s["serverTime"] - best["timestamp"] > STALL_MS:
+        reasons.append("no block for over 2 hours")
+    return reasons
+
+def held(s, deposit_block):
+    """True while this deposit's block could be replaced by a quiet miner's secret chain."""
+    watch = (s.get("confirmations") or {}).get("watch")
+    return bool(watch and watch["level"] == "critical" and deposit_block > watch["fromHeight"])
+
+def required_confirmations(s, deposit_usd, large=False):
+    """Confirmations to wait for, or None for manual review."""
+    c = s.get("confirmations")
+    if not c or not c["judged"]:
+        return None
+    watch = c.get("watch")
+    if c["majority"]:
+        per_block = [r["usd"] / r["blocks"] for r in c["reversalCost"] if r["usd"]]
+        if not per_block:
+            return None
+        return max(FLOOR, math.ceil(MARGIN * deposit_usd / per_block[0]))
+    use_open = watch is not None and watch["open"] and watch["level"] is None
+    levels = c["openLevels"] if use_open else c["levels"]
+    blocks = levels[2 if large else 1]["blocks"]  # 99.99% or 99.9%
+    return None if blocks is None else max(FLOOR, blocks)
+
+def may_credit(s, deposit_block, head, deposit_usd, large=False):
+    if pause_reasons(s) or held(s, deposit_block):
+        return False
+    need = required_confirmations(s, deposit_usd, large)
+    return need is not None and head - deposit_block + 1 >= need
+```
+
+Run it at the moment of crediting, after your own checks from
+[Tracking confirmations](./deposits#tracking-confirmations): the block hash
+is still the one you recorded, and your nodes are healthy and agree.

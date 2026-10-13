@@ -1,0 +1,216 @@
+---
+title: "Crediting deposits"
+sidebarTitle: "Deposits"
+description: "Deposit addresses, detecting incoming LAX and tokens from blocks, following reorganizations, crediting at depth, and sweeping funds to your hot wallet."
+---
+
+Parallax uses accounts, like Ethereum, not unspent outputs like Bitcoin. A
+deposit is a change to an address's balance, and most of the work is
+finding every change, attributing it, and only crediting it once the block
+it is in is deep enough not to be replaced.
+
+## Deposit addresses
+
+Give every customer their own deposit address. Transactions have no memo,
+tag or destination-tag field, so a shared address with a reference in the
+transaction data does not work with ordinary wallets, which cannot set it.
+
+Derive addresses however your custody stack does. Parallax's own
+hardware-wallet support derives keys on the Ethereum path
+`m/44'/60'/0'/0/i`, so keys derived the same way can be recovered with
+standard tools. A deposit address only needs to receive. Its key is needed
+again when you sweep it.
+
+When you show an address, show the EIP-55 checksummed form (mixed case). It
+lets wallets catch typing mistakes.
+
+## What can raise a balance
+
+| How the LAX arrives | Visible as | How to find it |
+|---|---|---|
+| **A plain transfer** from a wallet | A transaction in a block whose `to` is the deposit address | Scan each block's transactions |
+| **A transfer from a contract**, such as another exchange's or a multisig's withdrawal | No transaction to your address. The value moves inside a call made by a contract | Trace each block with `callTracer` |
+| **A contract self-destructing** in your address's favour | No transaction to your address | Trace each block (`SELFDESTRUCT` frames) |
+| **Mining rewards and fees**, if a miner names your address as its payout address | No transaction at all. Fees arrive in the block it mines, the reward 100 blocks later | Compare the block's `miner` field with your addresses |
+| **Tokens** (ERC-20 contracts deployed on Parallax) | A `Transfer` event; the LAX balance does not change | Read logs |
+
+Most exchanges credit the first two and handle the rest by reconciliation.
+Whatever you choose, **reconcile balances**: before each sweep, compare the
+address's balance on chain with what you have credited, and send any
+difference to manual review. That catches everything a scanner misses.
+
+## Scanning blocks
+
+Scan blocks, never the mempool. A pending transaction can be replaced,
+dropped or never mined, and anyone can broadcast one.
+
+For each new block on the node's best chain:
+
+<Steps>
+  <Step title="Fetch the block with its transactions">
+    ```json
+    {"jsonrpc":"2.0","id":1,"method":"eth_getBlockByNumber","params":["0xe934", true]}
+    ```
+    Record its `number`, `hash` and `parentHash`. Check that `parentHash`
+    equals the hash you stored for the previous height. If it does not, a
+    reorganization happened: handle it first (see below).
+  </Step>
+  <Step title="Pick out transfers to your addresses">
+    Keep transactions whose `to` is one of your deposit addresses and whose
+    `value` is above zero. Compare addresses in lowercase.
+  </Step>
+  <Step title="Check each one succeeded">
+    Fetch the receipt with `eth_getTransactionReceipt` and require
+    `status` to be `0x1`. A failed transaction still appears in the block,
+    still pays its fee, and moves no value.
+  </Step>
+  <Step title="Trace for transfers made by contracts">
+    Run the call tracer over the block and collect every call frame with a
+    `value` above zero whose `to` is yours. See the next section.
+  </Step>
+  <Step title="Store each deposit as pending">
+    Key it by transaction hash and, for traced transfers, the position of
+    the call within the trace. Store the block number and **block hash**
+    with it. It is not credited yet.
+  </Step>
+</Steps>
+
+Fetching blocks one by one at 10-minute intervals is light work. A
+WebSocket subscription to `newHeads` tells you the moment a block arrives,
+but treat it only as a wake-up signal and fetch by number: a subscription
+can miss blocks while it reconnects.
+
+### Transfers made by contracts
+
+When a contract sends LAX, no transaction names your address. The value
+moves in an internal call, visible only by re-executing the transaction.
+The deposit indexer must serve the `debug` namespace on localhost (see
+[Running your nodes](./node#lock-down-json-rpc)).
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"debug_traceBlockByNumber",
+ "params":["0xe934", {"tracer":"callTracer"}]}
+```
+
+The result has one call tree per transaction, in block order. Walk each
+tree and collect frames where `value` is above zero and `to` is one of your
+addresses, including `SELFDESTRUCT` frames. Skip:
+
+- every frame of a transaction whose receipt has `status` `0x0`;
+- any frame with an `error` field, **and all of its descendants**. When a
+  call reverts, everything inside it is undone, even calls that themselves
+  succeeded.
+
+The top-level frame of each tree is the transaction itself. If you already
+credit plain transfers from step 2, skip the top frame so the same deposit
+is not counted twice.
+
+`parallax-cli trace --tracer callTracer <txhash>` traces a single
+transaction, useful when investigating one deposit by hand.
+
+### Balance changes without a transaction
+
+Parallax holds each block's reward for 100 blocks before the miner can
+spend it. At block *N* the reward is recorded in a reserved system account,
+`0x0000000000000000000000000000000000000042`, and at block *N + 100* the
+protocol adds it to the balance of block *N*'s `miner`, without any
+transaction. The fees of block *N* go to its `miner` straight away, also
+without a transaction.
+
+So if a miner or pool pays out to one of your deposit addresses directly,
+that address's balance rises with nothing in any transaction list to
+explain it. To catch it, compare each block's `miner` field with your
+deposit addresses. Pool payouts to users are ordinary transactions and need
+none of this. Only the address named as the block's miner is affected.
+
+The 0x…42 account holds every pending reward. It is not a person's
+address, and its balance is not circulating supply that anyone can move.
+
+### Tokens
+
+If you list a token issued on Parallax, deposits are `Transfer` events from
+the token's contract:
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"eth_getLogs","params":[{
+  "fromBlock":"0xe934","toBlock":"0xe934",
+  "address":"0x<token contract>",
+  "topics":["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"]
+}]}
+```
+
+Match the third topic (the recipient, left-padded to 32 bytes) against your
+addresses, read the amount from `data`, and check the transaction receipt's
+`status`. Query block by block, or in small ranges: very wide ranges hit the
+node's query limits. Token deposits follow the same reorganization and
+confirmation rules as LAX. Review each token contract before listing it: a
+contract can emit `Transfer` events that do not match real balance changes.
+
+## Reorganizations
+
+Proof-of-work chains reorganize. Two miners find a block at about the same
+time, the network briefly splits between them, and whichever side gets the
+next block wins. Blocks on the losing side disappear, and so do the
+transactions in them, unless they are also in the winning blocks. With
+10-minute blocks, one-block reorganizations are uncommon but normal. Deeper
+ones mean something unusual, possibly an attack. See
+[Confirmations](./confirmations).
+
+Your scanner must expect blocks to disappear:
+
+1. Store the hash of every block you process, by height.
+2. When a new block's `parentHash` does not match the hash you stored for
+   the height below it, walk back, fetching blocks by number from the node,
+   until the node's hash and yours agree. That height is the common
+   ancestor.
+3. Mark every pending deposit in the replaced blocks as orphaned, delete
+   those blocks from your store, and scan the node's blocks from the common
+   ancestor up again. Deposits whose transactions made it into the new
+   blocks reappear, with a new block number and hash.
+4. Record the depth (how many blocks were replaced) and alert on anything
+   deeper than 2.
+
+Never credit a deposit that a reorganization could still reach, so
+reorganizations only ever change pending deposits. If one reaches a
+credited deposit anyway, the confirmation policy was too short for the
+conditions: freeze the account and investigate.
+
+## Tracking confirmations
+
+A deposit in block *n* has `head − n + 1` confirmations, where *head* is
+the node's latest block number. It has 1 the moment its block is mined.
+
+Parallax has no finalized block. The `finalized` tag returns an error and
+`safe` is not accepted, so compute confirmations from `latest`.
+
+When a deposit reaches the number your policy requires:
+
+1. Fetch the block at height *n* again and check that its hash is still the
+   one you stored for the deposit.
+2. Check that your node is healthy: synced, with peers, and with a recent
+   head. See [Health checks](./node#health-checks).
+3. Check that none of your [halt conditions](./confirmations#halt-conditions)
+   holds.
+4. Credit it.
+
+How many confirmations to require, and when not to credit at all, is the
+subject of [Confirmations](./confirmations). It is not a constant.
+
+## Sweeping
+
+Move funds from deposit addresses to your hot or cold wallets only after
+they are credited.
+
+- **LAX:** send the balance minus the fee: `balance − 21000 × gasPrice`. A
+  plain transfer always uses exactly 21,000 gas.
+- **Tokens:** the deposit address needs LAX to pay for the token transfer.
+  Either send it a little LAX first, or deploy one forwarding contract per
+  deposit address (for example at a `CREATE2` address you can compute in
+  advance) that can be told to forward its tokens. Compile any such contract
+  with `evmVersion: "berlin"`. Contracts compiled for later Ethereum forks
+  fail on Parallax.
+
+Set a **minimum deposit** at least a few times the cost of a sweep. Anyone
+can send tiny amounts to your addresses, and sweeping each one would cost
+more than it is worth. Sweep transactions are ordinary withdrawals: sign and
+broadcast them as described in [Withdrawals](./withdrawals).

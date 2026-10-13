@@ -301,6 +301,34 @@
                 ]
               }
             ]
+          },
+          {
+            "tab": "Exchange Integration",
+            "groups": [
+              {
+                "group": "Getting Started",
+                "pages": [
+                  "v2.1.x/exchange-integration/overview",
+                  "v2.1.x/exchange-integration/network-reference",
+                  "v2.1.x/exchange-integration/ethereum-differences"
+                ]
+              },
+              {
+                "group": "Integration",
+                "pages": [
+                  "v2.1.x/exchange-integration/node",
+                  "v2.1.x/exchange-integration/deposits",
+                  "v2.1.x/exchange-integration/withdrawals"
+                ]
+              },
+              {
+                "group": "Settlement Risk Mitigation",
+                "pages": [
+                  "v2.1.x/exchange-integration/confirmations",
+                  "v2.1.x/exchange-integration/status-api"
+                ]
+              }
+            ]
           }
         ]
       },

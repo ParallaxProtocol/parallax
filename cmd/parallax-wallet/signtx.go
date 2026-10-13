@@ -88,11 +88,11 @@ var commandSignTx = cli.Command{
 	Description: `
 Build a legacy transaction from the given flags, sign it with the
 private key decrypted from <keyfile>, and print the raw signed payload
-as 0x-prefixed hex suitable for submission via "parallax-cli sendrawtx".
+as 0x-prefixed hex suitable for submission via "parallax-cli sendraw".
 
 This command never talks to a node: the caller is responsible for
 providing a correct --nonce, --gas, --gasprice, and --chainid. Obtain
-these from a running node (for example, parallax-cli getnonce /
+these from a running node (for example, parallax-cli nonce /
 gasprice) and pass them in explicitly when you want to cold-sign.`,
 	Action: runSignTx,
 }

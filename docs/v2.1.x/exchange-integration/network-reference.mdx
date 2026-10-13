@@ -1,0 +1,105 @@
+---
+title: "Network reference"
+sidebarTitle: "Network reference"
+description: "Parallax mainnet parameters for listing teams and integrators: chain ID, consensus, supply, address and transaction formats, public services, and the JSON-RPC methods specific to Parallax."
+---
+
+## Mainnet
+
+| | |
+|---|---|
+| **Coin** | LAX, 18 decimals (1 LAX = 10<sup>18</sup> wei) |
+| **Chain ID** (EIP-155) | `2110` |
+| **Network ID** | `2110` |
+| **Genesis hash** | `0x96b239e015d50f5c3f11b80733e5f38c95882c072719507b7be1a59db4975457` |
+| **Launched** | 28 October 2025, 19:00 UTC |
+| **Testnet** | None at the moment. See [Testing your integration](./overview#testing-your-integration) |
+
+## Consensus
+
+| | |
+|---|---|
+| **Algorithm** | Proof of work, [XHash](/v2.1.x/parallax-protocol/foundational-topics/consensus/algorithms/xhash) |
+| **Target block time** | 600 seconds (10 minutes) |
+| **Difficulty adjustment** | Every block, by ASERT (2-day half-life), since block 17,560 |
+| **Finality** | Probabilistic only. No checkpoints, no finality gadget |
+| **Uncles** | None. A block either is on the best chain or is not |
+| **Block reward** | 50 LAX, halving every 210,000 blocks (about 4 years) |
+| **Reward maturity** | 100 blocks |
+| **Supply cap** | 21,000,000 LAX. No premine, no burn |
+| **Fees** | Legacy gas price auction. No EIP-1559, no base fee, all fees to the miner |
+
+## Addresses and transactions
+
+| | |
+|---|---|
+| **Address format** | 20-byte hex with `0x` prefix, [EIP-55](https://eips.ethereum.org/EIPS/eip-55) mixed-case checksum. No custom prefix, no memo or tag field |
+| **Transaction types** | Legacy (type 0) and access-list (type 1). **Type 2 (EIP-1559) is rejected** |
+| **Replay protection** | EIP-155 signatures with chain ID 2110, required by default |
+| **Plain transfer** | 21,000 gas |
+| **Block header** | Ethereum's, without `sha3Uncles` and with `epochStartTime`. See [Block headers](./ethereum-differences#block-headers) |
+| **EVM** | Berlin. No `PUSH0`, `BASEFEE` or later opcodes. See [Opcodes](/v2.1.x/parallax-protocol/foundational-topics/pvm/opcodes) |
+
+## Public services
+
+| | |
+|---|---|
+| **Source and releases** | [github.com/ParallaxProtocol/parallax](https://github.com/ParallaxProtocol/parallax/releases) |
+| **Block explorer** | [explorer.parallaxprotocol.org](https://explorer.parallaxprotocol.org) |
+| **Network status** | [status.parallaxprotocol.org](https://status.parallaxprotocol.org), with a [JSON API](./status-api) |
+| **Public RPC** | `https://rpc.parallaxprotocol.org`, for testing only. Run your own nodes in production |
+| **Whitepaper** | [parallaxprotocol.org/parallax.pdf](https://parallaxprotocol.org/parallax.pdf) |
+
+## Supply
+
+Any synced node reports the exact amount issued so far:
+
+```bash
+curl -s -X POST -H 'Content-Type: application/json' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"eth_getTotalSupply","params":[]}' \
+  http://127.0.0.1:8545
+# {"jsonrpc":"2.0","id":1,"result":"2985000000000000000000000"}
+```
+
+The result is a **decimal** string in wei, not hex. It is the sum of every
+block reward up to the head block. `eth_getCirculatingSupply` returns the
+same figure: there is no premine, treasury or lock-up, so circulating supply
+is total supply. Rewards still waiting out their 100-block maturity count
+as issued. The figure grows by the current block reward per block and never
+shrinks, because Parallax burns nothing.
+
+## JSON-RPC methods
+
+Parallax serves the standard Ethereum JSON-RPC methods. These are the ones
+that are specific to Parallax, or that behave differently from Ethereum.
+
+### Specific to Parallax
+
+| Method | Returns |
+|---|---|
+| `eth_estimateSmartFee(confTarget)` | `{gasPrice, confTarget, successRate, legacyFallback}`: a gas price expected to confirm within `confTarget` blocks, from a port of Bitcoin Core's fee estimator. See [Fees](./withdrawals#fees) |
+| `eth_getTotalSupply()` | LAX issued up to the head block, in wei, as a decimal string |
+| `eth_getCirculatingSupply()` | The same as `eth_getTotalSupply` |
+
+The two supply methods are also served as `xhash_getTotalSupply` and
+`xhash_getCirculatingSupply`.
+
+### Different from Ethereum
+
+| Method | Behaviour on Parallax |
+|---|---|
+| Any method taking a block tag | `latest`, `earliest` and `pending` work. `finalized` returns an error, because no block is ever finalized, and `safe` is rejected |
+| `eth_sendRawTransaction` | Rejects type 2 transactions, transactions without EIP-155 replay protection, and transactions whose fee exceeds `--rpc.txfeecap` (1 LAX by default) |
+| `eth_gasPrice` | The `eth_estimateSmartFee` price for a 2-block target. There is no base fee to add |
+| `eth_maxPriorityFeePerGas` | The same value as `eth_gasPrice`. Only meaningful for type 2 transactions, which Parallax rejects |
+| `eth_getBlockBy*`, `eth_getHeaderBy*` | Headers have no `sha3Uncles` or `baseFeePerGas`, and add `epochStartTime`. Blocks have no `uncles` list. See [Block headers](./ethereum-differences#block-headers) |
+| `eth_getUncle*` | Always `null`. Kept for compatibility |
+| `eth_getTransactionByHash`, `eth_getTransactionReceipt` | Find transactions in the last 52,560 blocks (about a year) unless the node runs with `--txlookuplimit 0`. See [History and indexing](./node#history-and-indexing) |
+
+### Namespaces
+
+HTTP and WebSocket serve `eth`, `net` and `web3` by default. `txpool`
+(mempool contents) and `debug` (tracing, needed to find
+[transfers made by contracts](./deposits#transfers-made-by-contracts)) must
+be enabled with `--http.api`. See
+[Lock down JSON-RPC](./node#lock-down-json-rpc) before you do.

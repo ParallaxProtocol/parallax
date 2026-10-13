@@ -19,9 +19,8 @@ To preserve the transaction history, blocks are strictly ordered (every new bloc
 There is a lot of information contained within a block. At the highest level a block contains the following fields:
 
 * `timestamp` – the time when the block was mined.
-* `epochStartTime` – used by the difficulty adjustment algorithm to determine the time of the first block of the 2016 block window.
+* `epochStartTime` - the timestamp of the first block of the current 2016-block window, used by Parallax's original difficulty adjustment. Difficulty now adjusts every block by ASERT, but the field is still set and checked.
 * `blockNumber` – the length of the blockchain in blocks.
-* `baseFeePerGas` - the minimum fee per gas required for a transaction to be included in the block.
 * `difficulty` – difficulty target.
 * `mixHash` – a unique identifier for that block.
 * `parentHash` – the unique identifier for the block that came before (this is how blocks are linked in a chain).

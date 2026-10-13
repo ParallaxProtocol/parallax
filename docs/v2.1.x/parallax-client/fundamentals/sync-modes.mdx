@@ -26,7 +26,7 @@ Snap sync is the default behaviour, so if the `--syncmode` value is not passed t
 
 ### Full
 
-A full block-by-block sync generates the current state by executing every block starting from the genesis block. A full sync independently verifies block provenance as well as all state transitions by re-executing the transactions in the entire historical sequence of blocks. Only the most recent 128 block states are stored in a full node - older block states are pruned periodically and represented as a series of checkpoints from which any previous state can be regenerated on request. 128 blocks is about 10.7 minutes of history with a block time of 5 seconds.
+A full block-by-block sync generates the current state by executing every block starting from the genesis block. A full sync independently verifies block provenance as well as all state transitions by re-executing the transactions in the entire historical sequence of blocks. Only the most recent 128 block states are stored in a full node - older block states are pruned periodically and represented as a series of checkpoints from which any previous state can be regenerated on request. 128 blocks is about 21 hours of history with a block time of 10 minutes.
 
 To create a full node pass `--syncmode full` at startup.
 

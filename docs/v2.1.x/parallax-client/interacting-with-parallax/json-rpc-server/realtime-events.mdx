@@ -18,8 +18,8 @@ returns
 ```json
 {"jsonrpc":"2.0","id":1,"result":"0xcd0c3e8af590364c09d0fa6a1210faf5"}
 // incoming notifications
-{"jsonrpc":"2.0","method":"eth_subscription","params":{"subscription":"0xcd0c3e8af590364c09d0fa6a1210faf5","result":{"difficulty":"0xd9263f42a87",<...>, "uncles":[]}}}
-{"jsonrpc":"2.0","method":"eth_subscription","params":{"subscription":"0xcd0c3e8af590364c09d0fa6a1210faf5","result":{"difficulty":"0xd90b1a7ad02", <...>, "uncles":["0x80aacd1ea4c9da32efd8c2cc9ab38f8f70578fcd46a1a4ed73f82f3e0957f936"]}}}
+{"jsonrpc":"2.0","method":"eth_subscription","params":{"subscription":"0xcd0c3e8af590364c09d0fa6a1210faf5","result":{"parentHash":"0x3eff702e910b1562ae6e40ce29c1f53449daf63808a49460cc3f7b6a11618fde",<...>,"number":"0xe934",<...>}}}
+{"jsonrpc":"2.0","method":"eth_subscription","params":{"subscription":"0xcd0c3e8af590364c09d0fa6a1210faf5","result":{"parentHash":"0xe7afc97ee43bc6024f6bf57d9912678709c31b089ffb972cb265e72f4629a25f",<...>,"number":"0xe935",<...>}}}
 ```
 
 to cancel the subscription:
@@ -92,20 +92,23 @@ returns
   "method": "eth_subscription",
   "params": {
     "result": {
-      "difficulty": "0x15d9223a23aa",
-      "extraData": "0xd983010305844765746887676f312e342e328777696e646f7773",
-      "gasLimit": "0x47e7c4",
-      "gasUsed": "0x38658",
+      "parentHash": "0x3eff702e910b1562ae6e40ce29c1f53449daf63808a49460cc3f7b6a11618fde",
+      "miner": "0x38432a328b3c6f15582292f7235f17b08a98c6ab",
+      "stateRoot": "0xdbd2f3ccaacca4fbe8fd6006b2b2fd98204d674d15acae6b13a115039c37274b",
+      "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+      "receiptsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
       "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-      "miner": "0xf8b483dba2c3b7176a3da549ad41a48bb3121069",
-      "nonce": "0x084149998194cc5f",
-      "number": "0x1348c9",
-      "parentHash": "0x7736fab79e05dc611604d22470dadad26f56fe494421b5b333de816ce1f25701",
-      "receiptRoot": "0x2fab35823ad00c7bb388595cb46652fe7886e00660a01e867824d3dceb1c8d36",
-      "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
-      "stateRoot": "0xb3346685172db67de536d8765c43c31009d0eb3bd9c501c9be3229203f15f378",
-      "timestamp": "0x56ffeff8",
-      "transactionsRoot": "0x0167ffa60e3ebc0b080cdb95f7c0087dd6c0e61413140e39d94d3468d7c9689f"
+      "difficulty": "0x44eccd7eda7",
+      "number": "0xe934",
+      "gasLimit": "0x23c34600",
+      "gasUsed": "0x0",
+      "timestamp": "0x6ace88cf",
+      "epochStartTime": "0x6ac4e0d9",
+      "extraData": "0xd8830102008470726c7888676f312e32352e31856c696e7578",
+      "mixHash": "0x658efc6d3c3cc52e6996a5d0803f258a8568cc34f0789da67101245c10dfd625",
+      "nonce": "0x85943e36390c08d3",
+      "baseFeePerGas": null,
+      "hash": "0xe7afc97ee43bc6024f6bf57d9912678709c31b089ffb972cb265e72f4629a25f"
     },
     "subscription": "0x9ce59a13059e417087c02d3236a0b1cc"
   }

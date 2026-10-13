@@ -1,0 +1,165 @@
+---
+title: "Differences from Ethereum"
+sidebarTitle: "Differences from Ethereum"
+description: "What changes when an Ethereum integration is pointed at Parallax: finality, transaction types, block timing, rewards without transactions, history limits, block headers and contract compilation."
+---
+
+Parallax runs the Ethereum Virtual Machine, uses Ethereum's addresses,
+transaction format and JSON-RPC, and works with most Ethereum libraries
+unchanged. An Ethereum integration is a good starting point. These are the
+places where it will not work as it is.
+
+## No finalized block
+
+Ethereum's proof of stake finalizes blocks: after about 13 minutes, a block
+cannot be reverted without destroying a large amount of stake. Parallax is
+proof of work. No block is ever final; each new block on top of it only
+makes replacing it more expensive.
+
+The JSON-RPC reflects this. The `finalized` tag is parsed, but the node
+never sets a finalized block, so it returns an error. `safe` is not accepted
+at all. Count confirmations yourself, from `latest`, as described in
+[Tracking confirmations](./deposits#tracking-confirmations), and choose how
+many with [Confirmations](./confirmations).
+
+## Legacy transactions only
+
+Parallax never activated London, so there is no EIP-1559 fee market and no
+base fee. The node rejects type 2 transactions with
+`transaction type not supported`. Legacy (type 0) and access-list (type 1)
+transactions are accepted.
+
+Sign legacy transactions with an explicit `gasPrice` and chain ID `2110`.
+Most libraries choose legacy on their own when blocks have no
+`baseFeePerGas`, but set the type explicitly so a library upgrade does not
+change it. Price them with `eth_estimateSmartFee`. See
+[Withdrawals](./withdrawals#build-and-sign).
+
+## Block timing
+
+Blocks target 10 minutes, not 12 seconds, and the gaps between them follow
+a Poisson process: a 30-minute gap is not unusual, and an hour happens. A
+deposit with 6 confirmations has waited about an hour on average. Size
+user-facing estimates, timeouts and alerting accordingly. A node whose
+head is a few minutes old is normal; one whose head is over 2 hours old
+needs attention (see [Health checks](./node#health-checks)).
+
+## Mining rewards arrive without a transaction
+
+A block's reward is held for 100 blocks and then added to the miner's
+balance by the protocol itself, with no transaction. The block's fees are
+added to the miner's balance immediately, also with no transaction. If a
+miner names one of your deposit addresses as its payout address, that
+address's balance rises with nothing in any block's transaction list to
+explain it. See
+[Balance changes without a transaction](./deposits#balance-changes-without-a-transaction).
+
+## Transaction lookups cover about a year
+
+Nodes index transactions by hash for the last 52,560 blocks, about one year
+at 10 minutes. Older transactions are still in their blocks, but
+`eth_getTransactionByHash` and `eth_getTransactionReceipt` return nothing
+for them. Run your indexing nodes with `--txlookuplimit 0` to index the
+whole chain. See [History and indexing](./node#history-and-indexing).
+
+## Contracts must target Berlin
+
+Parallax runs the EVM as of Berlin, with no later fork. If you deploy
+forwarders, sweepers, batch-payment contracts or multisigs, compile them
+with `evmVersion: "berlin"`. Solidity 0.8.20 and later emit `PUSH0` by
+default, which is an invalid opcode here, so a contract compiled with the
+defaults fails on deployment or on its first call. See
+[Opcodes](/v2.1.x/parallax-protocol/foundational-topics/pvm/opcodes).
+
+## Block headers
+
+A Parallax block header carries the same core fields as an Ethereum
+header, with three differences: no uncles hash, an extra `epochStartTime`
+field, and no base fee. The block itself has no uncle list either: it is a
+header and a list of transactions.
+
+| Field | Ethereum | Parallax |
+|---|---|---|
+| `sha3Uncles` (ommers hash) | Present | **Absent.** Parallax has no uncle blocks |
+| `epochStartTime` | Absent | **Present.** The timestamp of the most recent block whose number is a multiple of 2,016. See below |
+| `baseFeePerGas` | Present since London | **Absent** from block and header responses. `newHeads` notifications show it as `null` |
+| `difficulty`, `nonce`, `mixHash` | Zero since the Merge | The real proof-of-work values |
+| `totalDifficulty` | Frozen since the Merge | Accumulated work up to this block. Nodes follow the chain with the most total difficulty |
+| `withdrawalsRoot`, `blobGasUsed`, `excessBlobGas`, `parentBeaconBlockRoot`, `requestsHash` | Present in later forks | Absent. Parallax runs no fork after Berlin |
+| `extraData` | Up to 32 bytes | Up to 32 bytes. Miners usually put their client version or pool name here |
+
+A mainnet header, from `eth_getHeaderByNumber`:
+
+```json
+{
+  "difficulty": "0x44eccd7eda7",
+  "epochStartTime": "0x6ac4e0d9",
+  "extraData": "0xd8830102008470726c7888676f312e32352e31856c696e7578",
+  "gasLimit": "0x23c34600",
+  "gasUsed": "0x0",
+  "hash": "0xe7afc97ee43bc6024f6bf57d9912678709c31b089ffb972cb265e72f4629a25f",
+  "logsBloom": "0x0000…0000",
+  "miner": "0x38432a328b3c6f15582292f7235f17b08a98c6ab",
+  "mixHash": "0x658efc6d3c3cc52e6996a5d0803f258a8568cc34f0789da67101245c10dfd625",
+  "nonce": "0x85943e36390c08d3",
+  "number": "0xe934",
+  "parentHash": "0x3eff702e910b1562ae6e40ce29c1f53449daf63808a49460cc3f7b6a11618fde",
+  "receiptsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+  "size": "0x230",
+  "stateRoot": "0xdbd2f3ccaacca4fbe8fd6006b2b2fd98204d674d15acae6b13a115039c37274b",
+  "timestamp": "0x6ace88cf",
+  "totalDifficulty": "0x1c357248a071b48d",
+  "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+}
+```
+
+### `epochStartTime`
+
+Parallax launched with Bitcoin's difficulty rule: retarget every 2,016
+blocks, from the time the previous 2,016 took. `epochStartTime` records
+when the current 2,016-block window began, so the next retarget can be
+computed from the header alone. Since block 17,560, mainnet difficulty
+adjusts every block by ASERT instead, which does not use the field. It is
+still part of the header and consensus still checks it: a block whose
+number is a multiple of 2,016 must set it to its own `timestamp`, and every
+other block must copy its parent's.
+
+### Computing the block hash
+
+The block hash is the Keccak-256 hash of the RLP encoding of these 15
+fields, in this order:
+
+```
+parentHash, miner, stateRoot, transactionsRoot, receiptsRoot, logsBloom,
+difficulty, number, gasLimit, gasUsed, timestamp, epochStartTime,
+extraData, mixHash, nonce
+```
+
+Compared with Ethereum's pre-London header, `sha3Uncles` is gone from
+between `parentHash` and `miner`, and `epochStartTime` is inserted between
+`timestamp` and `extraData`. Code that rebuilds a header from JSON with
+Ethereum's field list produces the wrong hash. You only need this if you
+verify block hashes or headers yourself; the `hash` field your node returns
+is already correct.
+
+The proof of work is checked against a separate **seal hash**: the
+Keccak-256 hash of the RLP encoding of the first 11 fields above
+(`parentHash` to `timestamp`), then `extraData`, then `epochStartTime`.
+Note that `epochStartTime` comes after `extraData` here, and `mixHash` and
+`nonce` are left out, because they are the proof-of-work solution. The
+solution is valid when [XHash](/v2.1.x/parallax-protocol/foundational-topics/consensus/algorithms/xhash),
+run over the seal hash and the `nonce`, reproduces `mixHash` and gives a
+result no greater than (2<sup>256</sup> − 1) ÷ `difficulty`.
+
+### Library compatibility
+
+| Library | Blocks and headers |
+|---|---|
+| go-ethereum `ethclient` | **Fails.** `HeaderByNumber` and `BlockByNumber` return `missing required field 'sha3Uncles' for Header`. Calls that do not decode headers, such as `BalanceAt` and `ChainID`, work. Use Parallax's own client, `github.com/ParallaxProtocol/parallax/v2/rpc/client`, which has the same methods ([Go API](/v2.1.x/parallax-client/developers/dapp/go-api)) |
+| ethers v6 | Works. `baseFeePerGas` is `null`, so ethers signs legacy transactions |
+| viem | Works. `sha3Uncles` is `undefined` and `baseFeePerGas` `null` |
+| Others | Check that the library decodes a block without `sha3Uncles` before relying on it |
+
+The uncle methods (`eth_getUncleByBlockHashAndIndex`,
+`eth_getUncleCountByBlockNumber` and the rest) exist for compatibility and
+always return `null`.
