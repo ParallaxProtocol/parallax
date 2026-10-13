@@ -36,6 +36,9 @@ var (
 	ErrEquivocation = errors.New("proofstore: refusing to equivocate: different payload already signed at this seq (W3)")
 	ErrStaleSeq     = errors.New("proofstore: seq not above latest complete state")
 	ErrBadState     = errors.New("proofstore: state object invalid for this write")
+	// ErrInvoicePaid refuses a payment journal write naming an invoice
+	// this store already holds as paid.
+	ErrInvoicePaid = errors.New("proofstore: invoice already paid")
 	// ErrCorrupt wraps a decode failure on a stored record: the bytes are
 	// present but no longer parse, and re-reading them cannot help.
 	ErrCorrupt = errors.New("proofstore: corrupt record")

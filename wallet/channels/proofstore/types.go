@@ -258,7 +258,11 @@ type Invoice struct {
 	Paid     bool         `json:"paid"`
 	PaidBy   *ChannelKey  `json:"paidBy,omitempty"`
 	PaidSeq  uint64       `json:"paidSeq,omitempty"`
-	Merchant util.Address `json:"evmAddress"`
+	// PaidByProposal marks a payer-side record spent by this wallet's own
+	// journaled proposal rather than by completing a counterparty's; only
+	// such a mark is released when that proposal is voided.
+	PaidByProposal bool         `json:"paidByProposal,omitempty"`
+	Merchant       util.Address `json:"evmAddress"`
 }
 
 // PinMatches reports whether the invoice's channel pin admits key. An

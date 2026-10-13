@@ -43,27 +43,86 @@ func (s *Store) Invoice(id string) (Invoice, error) {
 // fire webhooks.
 func (s *Store) MarkInvoicePaid(id string, by ChannelKey, seq uint64) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(bucketInvoices)
-		raw := b.Get([]byte(id))
-		if raw == nil {
-			return ErrNotFound
-		}
-		var inv Invoice
-		if err := json.Unmarshal(raw, &inv); err != nil {
-			return err
-		}
-		if inv.Paid {
+		return markInvoicePaid(tx, id, by, seq, false)
+	})
+}
+
+// markInvoicePaid marks invoice id paid by (by, seq). ownProposal is the
+// payer side: the mark is made by this wallet's own journal write, a held
+// paid record fails with ErrInvoicePaid instead of ErrExists (except the
+// identical re-journal of the state that made the mark), and the mark is
+// flagged so releaseInvoices can undo it.
+func markInvoicePaid(tx *bolt.Tx, id string, by ChannelKey, seq uint64, ownProposal bool) error {
+	b := tx.Bucket(bucketInvoices)
+	raw := b.Get([]byte(id))
+	if raw == nil {
+		return ErrNotFound
+	}
+	var inv Invoice
+	if err := json.Unmarshal(raw, &inv); err != nil {
+		return fmt.Errorf("%w: invoice %s: %v", ErrCorrupt, id, err)
+	}
+	if inv.Paid {
+		if !ownProposal {
 			return ErrExists
 		}
-		inv.Paid = true
-		inv.PaidBy = &by
-		inv.PaidSeq = seq
+		if inv.PaidByProposal && inv.PaidBy != nil && *inv.PaidBy == by && inv.PaidSeq == seq {
+			return nil
+		}
+		return ErrInvoicePaid
+	}
+	inv.Paid = true
+	inv.PaidBy = &by
+	inv.PaidSeq = seq
+	inv.PaidByProposal = ownProposal
+	out, err := json.Marshal(inv)
+	if err != nil {
+		return err
+	}
+	return b.Put([]byte(id), out)
+}
+
+// releaseInvoices clears the payer-side marks made by this wallet's own
+// journaled states on key at the given seqs, which were pruned without
+// completing (tiebreak loss, supersession): no payment moved, so the
+// invoice is payable again. Marks made by completing a counterparty's
+// proposal are never touched.
+func releaseInvoices(tx *bolt.Tx, key ChannelKey, seqs []uint64) error {
+	if len(seqs) == 0 {
+		return nil
+	}
+	voided := make(map[uint64]bool, len(seqs))
+	for _, seq := range seqs {
+		voided[seq] = true
+	}
+	b := tx.Bucket(bucketInvoices)
+	type update struct{ k, v []byte }
+	var updates []update
+	err := b.ForEach(func(k, v []byte) error {
+		var inv Invoice
+		if err := json.Unmarshal(v, &inv); err != nil {
+			return nil // an undecodable record holds no mark we can release
+		}
+		if !inv.Paid || !inv.PaidByProposal || inv.PaidBy == nil || *inv.PaidBy != key || !voided[inv.PaidSeq] {
+			return nil
+		}
+		inv.Paid, inv.PaidBy, inv.PaidSeq, inv.PaidByProposal = false, nil, 0, false
 		out, err := json.Marshal(inv)
 		if err != nil {
 			return err
 		}
-		return b.Put([]byte(id), out)
+		updates = append(updates, update{append([]byte(nil), k...), out})
+		return nil
 	})
+	if err != nil {
+		return err
+	}
+	for _, u := range updates {
+		if err := b.Put(u.k, u.v); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ------------------------------------------------------------------ tower

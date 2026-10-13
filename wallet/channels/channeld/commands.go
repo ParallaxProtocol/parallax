@@ -80,8 +80,8 @@ func (n *Node) ResolveInvoice(invoiceID string) (proofstore.ChannelKey, *big.Int
 	}
 	if inv.Paid {
 		// Spent by this wallet's own irrevocable proposal (marked at the W1
-		// write); a second proposal would be NACKed "already paid" after its
-		// own journal write and poison the channel.
+		// write, released if that proposal is voided); the engine refuses a
+		// second one under its lock, this check only names where it went.
 		if inv.PaidBy != nil {
 			return proofstore.ChannelKey{}, nil, fmt.Errorf("channeld: invoice %s already paid at seq %d on channel %s", invoiceID, inv.PaidSeq, inv.PaidBy.String())
 		}

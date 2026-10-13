@@ -2,7 +2,9 @@ package proofstore
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/ParallaxProtocol/parallax/v2/util"
@@ -144,6 +146,17 @@ func (s *Store) SelfSigned(key ChannelKey) ([]SignedState, error) {
 // a different payload at any seq this wallet already signed, ErrBadState if
 // the wallet's own signature slot is not a 65-byte signature.
 func (s *Store) PutSelfSigned(st SignedState) error {
+	return s.PutSelfSignedPayment(st, "")
+}
+
+// PutSelfSignedPayment is PutSelfSigned for a payment that names an
+// invoice: in the same transaction as the journal write it refuses an
+// invoice this store already holds as paid (ErrInvoicePaid) and marks a
+// held unpaid one paid by st, so a second proposal for the same invoice
+// can never be journaled. An id with no local record (URI path) journals
+// unmarked. The mark is released if the journaled state is later pruned
+// without completing (see putComplete).
+func (s *Store) PutSelfSignedPayment(st SignedState, invoiceID string) error {
 	digest, err := st.Digest()
 	if err != nil {
 		return err
@@ -153,6 +166,11 @@ func (s *Store) PutSelfSigned(st SignedState) error {
 		return err
 	}
 	return s.db.Update(func(tx *bolt.Tx) error {
+		if invoiceID != "" {
+			if err := markInvoicePaid(tx, invoiceID, st.Key, st.Seq, true); err != nil && !errors.Is(err, ErrNotFound) {
+				return err
+			}
+		}
 		cb := channelBucket(tx, st.Key)
 		if cb == nil {
 			return ErrNotFound
@@ -268,14 +286,25 @@ func (s *Store) putComplete(st SignedState, allowTiebreak bool) error {
 		if err := cb.Put(keyState, raw); err != nil {
 			return err
 		}
-		// Prune superseded/completed journal entries (seq <= st.Seq).
+		// Prune superseded/completed journal entries (seq <= st.Seq). An
+		// entry that differs from st never completed (a lower seq would have
+		// been pruned at its own completion; one at st.Seq lost the
+		// tiebreak), so an invoice it spent is released for re-payment.
 		c := ss.Cursor()
-		for k, _ := c.First(); k != nil && bytes.Compare(k, seqKey(st.Seq)) <= 0; k, _ = c.Next() {
+		var voided []uint64
+		for k, v := c.First(); k != nil && bytes.Compare(k, seqKey(st.Seq)) <= 0; k, v = c.Next() {
+			d, err := digestOf(v)
+			if err != nil {
+				return err
+			}
+			if d != digest {
+				voided = append(voided, binary.BigEndian.Uint64(k))
+			}
 			if err := c.Delete(); err != nil {
 				return err
 			}
 		}
-		return nil
+		return releaseInvoices(tx, st.Key, voided)
 	})
 }
 

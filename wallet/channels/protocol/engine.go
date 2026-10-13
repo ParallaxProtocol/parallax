@@ -20,6 +20,7 @@ var (
 	ErrNoProposal      = errors.New("protocol: no matching outstanding proposal")
 	ErrInsufficient    = errors.New("protocol: insufficient confirmed balance")
 	ErrInflightCap     = errors.New("protocol: amount exceeds max_inflight_payment_wei")
+	ErrInvoicePaid     = errors.New("protocol: invoice already paid")
 )
 
 // Config carries the engine policy knobs (Part 3 §11).
@@ -240,19 +241,18 @@ func (e *Engine) ProposePayment(key proofstore.ChannelKey, amountWei *big.Int, i
 	}
 	setSig(&next, meta.Role, sig)
 
-	if err := e.store.PutSelfSigned(next); err != nil { // W1 barrier
-		return nil, err
-	}
-	// The journal write commits this wallet to the payment (a second
-	// proposal for the same invoice would be NACKed "already paid" after
-	// its own irrevocable write, poisoning the channel), so a locally
-	// stored invoice (received via 21901) is spent here, on the payer side.
-	// Invoices only known by id (URI path) have no record to mark.
-	if invoiceID != "" {
-		if err := e.store.MarkInvoicePaid(invoiceID, key, next.Seq); err != nil &&
-			!errors.Is(err, proofstore.ErrNotFound) && !errors.Is(err, proofstore.ErrExists) {
-			return nil, err
+	// W1 barrier. The journal write commits this wallet to the payment (a
+	// second proposal for the same invoice would be NACKed "already paid"
+	// after its own irrevocable write, poisoning the channel), so a locally
+	// stored invoice (received via 21901) is refused if already paid and
+	// spent in the same transaction, whichever path (--invoice or URI)
+	// named it. The mark is released if this state is voided without
+	// completing. Invoices only known by id have no record to mark.
+	if err := e.store.PutSelfSignedPayment(next, invoiceID); err != nil {
+		if errors.Is(err, proofstore.ErrInvoicePaid) {
+			return nil, fmt.Errorf("%w: %s", ErrInvoicePaid, invoiceID)
 		}
+		return nil, err
 	}
 	return &ProposalMsg{V: 1, InvoiceID: invoiceID, State: ToWire(next), ProposerRole: string(meta.Role)}, nil
 }
