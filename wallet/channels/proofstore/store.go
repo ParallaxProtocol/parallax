@@ -42,6 +42,9 @@ var (
 	// ErrCorrupt wraps a decode failure on a stored record: the bytes are
 	// present but no longer parse, and re-reading them cannot help.
 	ErrCorrupt = errors.New("proofstore: corrupt record")
+	// ErrQuarantined reports a delegation with no live record but one in
+	// quarantine. It wraps ErrNotFound: there is nothing to evaluate with.
+	ErrQuarantined = fmt.Errorf("%w: delegation quarantined", ErrNotFound)
 )
 
 var (

@@ -42,17 +42,17 @@ func TestDelegationCorruptIsTyped(t *testing.T) {
 // aside, leaves the live set empty for the key, lists, and clears.
 func TestQuarantineRoundTrip(t *testing.T) {
 	s := openStore(t)
-	if moved, err := s.QuarantineDelegation(testKey, errors.New("x")); err != nil || moved {
-		t.Fatalf("quarantine of an absent record: moved=%v err=%v", moved, err)
+	if moved, err := s.QuarantineDelegation(testKey, errors.New("x")); err != nil || moved != nil {
+		t.Fatalf("quarantine of an absent record: moved=%+v err=%v", moved, err)
 	}
 	plantCorrupt(t, s, testKey, []byte("{corrupt"))
 	cause := errors.New("json: unexpected end")
 	moved, err := s.QuarantineDelegation(testKey, cause)
-	if err != nil || !moved {
-		t.Fatalf("quarantine: moved=%v err=%v", moved, err)
+	if err != nil || moved == nil || !bytes.Equal(moved.Raw, []byte("{corrupt")) {
+		t.Fatalf("quarantine: moved=%+v err=%v", moved, err)
 	}
-	if _, err := s.Delegation(testKey); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("live record after quarantine: %v, want ErrNotFound", err)
+	if _, err := s.Delegation(testKey); !errors.Is(err, ErrQuarantined) || !errors.Is(err, ErrNotFound) {
+		t.Fatalf("live record after quarantine: %v, want ErrQuarantined (an ErrNotFound)", err)
 	}
 	q, err := s.QuarantinedDelegation(testKey)
 	if err != nil {
@@ -111,5 +111,68 @@ func TestParseChannelKey(t *testing.T) {
 		if _, err := ParseChannelKey(bad); err == nil {
 			t.Fatalf("%q parsed", bad)
 		}
+	}
+}
+
+// TestQuarantineKeepsEveryEntry: a second corrupt record for the same
+// channel lands beside the first instead of overwriting the bytes kept as
+// evidence, and clear discards both.
+func TestQuarantineKeepsEveryEntry(t *testing.T) {
+	s := openStore(t)
+	plantCorrupt(t, s, testKey, []byte("{first"))
+	if _, err := s.QuarantineDelegation(testKey, errors.New("one")); err != nil {
+		t.Fatal(err)
+	}
+	plantCorrupt(t, s, testKey, []byte("{second"))
+	if _, err := s.QuarantineDelegation(testKey, errors.New("two")); err != nil {
+		t.Fatal(err)
+	}
+	all, err := s.QuarantinedDelegations()
+	if err != nil || len(all) != 2 || string(all[0].Raw) != "{first" || string(all[1].Raw) != "{second" {
+		t.Fatalf("entries: %+v %v", all, err)
+	}
+	if q, err := s.QuarantinedDelegation(testKey); err != nil || string(q.Raw) != "{second" {
+		t.Fatalf("latest entry: %+v %v", q, err)
+	}
+	if err := s.ClearQuarantine(testKey); err != nil {
+		t.Fatal(err)
+	}
+	if all, err := s.QuarantinedDelegations(); err != nil || len(all) != 0 {
+		t.Fatalf("after clear: %+v %v", all, err)
+	}
+}
+
+// TestQuarantineListSurvivesBadEntry: one quarantine entry that no longer
+// decodes is listed with its bytes and key, not allowed to abort the
+// listing, and can still be cleared.
+func TestQuarantineListSurvivesBadEntry(t *testing.T) {
+	s := openStore(t)
+	other := testKey
+	other.ChannelID++
+	plantCorrupt(t, s, other, []byte("{fine"))
+	if _, err := s.QuarantineDelegation(other, errors.New("x")); err != nil {
+		t.Fatal(err)
+	}
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(bucketQuarantine).Put([]byte(quarantinePrefix(testKey)+"0000000000000001"), []byte("{garbage"))
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	all, err := s.QuarantinedDelegations()
+	if err != nil || len(all) != 2 {
+		t.Fatalf("listing: %+v %v", all, err)
+	}
+	var bad *QuarantinedDelegation
+	for i := range all {
+		if all[i].Key == testKey {
+			bad = &all[i]
+		}
+	}
+	if bad == nil || string(bad.Raw) != "{garbage" || bad.Error == "" {
+		t.Fatalf("bad entry not listed by key: %+v", all)
+	}
+	if err := s.ClearQuarantine(testKey); err != nil {
+		t.Fatal(err)
 	}
 }

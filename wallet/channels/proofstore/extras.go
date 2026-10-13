@@ -1,8 +1,10 @@
 package proofstore
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	bolt "go.etcd.io/bbolt"
@@ -146,7 +148,7 @@ func (s *Store) PutDelegation(d Delegation) (keptSeq uint64, err error) {
 			if err := json.Unmarshal(prev, &have); err != nil {
 				// An undecodable record must not block the delegator from
 				// replacing it: move it aside and let the fresh one land.
-				if err := quarantine(tx, d.State.Key, prev, err); err != nil {
+				if _, err := quarantine(tx, d.State.Key, append([]byte(nil), prev...), err); err != nil {
 					return err
 				}
 			} else if have.State.Seq >= d.State.Seq {
@@ -161,81 +163,154 @@ func (s *Store) PutDelegation(d Delegation) (keptSeq uint64, err error) {
 }
 
 // quarantine moves the live delegation record for key into the quarantine
-// bucket with the decode error that condemned it.
-func quarantine(tx *bolt.Tx, key ChannelKey, raw []byte, cause error) error {
+// bucket with the decode error that condemned it. Each move gets its own
+// entry (key prefix plus a sequence suffix), so a later corrupt record for
+// the same channel never overwrites the bytes kept from an earlier one.
+func quarantine(tx *bolt.Tx, key ChannelKey, raw []byte, cause error) (QuarantinedDelegation, error) {
 	q := QuarantinedDelegation{Key: key, Raw: raw, Error: cause.Error(), AtUnix: time.Now().Unix()}
 	enc, err := json.Marshal(q)
 	if err != nil {
-		return err
+		return q, err
 	}
-	if err := tx.Bucket(bucketQuarantine).Put([]byte(key.String()), enc); err != nil {
-		return err
+	b := tx.Bucket(bucketQuarantine)
+	seq, err := b.NextSequence()
+	if err != nil {
+		return q, err
 	}
-	return tx.Bucket(bucketTower).Delete([]byte(key.String()))
+	if err := b.Put([]byte(fmt.Sprintf("%s#%016x", quarantinePrefix(key), seq)), enc); err != nil {
+		return q, err
+	}
+	return q, tx.Bucket(bucketTower).Delete([]byte(key.String()))
 }
 
+func quarantinePrefix(key ChannelKey) string { return key.String() + "#" }
+
 // QuarantineDelegation moves the live delegation record for key aside (see
-// QuarantinedDelegation). It reports whether a live record was there to
-// move; a key with none is a no-op.
-func (s *Store) QuarantineDelegation(key ChannelKey, cause error) (moved bool, err error) {
-	err = s.db.Update(func(tx *bolt.Tx) error {
+// QuarantinedDelegation) and returns what it moved; nil when key had no
+// live record (a no-op).
+func (s *Store) QuarantineDelegation(key ChannelKey, cause error) (*QuarantinedDelegation, error) {
+	var moved *QuarantinedDelegation
+	err := s.db.Update(func(tx *bolt.Tx) error {
 		raw := tx.Bucket(bucketTower).Get([]byte(key.String()))
 		if raw == nil {
 			return nil
 		}
-		moved = true
-		return quarantine(tx, key, raw, cause)
+		q, err := quarantine(tx, key, append([]byte(nil), raw...), cause)
+		if err != nil {
+			return err
+		}
+		moved = &q
+		return nil
 	})
 	return moved, err
 }
 
-// QuarantinedDelegation returns the quarantined record for key, or
-// ErrNotFound.
-func (s *Store) QuarantinedDelegation(key ChannelKey) (QuarantinedDelegation, error) {
-	var q QuarantinedDelegation
-	err := s.db.View(func(tx *bolt.Tx) error {
-		raw := tx.Bucket(bucketQuarantine).Get([]byte(key.String()))
-		if raw == nil {
-			return ErrNotFound
+// forEachQuarantined visits the quarantine entries for key, oldest first.
+func forEachQuarantined(tx *bolt.Tx, key ChannelKey, fn func(k, v []byte) error) error {
+	prefix := []byte(quarantinePrefix(key))
+	c := tx.Bucket(bucketQuarantine).Cursor()
+	for k, v := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, v = c.Next() {
+		if err := fn(k, v); err != nil {
+			return err
 		}
-		return json.Unmarshal(raw, &q)
-	})
-	return q, err
+	}
+	return nil
 }
 
-// QuarantinedDelegations lists every quarantined record.
+// QuarantinedDelegation returns the most recent quarantined record for key,
+// or ErrNotFound.
+func (s *Store) QuarantinedDelegation(key ChannelKey) (QuarantinedDelegation, error) {
+	var last []byte
+	err := s.db.View(func(tx *bolt.Tx) error {
+		return forEachQuarantined(tx, key, func(_, v []byte) error {
+			last = append(last[:0], v...)
+			return nil
+		})
+	})
+	if err != nil {
+		return QuarantinedDelegation{}, err
+	}
+	if last == nil {
+		return QuarantinedDelegation{}, ErrNotFound
+	}
+	return decodeQuarantined(key.String(), last), nil
+}
+
+// QuarantinedDelegations lists every quarantined record, oldest first per
+// channel. An entry that itself no longer decodes is listed with its raw
+// bytes and the decode error rather than failing the whole listing, so
+// the operator can still see and clear it.
 func (s *Store) QuarantinedDelegations() ([]QuarantinedDelegation, error) {
 	var out []QuarantinedDelegation
 	err := s.db.View(func(tx *bolt.Tx) error {
-		return tx.Bucket(bucketQuarantine).ForEach(func(_, v []byte) error {
-			var q QuarantinedDelegation
-			if err := json.Unmarshal(v, &q); err != nil {
-				return err
-			}
-			out = append(out, q)
+		return tx.Bucket(bucketQuarantine).ForEach(func(k, v []byte) error {
+			out = append(out, decodeQuarantined(string(k), append([]byte(nil), v...)))
 			return nil
 		})
 	})
 	return out, err
 }
 
-// ClearQuarantine discards the quarantined record for key; ErrNotFound when
-// there is none.
+// decodeQuarantined decodes one quarantine entry stored under bucketKey,
+// falling back to a row carrying the entry's own bytes and decode error.
+func decodeQuarantined(bucketKey string, v []byte) QuarantinedDelegation {
+	var q QuarantinedDelegation
+	err := json.Unmarshal(v, &q)
+	if err == nil {
+		return q
+	}
+	q = QuarantinedDelegation{Raw: v, Error: "quarantine entry undecodable: " + err.Error()}
+	if i := strings.LastIndexByte(bucketKey, '#'); i >= 0 {
+		bucketKey = bucketKey[:i]
+	}
+	if key, err := ParseChannelKey(bucketKey); err == nil {
+		q.Key = key
+	}
+	return q
+}
+
+// ClearQuarantine discards every quarantined record for key; ErrNotFound
+// when there is none.
 func (s *Store) ClearQuarantine(key ChannelKey) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(bucketQuarantine)
-		if b.Get([]byte(key.String())) == nil {
+		var keys [][]byte
+		if err := forEachQuarantined(tx, key, func(k, _ []byte) error {
+			keys = append(keys, append([]byte(nil), k...))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if len(keys) == 0 {
 			return ErrNotFound
 		}
-		return b.Delete([]byte(key.String()))
+		b := tx.Bucket(bucketQuarantine)
+		for _, k := range keys {
+			if err := b.Delete(k); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
+// Delegation returns the live delegation for key. With no live record it
+// fails with ErrQuarantined (which is also ErrNotFound) when a quarantined
+// one exists, else ErrNotFound; an undecodable live record is ErrCorrupt.
 func (s *Store) Delegation(key ChannelKey) (Delegation, error) {
 	var d Delegation
 	err := s.db.View(func(tx *bolt.Tx) error {
 		raw := tx.Bucket(bucketTower).Get([]byte(key.String()))
 		if raw == nil {
+			quarantined := false
+			if err := forEachQuarantined(tx, key, func(_, _ []byte) error {
+				quarantined = true
+				return nil
+			}); err != nil {
+				return err
+			}
+			if quarantined {
+				return ErrQuarantined
+			}
 			return ErrNotFound
 		}
 		if err := json.Unmarshal(raw, &d); err != nil {
