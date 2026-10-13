@@ -11,6 +11,7 @@ import (
 	"github.com/naoina/toml"
 
 	"github.com/ParallaxProtocol/parallax/v2/util"
+	"github.com/ParallaxProtocol/parallax/v2/wallet/channels/protocol"
 )
 
 // Config is the TOML configuration (Part 3 §11).
@@ -81,7 +82,7 @@ func DefaultConfig() Config {
 	cfg.Channels.AcceptChallengePeriodMin = 36
 	cfg.Channels.AcceptChallengePeriodMax = 1008
 	cfg.Channels.CoopCloseValidityBlocks = 18
-	cfg.Channels.CoopCloseHorizonBlocks = 1008
+	cfg.Channels.CoopCloseHorizonBlocks = protocol.DefaultCoopCloseHorizonBlocks
 	cfg.Channels.WithdrawValidityBlocks = 18
 	cfg.Channels.MaxInflightPaymentWei = "0"
 	cfg.Backup.Enabled = true
@@ -124,10 +125,11 @@ func (c *Config) Validate() error {
 	// The engine refuses a cooperative close or withdraw whose expiry lies
 	// beyond coop_close_horizon_blocks, and the node derives those expiries
 	// from the validity windows: a window wider than the horizon would make
-	// every close or withdraw fail at the proposer.
+	// every close or withdraw fail at the proposer. Zero is the engine's
+	// default horizon, so validate against that.
 	horizon := c.Channels.CoopCloseHorizonBlocks
 	if horizon == 0 {
-		return fmt.Errorf("channeld: coop_close_horizon_blocks must be positive")
+		horizon = protocol.DefaultCoopCloseHorizonBlocks
 	}
 	for name, v := range map[string]uint64{
 		"coop_close_validity_blocks": c.Channels.CoopCloseValidityBlocks,

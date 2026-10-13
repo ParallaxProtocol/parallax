@@ -35,8 +35,10 @@ func TestConfigValidateWindowsWithinHorizon(t *testing.T) {
 			"withdraw_validity_blocks must be positive"},
 		{"zero close window", func(c *Config) { c.Channels.CoopCloseValidityBlocks = 0 },
 			"coop_close_validity_blocks must be positive"},
-		{"zero horizon", func(c *Config) { c.Channels.CoopCloseHorizonBlocks = 0 },
-			"coop_close_horizon_blocks must be positive"},
+		{"window beyond the default horizon", func(c *Config) {
+			c.Channels.CoopCloseHorizonBlocks = 0
+			c.Channels.CoopCloseValidityBlocks = 1009
+		}, "coop_close_validity_blocks (1009) exceeds coop_close_horizon_blocks (1008)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -47,6 +49,12 @@ func TestConfigValidateWindowsWithinHorizon(t *testing.T) {
 				t.Fatalf("Validate() = %v, want %q", err, tc.want)
 			}
 		})
+	}
+	// Zero is the engine's default horizon, not an invalid one.
+	zero := validTestConfig()
+	zero.Channels.CoopCloseHorizonBlocks = 0
+	if err := zero.Validate(); err != nil {
+		t.Fatalf("zero (default) horizon rejected: %v", err)
 	}
 	// A wider horizon admits the wider window.
 	cfg := validTestConfig()
