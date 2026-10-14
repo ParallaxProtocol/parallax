@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ParallaxProtocol/parallax/v2/cmd/utils"
 	"github.com/ParallaxProtocol/parallax/v2/crypto"
@@ -86,6 +87,8 @@ var commandVerifyMessage = cli.Command{
 	ArgsUsage: "<address> <signature> <message>",
 	Description: `
 Verify the signature of a message.
+The signature is 65 bytes of hex, with or without a 0x prefix, and its
+last byte (v) may be 0/1 or 27/28.
 It is possible to refer to a file containing the message via --msgfile.`,
 	Flags: []cli.Flag{
 		jsonFlag,
@@ -100,7 +103,7 @@ It is possible to refer to a file containing the message via --msgfile.`,
 			utils.Fatalf("Invalid address: %s", addressStr)
 		}
 		address := util.HexToAddress(addressStr)
-		signature, err := hex.DecodeString(signatureHex)
+		signature, err := decodeMessageSignature(signatureHex)
 		if err != nil {
 			utils.Fatalf("Signature encoding is not hexadecimal: %v", err)
 		}
@@ -148,4 +151,21 @@ func getMessage(ctx *cli.Context, msgarg int) []byte {
 	}
 	utils.Fatalf("Invalid number of arguments: want %d, got %d", msgarg+1, len(ctx.Args()))
 	return nil
+}
+
+// decodeMessageSignature decodes a hex signature with or without a 0x
+// prefix and normalises a 27/28 recovery id to the 0/1 crypto.SigToPub
+// expects.
+func decodeMessageSignature(s string) ([]byte, error) {
+	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
+		s = s[2:]
+	}
+	sig, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
+	if len(sig) == crypto.SignatureLength && (sig[crypto.RecoveryIDOffset] == 27 || sig[crypto.RecoveryIDOffset] == 28) {
+		sig[crypto.RecoveryIDOffset] -= 27
+	}
+	return sig, nil
 }

@@ -100,6 +100,7 @@ func init() {
 		commandSignMessage,
 		commandVerifyMessage,
 		commandSignTx,
+		commandSignRequest,
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 	cli.CommandHelpTemplate = flags.OriginCommandHelpTemplate
