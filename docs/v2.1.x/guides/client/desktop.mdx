@@ -1,10 +1,10 @@
 ---
-title: "Parallax Desktop"
-sidebarTitle: "Parallax Desktop"
+title: "Parallax Wallet"
+sidebarTitle: "Parallax Wallet"
 description: "A graphical, one-click way to run a Parallax full node on Windows, macOS, or Linux."
 ---
 
-**Parallax Desktop** is the easiest way to run a Parallax node. It is a
+**Parallax Wallet** is the easiest way to run a Parallax node. It is a
 native desktop application that embeds a full Parallax node in a single
 binary — no terminal required, no separate processes to manage. If you
 just want to run a node, mine, and connect a wallet without touching a
@@ -16,7 +16,7 @@ The project lives at [github.com/ParallaxProtocol/parallax-gui](https://github.c
 
 ## Is this the right option for me?
 
-Use **Parallax Desktop** if you want to:
+Use **Parallax Wallet** if you want to:
 
 - Download an installer, double-click, and have a running node.
 - See sync progress, peers, blocks, and transactions in a visual dashboard.
@@ -35,7 +35,7 @@ time by pointing them at the same data directory.
 
 ## What's inside
 
-Parallax Desktop bundles an in-process full node and exposes it through
+Parallax Wallet bundles an in-process full node and exposes it through
 a handful of screens:
 
 - **Client** — sync progress, peer count, uptime, disk usage, latest
@@ -61,30 +61,31 @@ shows *Synced*, *Syncing*, or *Stopped* at a glance.
 
 <Steps>
   <Step title="Download the latest release">
-    Visit the [Parallax Desktop releases page](https://github.com/ParallaxProtocol/parallax-gui/releases/latest)
+    Visit the [Parallax Wallet releases page](https://github.com/ParallaxProtocol/parallax-gui/releases/latest)
     and download the build for your operating system:
 
-    - **Windows (64-bit)** — `.exe` installer or `.zip` archive
-    - **macOS (Apple Silicon)** — `darwin-arm64`
-    - **macOS (Intel)** — `darwin-amd64`
-    - **Linux (x86_64)** — `linux-amd64`
-    - **Linux (ARM64)** — `linux-arm64`
+    - **Windows (64-bit)**: `Parallax-Wallet-<version>-windows-x86_64-setup.exe`
+      (installer) or `Parallax-Wallet-<version>-windows-x86_64.exe`
+      (portable)
+    - **macOS (Apple Silicon)**: `Parallax-Wallet-<version>-macos-arm64.dmg`
+    - **macOS (Intel)**: `Parallax-Wallet-<version>-macos-x86_64.dmg`
+    - **Linux (x86_64)**: `Parallax-Wallet-<version>-linux-x86_64.AppImage`
+    - **Linux (ARM64)**: `Parallax-Wallet-<version>-linux-arm64.AppImage`
 
     Each release includes a `SHA256SUMS.txt` file you can use to verify
     the download.
   </Step>
   <Step title="Install">
-    - **Windows**: run the installer, or extract the zip and launch
-      `Parallax Client.exe`.
-    - **macOS**: open the `.dmg` (or extract the archive) and drag
-      *Parallax Client* to `/Applications`. The first launch may require
-      right-click → *Open* to bypass Gatekeeper for unsigned builds.
-    - **Linux**: extract the archive and run the `Parallax Client`
-      binary. You may need to mark it executable first
-      (`chmod +x "Parallax Client"`).
+    - **Windows**: run the installer, or launch the portable `.exe`
+      directly.
+    - **macOS**: open the `.dmg` and drag *Parallax Wallet* to
+      `/Applications`. The first launch may require right-click → *Open*
+      to bypass Gatekeeper for unsigned builds.
+    - **Linux**: mark the AppImage executable
+      (`chmod +x Parallax-Wallet-*.AppImage`) and run it.
   </Step>
   <Step title="First-run wizard">
-    On first launch, Parallax Desktop asks you to pick:
+    On first launch, Parallax Wallet asks you to pick:
 
     - A **data directory** for the blockchain (default location is fine
       for most users).
@@ -103,7 +104,7 @@ shows *Synced*, *Syncing*, or *Stopped* at a glance.
 
 ## Data directory locations
 
-By default, Parallax Desktop stores chain data in the same places as the
+By default, Parallax Wallet stores chain data in the same places as the
 CLI client:
 
 - **Windows**: `%APPDATA%\Parallax` or `%LOCALAPPDATA%\Parallax`
@@ -117,11 +118,11 @@ next to it in a `Parallax/gui.json` file under your OS config directory.
 
 ## Next steps
 
-- [Connect MetaMask](../wallets/metamask) — Parallax Desktop has a
+- [Connect MetaMask](../wallets/metamask) — Parallax Wallet has a
   one-click button on the **Connect** page, but the guide covers manual
   setup for other wallets too.
 - [Mining overview](../mining/introduction) — if you want to mine from
-  Parallax Desktop, this explains the differences between CPU and GPU
+  Parallax Wallet, this explains the differences between CPU and GPU
   mining.
 - [Parallax client CLI](./setup) — for advanced users who want to run
   the same node from a terminal or on a headless server.

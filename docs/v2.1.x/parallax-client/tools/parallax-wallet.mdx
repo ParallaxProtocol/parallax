@@ -59,7 +59,7 @@ portable, self-contained key outside the keystore.
 | `signmessage <keyfile> <message>` | Sign an EIP-191 personal message. |
 | `verifymessage <address> <signature> <message>` | Verify a signature against an address (hex, with or without `0x`; `v` may be 0/1 or 27/28). |
 | `signtx <keyfile>` | Build, sign and print a raw transaction offline (submit via `parallax-cli sendraw`). |
-| `signrequest <keyfile> <request.json>` | Sign a Parallax Desktop offline signing request (a transfer or a message) and emit the signed document. |
+| `signrequest <keyfile> <request.json>` | Sign a Parallax Wallet offline signing request (a transfer or a message) and emit the signed document. |
 
 ### Passwords
 
@@ -98,9 +98,9 @@ parallax-wallet signtx \
 Copy the resulting `0x…` raw transaction to an internet-connected host
 and broadcast it with `parallax-cli sendraw`.
 
-### Sign a Parallax Desktop offline signing request
+### Sign a Parallax Wallet offline signing request
 
-`signrequest` is the command-line counterpart of Parallax Desktop's
+`signrequest` is the command-line counterpart of Parallax Wallet's
 offline signer. The desktop app (on the online, watch-only machine)
 exports a signing request; `signrequest` validates and signs it on the
 air-gapped machine and writes a signed-transaction document for the
@@ -134,7 +134,7 @@ transfers only (no `data`), chain 2110 unless `--chainid` names another,
 addresses, an `id` that matches the recomputed signing hash, and a
 `from` that matches the keyfile. A summary with a fingerprint (the first
 eight hex digits of `id`, e.g. `3FA2-91C0`) is printed to stderr;
-compare it with the fingerprint shown in Parallax Desktop before
+compare it with the fingerprint shown in Parallax Wallet before
 answering the `Sign this transaction? [y/N]` prompt.
 
 ```sh
@@ -150,7 +150,7 @@ parallax-wallet signrequest --out signed.json \
 | `--yes` | Sign without the confirmation prompt (required when the request is read from stdin with `-`, together with `--passwordfile`). |
 | `--out <file>` | Write the signed document to a file (mode 0600) instead of stdout. |
 
-The output is the document Parallax Desktop imports:
+The output is the document Parallax Wallet imports:
 
 ```json
 {
