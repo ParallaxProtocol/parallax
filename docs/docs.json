@@ -297,7 +297,8 @@
               {
                 "group": "AI Assistants",
                 "pages": [
-                  "v2.1.x/guides/ai/parallax-mcp"
+                  "v2.1.x/guides/ai/parallax-mcp",
+                  "v2.1.x/guides/ai/parallax-wallet"
                 ]
               }
             ]
