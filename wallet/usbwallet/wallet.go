@@ -19,6 +19,7 @@ package usbwallet
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -69,6 +70,15 @@ type driver interface {
 	SignTx(path wallet.DerivationPath, tx *types.Transaction, chainID *big.Int) (util.Address, *types.Transaction, error)
 
 	SignTypedMessage(path wallet.DerivationPath, messageHash []byte, domainHash []byte) ([]byte, error)
+
+	// SignText sends a personal message to the USB device and waits for the user
+	// to confirm or deny it, the device hashing it the EIP-191 way. The signature
+	// is returned as [R || S || V], V being 27 or 28.
+	SignText(path wallet.DerivationPath, text []byte) ([]byte, error)
+
+	// ShowAddress shows the address on the derivation path on the USB device's
+	// screen, returning it once the user confirms it there.
+	ShowAddress(path wallet.DerivationPath) (util.Address, error)
 }
 
 // wallet represents the common functionality shared by all USB hardware
@@ -380,7 +390,7 @@ func (w *usbWallet) selfDerive() {
 					// of legacy-ledger, the first account on the legacy-path will
 					// be shown to the user, even if we don't actively track it
 					if i < len(nextAddrs)-1 {
-						w.log.Info("Skipping trakcking first account on legacy path, use personal.deriveAccount(<url>,<path>, false) to track",
+						w.log.Info("Skipping tracking first account on legacy path, use personal.deriveAccount(<url>,<path>, false) to track",
 							"path", path, "address", nextAddrs[i])
 						break
 					}
@@ -483,6 +493,9 @@ func (w *usbWallet) Derive(path wallet.DerivationPath, pin bool) (wallet.Account
 	w.stateLock.Lock()
 	defer w.stateLock.Unlock()
 
+	if w.device == nil {
+		return wallet.Account{}, wallet.ErrWalletClosed
+	}
 	if _, ok := w.paths[address]; !ok {
 		w.accounts = append(w.accounts, account)
 		w.paths[address] = make(wallet.DerivationPath, len(path))
@@ -574,8 +587,84 @@ func (w *usbWallet) SignDataWithPassphrase(account wallet.Account, passphrase, m
 	return w.SignData(account, mimeType, data)
 }
 
+// SignText implements accounts.Wallet, sending the message over to the device
+// for the user to confirm, and returning its signature in the [R || S || V]
+// format where V is 0 or 1, as the keystore's.
 func (w *usbWallet) SignText(account wallet.Account, text []byte) ([]byte, error) {
-	return w.signHash(account, wallet.TextHash(text))
+	w.stateLock.RLock() // Comms have own mutex, this is for the state fields
+	defer w.stateLock.RUnlock()
+
+	// If the wallet is closed, abort
+	if w.device == nil {
+		return nil, wallet.ErrWalletClosed
+	}
+	// Make sure the requested account is contained within
+	path, ok := w.paths[account.Address]
+	if !ok {
+		return nil, wallet.ErrUnknownAccount
+	}
+	// All infos gathered and metadata checks out, request signing
+	<-w.commsLock
+	defer func() { w.commsLock <- struct{}{} }()
+
+	// Ensure the device isn't screwed with while user confirmation is pending
+	// TODO(karalabe): remove if hotplug lands on Windows
+	w.hub.commsLock.Lock()
+	w.hub.commsPend++
+	w.hub.commsLock.Unlock()
+
+	defer func() {
+		w.hub.commsLock.Lock()
+		w.hub.commsPend--
+		w.hub.commsLock.Unlock()
+	}()
+	signature, err := w.driver.SignText(path, text)
+	if err != nil {
+		return nil, err
+	}
+	if len(signature) != crypto.SignatureLength {
+		return nil, errors.New("invalid signature length")
+	}
+	sig := make([]byte, len(signature))
+	copy(sig, signature)
+	if sig[crypto.RecoveryIDOffset] >= 27 {
+		sig[crypto.RecoveryIDOffset] -= 27
+	}
+	// Make sure the device signed with the account asked for
+	pubkey, err := crypto.SigToPub(wallet.TextHash(text), sig)
+	if err != nil {
+		return nil, err
+	}
+	if signer := crypto.PubkeyToAddress(*pubkey); signer != account.Address {
+		return nil, fmt.Errorf("signer mismatch: expected %s, got %s", account.Address.Hex(), signer.Hex())
+	}
+	return sig, nil
+}
+
+// ShowAddress shows the address on the derivation path on the device's screen,
+// for the user to compare with the one they were given, and returns it once
+// they confirm it there.
+func (w *usbWallet) ShowAddress(path wallet.DerivationPath) (util.Address, error) {
+	w.stateLock.RLock() // Avoid device disappearing during derivation
+	defer w.stateLock.RUnlock()
+
+	if w.device == nil {
+		return util.Address{}, wallet.ErrWalletClosed
+	}
+	<-w.commsLock // Avoid concurrent hardware access
+	defer func() { w.commsLock <- struct{}{} }()
+
+	// Ensure the device isn't screwed with while user confirmation is pending
+	w.hub.commsLock.Lock()
+	w.hub.commsPend++
+	w.hub.commsLock.Unlock()
+
+	defer func() {
+		w.hub.commsLock.Lock()
+		w.hub.commsPend--
+		w.hub.commsLock.Unlock()
+	}()
+	return w.driver.ShowAddress(path)
 }
 
 // SignTx implements accounts.Wallet. It sends the transaction over to the Ledger
@@ -628,7 +717,7 @@ func (w *usbWallet) SignTx(account wallet.Account, tx *types.Transaction, chainI
 // data is not supported for Ledger wallets, so this method will always return
 // an error.
 func (w *usbWallet) SignTextWithPassphrase(account wallet.Account, passphrase string, text []byte) ([]byte, error) {
-	return w.SignText(account, wallet.TextHash(text))
+	return w.SignText(account, text)
 }
 
 // SignTxWithPassphrase implements accounts.Wallet, attempting to sign the given

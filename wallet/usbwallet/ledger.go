@@ -49,17 +49,77 @@ type ledgerParam1 byte
 type ledgerParam2 byte
 
 const (
-	ledgerOpRetrieveAddress  ledgerOpcode = 0x02 // Returns the public key and Parallax address for a given BIP 32 path
-	ledgerOpSignTransaction  ledgerOpcode = 0x04 // Signs an Parallax transaction after having the user validate the parameters
-	ledgerOpGetConfiguration ledgerOpcode = 0x06 // Returns specific wallet application configuration
-	ledgerOpSignTypedMessage ledgerOpcode = 0x0c // Signs an Parallax message following the EIP 712 specification
+	ledgerOpRetrieveAddress     ledgerOpcode = 0x02 // Returns the public key and Parallax address for a given BIP 32 path
+	ledgerOpSignTransaction     ledgerOpcode = 0x04 // Signs an Parallax transaction after having the user validate the parameters
+	ledgerOpGetConfiguration    ledgerOpcode = 0x06 // Returns specific wallet application configuration
+	ledgerOpSignPersonalMessage ledgerOpcode = 0x08 // Signs a personal message (EIP-191) after having the user validate it
+	ledgerOpSignTypedMessage    ledgerOpcode = 0x0c // Signs an Parallax message following the EIP 712 specification
 
 	ledgerP1DirectlyFetchAddress    ledgerParam1 = 0x00 // Return address directly from the wallet
+	ledgerP1DisplayAddress          ledgerParam1 = 0x01 // Show the address on the device, returning it once the user confirms
 	ledgerP1InitTypedMessageData    ledgerParam1 = 0x00 // First chunk of Typed Message data
 	ledgerP1InitTransactionData     ledgerParam1 = 0x00 // First transaction data block for signing
 	ledgerP1ContTransactionData     ledgerParam1 = 0x80 // Subsequent transaction data block for signing
+	ledgerP1InitPersonalMessageData ledgerParam1 = 0x00 // First personal message data block for signing
+	ledgerP1ContPersonalMessageData ledgerParam1 = 0x80 // Subsequent personal message data block for signing
 	ledgerP2DiscardAddressChainCode ledgerParam2 = 0x00 // Do not return the chain code along with the address
+
+	ledgerEip155Size int = 3 // Size of the EIP-155 chain_id,r,s in unsigned transactions
 )
+
+// Status words a Ledger replies with in place of success (0x9000), as the
+// errors the exchange returns for them.
+var (
+	// ErrLedgerDenied is returned when the user turned the request down on the
+	// device.
+	ErrLedgerDenied = errors.New("ledger: request denied on the device")
+
+	// ErrLedgerLocked is returned while the device is locked behind its PIN.
+	ErrLedgerLocked = errors.New("ledger: device is locked")
+
+	// ErrLedgerAppClosed is returned when the Ethereum app isn't the one open
+	// on the device: the dashboard or another app answered.
+	ErrLedgerAppClosed = errors.New("ledger: Ethereum app is not open")
+
+	// ErrLedgerBlindSigning is returned when the request needs blind signing
+	// (contract data) and the user hasn't allowed it in the app's settings.
+	ErrLedgerBlindSigning = errors.New("ledger: blind signing is not enabled in the Ethereum app")
+)
+
+// LedgerStatusError is a status word other than success that the Ledger
+// replied with, and that has no more specific error.
+type LedgerStatusError uint16
+
+func (e LedgerStatusError) Error() string {
+	return fmt.Sprintf("ledger: device replied with status %#04x", uint16(e))
+}
+
+// ledgerStatus turns a status word into the error it stands for, or nil for
+// success.
+func ledgerStatus(sw uint16) error {
+	switch sw {
+	case 0x9000:
+		return nil
+	case 0x6985:
+		return ErrLedgerDenied
+	case 0x5515, 0x6982:
+		return ErrLedgerLocked
+	case 0x6d00, 0x6e00, 0x6e01, 0x6511, 0x6d02:
+		return ErrLedgerAppClosed
+	case 0x6a80:
+		return ErrLedgerBlindSigning
+	}
+	return LedgerStatusError(sw)
+}
+
+// isLedgerStatus reports whether err is a status word the device replied
+// with, so the device itself is reachable.
+func isLedgerStatus(err error) bool {
+	var status LedgerStatusError
+	return errors.Is(err, ErrLedgerDenied) || errors.Is(err, ErrLedgerLocked) ||
+		errors.Is(err, ErrLedgerAppClosed) || errors.Is(err, ErrLedgerBlindSigning) ||
+		errors.As(err, &status)
+}
 
 // errLedgerReplyInvalidHeader is the error message returned by a Ledger data exchange
 // if the device replies with a mismatching header. This usually means the device
@@ -108,13 +168,23 @@ func (w *ledgerDriver) offline() bool {
 	return w.version == [3]byte{0, 0, 0}
 }
 
+func ledgerVersionLessThan(version [3]byte, major, minor, patch byte) bool {
+	if version[0] != major {
+		return version[0] < major
+	}
+	if version[1] != minor {
+		return version[1] < minor
+	}
+	return version[2] < patch
+}
+
 // Open implements usbwallet.driver, attempting to initialize the connection to the
 // Ledger hardware wallet. The Ledger does not require a user passphrase, so that
 // parameter is silently discarded.
 func (w *ledgerDriver) Open(device io.ReadWriter, passphrase string) error {
 	w.device, w.failure = device, nil
 
-	_, err := w.ledgerDerive(wallet.DefaultBaseDerivationPath)
+	_, err := w.ledgerDerive(wallet.DefaultBaseDerivationPath, false)
 	if err != nil {
 		// Parallax app is not running or in browser mode, nothing more to do, return
 		if err == errLedgerReplyInvalidHeader {
@@ -137,9 +207,10 @@ func (w *ledgerDriver) Close() error {
 }
 
 // Heartbeat implements usbwallet.driver, performing a sanity check against the
-// Ledger to see if it's still online.
+// Ledger to see if it's still online. A status word in reply (the device
+// locked, or the app closed) still means the device is there.
 func (w *ledgerDriver) Heartbeat() error {
-	if _, err := w.ledgerVersion(); err != nil && err != errLedgerInvalidVersionReply {
+	if _, err := w.ledgerVersion(); err != nil && err != errLedgerInvalidVersionReply && !isLedgerStatus(err) {
 		w.failure = err
 		return err
 	}
@@ -148,8 +219,39 @@ func (w *ledgerDriver) Heartbeat() error {
 
 // Derive implements usbwallet.driver, sending a derivation request to the Ledger
 // and returning the Parallax address located on that derivation path.
+//
+// If the app wasn't open when the device was, it is picked up here once it is.
 func (w *ledgerDriver) Derive(path wallet.DerivationPath) (util.Address, error) {
-	return w.ledgerDerive(path)
+	address, err := w.ledgerDerive(path, false)
+	if err == nil {
+		w.refreshApp()
+	}
+	return address, err
+}
+
+// ShowAddress implements usbwallet.driver, showing the address on the given
+// derivation path on the device's screen and returning it once the user
+// confirms it there.
+func (w *ledgerDriver) ShowAddress(path wallet.DerivationPath) (util.Address, error) {
+	address, err := w.ledgerDerive(path, true)
+	if err == nil {
+		w.refreshApp()
+	}
+	return address, err
+}
+
+// refreshApp reads the app's version after a successful exchange, if the app
+// wasn't running when the device was opened.
+func (w *ledgerDriver) refreshApp() {
+	if !w.offline() && !w.browser {
+		return
+	}
+	w.browser = false
+	version, err := w.ledgerVersion()
+	if err != nil {
+		version = [3]byte{1, 0, 0} // Assume worst case, can't verify if v1.0.0 or v1.0.1
+	}
+	w.version = version
 }
 
 // SignTx implements usbwallet.driver, sending the transaction to the Ledger and
@@ -164,7 +266,14 @@ func (w *ledgerDriver) SignTx(path wallet.DerivationPath, tx *types.Transaction,
 		return util.Address{}, nil, wallet.ErrWalletClosed
 	}
 	// Ensure the wallet is capable of signing the given transaction
-	if chainID != nil && w.version[0] <= 1 && w.version[1] <= 0 && w.version[2] <= 2 {
+	switch tx.Type() {
+	case types.AccessListTxType, types.DynamicFeeTxType:
+		if ledgerVersionLessThan(w.version, 1, 9, 0) {
+			//lint:ignore ST1005 brand name displayed on the console
+			return util.Address{}, nil, fmt.Errorf("Ledger version >= 1.9.0 required for EIP-2930/EIP-1559 signing (found version v%d.%d.%d)", w.version[0], w.version[1], w.version[2])
+		}
+	}
+	if chainID != nil && ledgerVersionLessThan(w.version, 1, 0, 3) {
 		//lint:ignore ST1005 brand name displayed on the console
 		return util.Address{}, nil, fmt.Errorf("Ledger v%d.%d.%d doesn't support signing this transaction, please update to v1.0.3 at least", w.version[0], w.version[1], w.version[2])
 	}
@@ -182,12 +291,22 @@ func (w *ledgerDriver) SignTypedMessage(path wallet.DerivationPath, domainHash [
 		return nil, wallet.ErrWalletClosed
 	}
 	// Ensure the wallet is capable of signing the given transaction
-	if w.version[0] < 1 && w.version[1] < 5 {
+	if ledgerVersionLessThan(w.version, 1, 5, 0) {
 		//lint:ignore ST1005 brand name displayed on the console
 		return nil, fmt.Errorf("Ledger version >= 1.5.0 required for EIP-712 signing (found version v%d.%d.%d)", w.version[0], w.version[1], w.version[2])
 	}
 	// All infos gathered and metadata checks out, request signing
 	return w.ledgerSignTypedMessage(path, domainHash, messageHash)
+}
+
+// SignText implements usbwallet.driver, sending a personal message to the
+// Ledger and waiting for the user to sign or deny it.
+func (w *ledgerDriver) SignText(path wallet.DerivationPath, text []byte) ([]byte, error) {
+	// If the Parallax app doesn't run, abort
+	if w.offline() {
+		return nil, wallet.ErrWalletClosed
+	}
+	return w.ledgerSignPersonalMessage(path, text)
 }
 
 // ledgerVersion retrieves the current version of the Parallax wallet app running
@@ -253,7 +372,10 @@ func (w *ledgerDriver) ledgerVersion() ([3]byte, error) {
 //	Parallax address length | 1 byte
 //	Parallax address        | 40 bytes hex ascii
 //	Chain code if requested | 32 bytes
-func (w *ledgerDriver) ledgerDerive(derivationPath []uint32) (util.Address, error) {
+//
+// With display set, the device shows the address and returns it only once the
+// user confirms it matches.
+func (w *ledgerDriver) ledgerDerive(derivationPath []uint32, display bool) (util.Address, error) {
 	// Flatten the derivation path into the Ledger request
 	path := make([]byte, 1+4*len(derivationPath))
 	path[0] = byte(len(derivationPath))
@@ -261,7 +383,11 @@ func (w *ledgerDriver) ledgerDerive(derivationPath []uint32) (util.Address, erro
 		binary.BigEndian.PutUint32(path[1+4*i:], component)
 	}
 	// Send the request and wait for the response
-	reply, err := w.ledgerExchange(ledgerOpRetrieveAddress, ledgerP1DirectlyFetchAddress, ledgerP2DiscardAddressChainCode, path)
+	p1 := ledgerP1DirectlyFetchAddress
+	if display {
+		p1 = ledgerP1DisplayAddress
+	}
+	reply, err := w.ledgerExchange(ledgerOpRetrieveAddress, p1, ledgerP2DiscardAddressChainCode, path)
 	if err != nil {
 		return util.Address{}, err
 	}
@@ -336,8 +462,25 @@ func (w *ledgerDriver) ledgerSign(derivationPath []uint32, tx *types.Transaction
 			return util.Address{}, nil, err
 		}
 	} else {
-		if txrlp, err = rlp.EncodeToBytes([]any{tx.Nonce(), tx.GasPrice(), tx.Gas(), tx.To(), tx.Value(), tx.Data(), chainID, big.NewInt(0), big.NewInt(0)}); err != nil {
-			return util.Address{}, nil, err
+		switch tx.Type() {
+		case types.DynamicFeeTxType:
+			if txrlp, err = rlp.EncodeToBytes([]any{chainID, tx.Nonce(), tx.GasTipCap(), tx.GasFeeCap(), tx.Gas(), tx.To(), tx.Value(), tx.Data(), tx.AccessList()}); err != nil {
+				return util.Address{}, nil, err
+			}
+			// append type to transaction
+			txrlp = append([]byte{tx.Type()}, txrlp...)
+		case types.AccessListTxType:
+			if txrlp, err = rlp.EncodeToBytes([]any{chainID, tx.Nonce(), tx.GasPrice(), tx.Gas(), tx.To(), tx.Value(), tx.Data(), tx.AccessList()}); err != nil {
+				return util.Address{}, nil, err
+			}
+			// append type to transaction
+			txrlp = append([]byte{tx.Type()}, txrlp...)
+		case types.LegacyTxType:
+			if txrlp, err = rlp.EncodeToBytes([]any{tx.Nonce(), tx.GasPrice(), tx.Gas(), tx.To(), tx.Value(), tx.Data(), chainID, big.NewInt(0), big.NewInt(0)}); err != nil {
+				return util.Address{}, nil, err
+			}
+		default:
+			return util.Address{}, nil, fmt.Errorf("unsupported transaction type: %d", tx.Type())
 		}
 	}
 	payload := append(path, txrlp...)
@@ -347,9 +490,17 @@ func (w *ledgerDriver) ledgerSign(derivationPath []uint32, tx *types.Transaction
 		op    = ledgerP1InitTransactionData
 		reply []byte
 	)
+
+	// Chunk size selection to mitigate an underlying RLP deserialization issue on the ledger app.
+	// https://github.com/LedgerHQ/app-ethereum/issues/409
+	chunk := 255
+	if tx.Type() == types.LegacyTxType {
+		for ; len(payload)%chunk <= ledgerEip155Size; chunk-- {
+		}
+	}
+
 	for len(payload) > 0 {
 		// Calculate the size of the next data chunk
-		chunk := 255
 		if chunk > len(payload) {
 			chunk = len(payload)
 		}
@@ -373,8 +524,11 @@ func (w *ledgerDriver) ledgerSign(derivationPath []uint32, tx *types.Transaction
 	if chainID == nil {
 		signer = new(types.HomesteadSigner)
 	} else {
-		signer = types.NewEIP155Signer(chainID)
-		signature[64] -= byte(chainID.Uint64()*2 + 35)
+		signer = types.LatestSignerForChainID(chainID)
+		// For non-legacy transactions, V is 0 or 1, no need to subtract here.
+		if tx.Type() == types.LegacyTxType {
+			signature[64] -= byte(chainID.Uint64()*2 + 35)
+		}
 	}
 	signed, err := tx.WithSignature(signer, signature)
 	if err != nil {
@@ -444,6 +598,66 @@ func (w *ledgerDriver) ledgerSignTypedMessage(derivationPath []uint32, domainHas
 	}
 	signature := append(reply[1:], reply[0])
 	return signature, nil
+}
+
+// ledgerSignPersonalMessage sends a personal message to the Ledger wallet, and
+// waits for the user to sign or deny it. The device hashes it the EIP-191 way,
+// with the "\x19Ethereum Signed Message:\n" prefix and the message's length.
+//
+// The signing protocol is defined as follows:
+//
+//	CLA | INS | P1 | P2 | Lc  | Le
+//	----+-----+----+----+-----+---
+//	 E0 | 08  | 00: first message data block
+//	            80: subsequent message data block
+//	               | 00 | variable | variable
+//
+// Where the input for the first message block (first 255 bytes) is:
+//
+//	Description                                      | Length
+//	-------------------------------------------------+----------
+//	Number of BIP 32 derivations to perform (max 10) | 1 byte
+//	First derivation index (big endian)              | 4 bytes
+//	...                                              | 4 bytes
+//	Last derivation index (big endian)               | 4 bytes
+//	Message length (big endian)                      | 4 bytes
+//	Message chunk                                    | arbitrary
+//
+// And the output data is:
+//
+//	Description | Length
+//	------------+---------
+//	signature V | 1 byte
+//	signature R | 32 bytes
+//	signature S | 32 bytes
+func (w *ledgerDriver) ledgerSignPersonalMessage(derivationPath []uint32, message []byte) ([]byte, error) {
+	// Flatten the derivation path and the message's length into the request
+	payload := make([]byte, 1+4*len(derivationPath)+4, 1+4*len(derivationPath)+4+len(message))
+	payload[0] = byte(len(derivationPath))
+	for i, component := range derivationPath {
+		binary.BigEndian.PutUint32(payload[1+4*i:], component)
+	}
+	binary.BigEndian.PutUint32(payload[1+4*len(derivationPath):], uint32(len(message)))
+	payload = append(payload, message...)
+
+	// Send the request in chunks and wait for the response
+	var (
+		op    = ledgerP1InitPersonalMessageData
+		reply []byte
+		err   error
+	)
+	for len(payload) > 0 {
+		chunk := min(255, len(payload))
+		if reply, err = w.ledgerExchange(ledgerOpSignPersonalMessage, op, 0, payload[:chunk]); err != nil {
+			return nil, err
+		}
+		payload = payload[chunk:]
+		op = ledgerP1ContPersonalMessageData
+	}
+	if len(reply) != crypto.SignatureLength {
+		return nil, errors.New("reply lacks signature")
+	}
+	return append(reply[1:], reply[0]), nil
 }
 
 // ledgerExchange performs a data exchange with the Ledger wallet, sending it a
@@ -540,6 +754,14 @@ func (w *ledgerDriver) ledgerExchange(opcode ledgerOpcode, p1 ledgerParam1, p2 l
 			reply = append(reply, payload[:left]...)
 			break
 		}
+	}
+	// The reply ends in the status word, which says whether the request was
+	// carried out
+	if len(reply) < 2 {
+		return nil, errors.New("ledger: reply lacks status word")
+	}
+	if err := ledgerStatus(binary.BigEndian.Uint16(reply[len(reply)-2:])); err != nil {
+		return nil, err
 	}
 	return reply[:len(reply)-2], nil
 }

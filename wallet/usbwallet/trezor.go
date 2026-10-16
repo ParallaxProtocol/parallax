@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 
 	"github.com/ParallaxProtocol/parallax/v2/logging"
@@ -33,7 +34,7 @@ import (
 	"github.com/ParallaxProtocol/parallax/v2/util/hexutil"
 	"github.com/ParallaxProtocol/parallax/v2/wallet"
 	"github.com/ParallaxProtocol/parallax/v2/wallet/usbwallet/trezor"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // ErrTrezorPINNeeded is returned if opening the trezor requires a PIN code. In
@@ -43,6 +44,13 @@ var ErrTrezorPINNeeded = errors.New("trezor: pin needed")
 
 // ErrTrezorPassphraseNeeded is returned if opening the trezor requires a passphrase
 var ErrTrezorPassphraseNeeded = errors.New("trezor: passphrase needed")
+
+// ErrTrezorDenied is returned when the user turned the request (or the PIN
+// entry) down on the device.
+var ErrTrezorDenied = errors.New("trezor: request denied on the device")
+
+// ErrTrezorPINInvalid is returned when the PIN sent to the device was wrong.
+var ErrTrezorPINInvalid = errors.New("trezor: invalid PIN")
 
 // errTrezorReplyInvalidHeader is the error message returned by a Trezor data exchange
 // if the device replies with a mismatching header. This usually means the device
@@ -54,6 +62,7 @@ type trezorDriver struct {
 	device         io.ReadWriter  // USB device connection to communicate through
 	version        [3]uint32      // Current version of the Trezor firmware
 	label          string         // Current textual label of the Trezor device
+	model          string         // Hardware model of the Trezor device ("1", "T", "Safe 3", ...)
 	pinwait        bool           // Flags whether the device is waiting for PIN entry
 	passphrasewait bool           // Flags whether the device is waiting for passphrase entry
 	failure        error          // Any failure that would make the device unusable
@@ -109,54 +118,47 @@ func (w *trezorDriver) Open(device io.ReadWriter, passphrase string) error {
 		}
 		w.version = [3]uint32{features.GetMajorVersion(), features.GetMinorVersion(), features.GetPatchVersion()}
 		w.label = features.GetLabel()
+		w.model = features.GetModel()
 
-		// Do a manual ping, forcing the device to ask for its PIN and Passphrase
-		askPin := true
-		askPassphrase := true
-		res, err := w.trezorExchange(&trezor.Ping{PinProtection: &askPin, PassphraseProtection: &askPassphrase}, new(trezor.PinMatrixRequest), new(trezor.PassphraseRequest), new(trezor.Success))
-		if err != nil {
-			return err
-		}
-		// Only return the PIN request if the device wasn't unlocked until now
-		switch res {
-		case 0:
-			w.pinwait = true
-			return ErrTrezorPINNeeded
-		case 1:
-			w.pinwait = false
-			w.passphrasewait = true
-			return ErrTrezorPassphraseNeeded
-		case 2:
-			return nil // responded with trezor.Success
-		}
+		// Derive an address, which has the device ask for its PIN and passphrase
+		// if it's protected by them. Firmware since 1.9 and 2.3 ignores the
+		// Ping's pin_protection and passphrase_protection fields that used to.
+		_, err := w.trezorDerive(wallet.DefaultBaseDerivationPath, false)
+		return err
 	}
-	// Phase 2 requested with actual PIN entry
+	// Phase 2 requested with actual PIN entry, which the derivation that asked
+	// for it carries on with (asking for the passphrase next, if need be)
 	if w.pinwait {
 		w.pinwait = false
-		res, err := w.trezorExchange(&trezor.PinMatrixAck{Pin: &passphrase}, new(trezor.Success), new(trezor.PassphraseRequest))
-		if err != nil {
-			w.failure = err
+		if _, err := w.trezorExchange(&trezor.PinMatrixAck{Pin: &passphrase}, new(trezor.ParallaxAddress)); err != nil {
+			w.setFailure(err)
 			return err
-		}
-		if res == 1 {
-			w.passphrasewait = true
-			return ErrTrezorPassphraseNeeded
 		}
 	} else if w.passphrasewait {
 		w.passphrasewait = false
-		if _, err := w.trezorExchange(&trezor.PassphraseAck{Passphrase: &passphrase}, new(trezor.Success)); err != nil {
-			w.failure = err
+		if _, err := w.trezorExchange(&trezor.PassphraseAck{Passphrase: &passphrase}, new(trezor.ParallaxAddress)); err != nil {
+			w.setFailure(err)
 			return err
 		}
 	}
-
 	return nil
+}
+
+// setFailure marks the device unusable after err, unless err is one the user
+// can put right by opening it again (a wrong PIN, a request turned down, or a
+// PIN or passphrase asked for).
+func (w *trezorDriver) setFailure(err error) {
+	switch err {
+	case ErrTrezorPINNeeded, ErrTrezorPassphraseNeeded, ErrTrezorPINInvalid, ErrTrezorDenied:
+		return
+	}
+	w.failure = err
 }
 
 // Close implements usbwallet.driver, cleaning up and metadata maintained within
 // the Trezor driver.
 func (w *trezorDriver) Close() error {
-	w.version, w.label, w.pinwait = [3]uint32{}, "", false
+	w.version, w.label, w.model, w.pinwait, w.passphrasewait = [3]uint32{}, "", "", false, false
 	return nil
 }
 
@@ -173,7 +175,14 @@ func (w *trezorDriver) Heartbeat() error {
 // Derive implements usbwallet.driver, sending a derivation request to the Trezor
 // and returning the Ethereum address located on that derivation path.
 func (w *trezorDriver) Derive(path wallet.DerivationPath) (util.Address, error) {
-	return w.trezorDerive(path)
+	return w.trezorDerive(path, false)
+}
+
+// ShowAddress implements usbwallet.driver, showing the address on the given
+// derivation path on the device's screen and returning it once the user
+// confirms it there.
+func (w *trezorDriver) ShowAddress(path wallet.DerivationPath) (util.Address, error) {
+	return w.trezorDerive(path, true)
 }
 
 // SignTx implements usbwallet.driver, sending the transaction to the Trezor and
@@ -182,6 +191,11 @@ func (w *trezorDriver) SignTx(path wallet.DerivationPath, tx *types.Transaction,
 	if w.device == nil {
 		return util.Address{}, nil, wallet.ErrWalletClosed
 	}
+	// The Trezor backend signs legacy transactions only, so a typed one would
+	// be signed as if it were one
+	if tx.Type() != types.LegacyTxType {
+		return util.Address{}, nil, fmt.Errorf("%w: transaction type %d on a Trezor", wallet.ErrNotSupported, tx.Type())
+	}
 	return w.trezorSign(path, tx, chainID)
 }
 
@@ -189,11 +203,29 @@ func (w *trezorDriver) SignTypedMessage(path wallet.DerivationPath, domainHash [
 	return nil, wallet.ErrNotSupported
 }
 
+// SignText implements usbwallet.driver, sending a personal message to the
+// Trezor and waiting for the user to sign or deny it. The device hashes it the
+// EIP-191 way, with the "\x19Ethereum Signed Message:\n" prefix.
+func (w *trezorDriver) SignText(path wallet.DerivationPath, text []byte) ([]byte, error) {
+	if w.device == nil {
+		return nil, wallet.ErrWalletClosed
+	}
+	signature := new(trezor.ParallaxMessageSignature)
+	if _, err := w.trezorExchange(&trezor.ParallaxSignMessage{AddressN: path, Message: text}, signature); err != nil {
+		return nil, err
+	}
+	if len(signature.GetSignature()) != 65 {
+		return nil, errors.New("reply lacks signature")
+	}
+	return signature.GetSignature(), nil
+}
+
 // trezorDerive sends a derivation request to the Trezor device and returns the
-// Ethereum address located on that path.
-func (w *trezorDriver) trezorDerive(derivationPath []uint32) (util.Address, error) {
+// Ethereum address located on that path, shown on the device's screen for the
+// user to confirm if display is set.
+func (w *trezorDriver) trezorDerive(derivationPath []uint32, display bool) (util.Address, error) {
 	address := new(trezor.ParallaxAddress)
-	if _, err := w.trezorExchange(&trezor.ParallaxGetAddress{AddressN: derivationPath}, address); err != nil {
+	if _, err := w.trezorExchange(&trezor.ParallaxGetAddress{AddressN: derivationPath, ShowDisplay: &display}, address); err != nil {
 		return util.Address{}, err
 	}
 	if addr := address.GetAddressBin(); len(addr) > 0 { // Older firmwares use binary fomats
@@ -249,7 +281,11 @@ func (w *trezorDriver) trezorSign(derivationPath []uint32, tx *types.Transaction
 		}
 	}
 	// Extract the Ethereum signature and do a sanity validation
-	if len(response.GetSignatureR()) == 0 || len(response.GetSignatureS()) == 0 || response.GetSignatureV() == 0 {
+	if len(response.GetSignatureR()) == 0 || len(response.GetSignatureS()) == 0 {
+		return util.Address{}, nil, errors.New("reply lacks signature")
+	} else if response.GetSignatureV() == 0 && int(chainID.Int64()) <= (math.MaxUint32-36)/2 {
+		// for chainId >= (MaxUint32-36)/2, Trezor returns signature bit only
+		// https://github.com/trezor/trezor-mcu/pull/399
 		return util.Address{}, nil, errors.New("reply lacks signature")
 	}
 	signature := append(append(response.GetSignatureR(), response.GetSignatureS()...), byte(response.GetSignatureV()))
@@ -261,7 +297,11 @@ func (w *trezorDriver) trezorSign(derivationPath []uint32, tx *types.Transaction
 	} else {
 		// Trezor backend does not support typed transactions yet.
 		signer = types.NewEIP155Signer(chainID)
-		signature[64] -= byte(chainID.Uint64()*2 + 35)
+		// if chainId is above (MaxUint32 - 36) / 2 then the final v values is returned
+		// directly. Otherwise, the returned value is 35 + chainid * 2.
+		if signature[64] > 1 && int(chainID.Int64()) <= (math.MaxUint32-36)/2 {
+			signature[64] -= byte(chainID.Uint64()*2 + 35)
+		}
 	}
 
 	// Inject the final signature into the transaction and sanity check the sender
@@ -280,14 +320,29 @@ func (w *trezorDriver) trezorSign(derivationPath []uint32, tx *types.Transaction
 // message and retrieving the response. If multiple responses are possible, the
 // method will also return the index of the destination object used.
 func (w *trezorDriver) trezorExchange(req proto.Message, results ...proto.Message) (int, error) {
-	// Construct the original message payload to chunk up
 	data, err := proto.Marshal(req)
 	if err != nil {
 		return 0, err
 	}
+	return w.trezorExchangeRaw(trezor.Type(req), data, results...)
+}
+
+// passphraseAckOnDevice is a PassphraseAck with on_device (field 3) set, which
+// the vendored protocol definitions predate: it has a device that can take the
+// passphrase on its own screen ask for it there (firmware 2.3 and later).
+var passphraseAckOnDevice = []byte{0x18, 0x01}
+
+// trezorExchangeRaw is trezorExchange for a message already encoded as data,
+// of the given type.
+//
+// A PIN or passphrase the device asks for along the way stops the exchange
+// with ErrTrezorPINNeeded or ErrTrezorPassphraseNeeded, for opening the wallet
+// again with it, unless the device can take the passphrase itself.
+func (w *trezorDriver) trezorExchangeRaw(kind uint16, data []byte, results ...proto.Message) (int, error) {
+	// Construct the original message payload to chunk up
 	payload := make([]byte, 8+len(data))
 	copy(payload, []byte{0x23, 0x23})
-	binary.BigEndian.PutUint16(payload[2:], trezor.Type(req))
+	binary.BigEndian.PutUint16(payload[2:], kind)
 	binary.BigEndian.PutUint32(payload[4:], uint32(len(data)))
 	copy(payload[8:], data)
 
@@ -312,10 +367,7 @@ func (w *trezorDriver) trezorExchange(req proto.Message, results ...proto.Messag
 		}
 	}
 	// Stream the reply back from the wallet in 64 byte chunks
-	var (
-		kind  uint16
-		reply []byte
-	)
+	var reply []byte
 	for {
 		// Read the next chunk from the Trezor wallet
 		if _, err := io.ReadFull(w.device, chunk); err != nil {
@@ -352,11 +404,47 @@ func (w *trezorDriver) trezorExchange(req proto.Message, results ...proto.Messag
 		if err := proto.Unmarshal(reply, failure); err != nil {
 			return 0, err
 		}
+		switch failure.GetCode() {
+		case trezor.Failure_Failure_ActionCancelled, trezor.Failure_Failure_PinCancelled:
+			return 0, ErrTrezorDenied
+		case trezor.Failure_Failure_PinInvalid:
+			return 0, ErrTrezorPINInvalid
+		}
 		return 0, errors.New("trezor: " + failure.GetMessage())
 	}
 	if kind == uint16(trezor.MessageType_MessageType_ButtonRequest) {
 		// Trezor is waiting for user confirmation, ack and wait for the next message
 		return w.trezorExchange(&trezor.ButtonAck{}, results...)
+	}
+	// A PIN or passphrase asked for, unless it's the reply wanted
+	wanted := func(kind trezor.MessageType) bool {
+		for _, res := range results {
+			if trezor.Type(res) == uint16(kind) {
+				return true
+			}
+		}
+		return false
+	}
+	if kind == uint16(trezor.MessageType_MessageType_PinMatrixRequest) && !wanted(trezor.MessageType_MessageType_PinMatrixRequest) {
+		w.pinwait = true
+		return 0, ErrTrezorPINNeeded
+	}
+	if kind == uint16(trezor.MessageType_MessageType_PassphraseRequest) && !wanted(trezor.MessageType_MessageType_PassphraseRequest) {
+		request := new(trezor.PassphraseRequest)
+		if err := proto.Unmarshal(reply, request); err != nil {
+			return 0, err
+		}
+		switch {
+		case request.GetOnDevice():
+			// Firmware 2.0 to 2.2 has the passphrase entered on the device on
+			// its own, and waits for an empty ack
+			return w.trezorExchange(&trezor.PassphraseAck{}, results...)
+		case w.model != "" && w.model != "1":
+			// Every model since the One can take it on its screen
+			return w.trezorExchangeRaw(uint16(trezor.MessageType_MessageType_PassphraseAck), passphraseAckOnDevice, results...)
+		}
+		w.passphrasewait = true
+		return 0, ErrTrezorPassphraseNeeded
 	}
 	for i, res := range results {
 		if trezor.Type(res) == kind {
