@@ -312,9 +312,8 @@ type trezorDevice struct {
 	model string
 
 	unlocked   bool
-	passphrase bool   // whether the passphrase was given
-	onDevice   bool   // whether the host asked for it on the device
-	pending    uint16 // the request the PIN or passphrase interrupted
+	passphrase bool // whether the passphrase was given
+	onDevice   bool // whether the host asked for it on the device
 	deny       bool
 }
 
