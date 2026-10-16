@@ -152,7 +152,7 @@ didn't answer.
 | **Chain data** (always) | Blocks, transactions, balances, contracts, the mempool, mining and the docs, from your node |
 | **Node status** (allowed by default) | Whether the node runs and syncs, peers, uptime and version |
 | **Logs** | The node's and the app's log, which can name peers' addresses |
-| **Wallet** | Your accounts, their names, balances and activity, and your recovery phrases by name (never their words) |
+| **Wallet** | Your accounts, their names, balances and activity, your recovery phrases by name (never their words), and your hardware wallets by name, with which accounts sign on a Ledger or Trezor |
 | **Address book** | Your contacts' names, addresses and notes |
 
 Everything an assistant reads goes to its provider along with your
@@ -191,7 +191,7 @@ the request to approve or turn down, every time, so these are set to
 | **Create accounts** | Create a wallet account, with a new key or the next one from a recovery phrase |
 | **Watch-only accounts** | Follow an address whose key is kept elsewhere |
 | **Edit the address book** | Add a contact, or change one |
-| **Send transactions** | Send LAX from one of your accounts, approved with the wallet password |
+| **Send transactions** | Send LAX from one of your accounts, approved with the wallet password, or on the device for a hardware wallet account |
 
 ---
 
@@ -214,8 +214,13 @@ what would happen:
   wallet password, which goes to the wallet, never to the assistant. The
   app refuses beforehand what your balance doesn't cover, or a fee over
   your fee cap (1 LAX unless you changed it). From a watch-only account,
-  approving makes a signing request to sign on your offline signer. Sends
-  are plain LAX transfers: assistants can't ask to call contracts.
+  approving makes a signing request to sign on your offline signer. From
+  a hardware wallet account, there's no password: approving sends it to
+  your Ledger or Trezor, where you check it against the request and
+  confirm or reject it. If the device isn't connected and ready (unlocked,
+  with the Ethereum app open on a Ledger), the request stays for you to
+  try again. Sends are plain LAX transfers: assistants can't ask to call
+  contracts.
 - **Accounts:** the new account's name and where its key comes from. You
   type the wallet password in the app; it goes to the wallet, never to
   the assistant.
@@ -246,7 +251,8 @@ Whatever you allow, no assistant can:
 - See recovery phrases, or export, import or back up keys.
 - See or change the wallet password.
 - Sign or send a transaction without your approval and the wallet
-  password.
+  password, or, from a hardware wallet account, your confirmation on the
+  device.
 - Remove accounts, recovery phrases or contacts.
 - Open the node to the network.
 - Turn offline signing on or off, or change what assistants may do.
@@ -288,4 +294,5 @@ requests you meant to make, and check addresses yourself.
 | The assistant says you don't let it | That permission is set to **Block**: change it in **Settings → AI assistants → Permissions**. |
 | The assistant says you didn't answer | A prompt waited 2 minutes. Ask again and answer it in the app, or set the permission to **Allow**. |
 | The assistant can't connect after a change | Changing the port or the public services restarts the server: reconnect, in Claude Code from `/mcp`. A new token needs the server added again. |
+| A send from a hardware wallet account waits | Connect and unlock the device (on a Ledger, open the Ethereum app), then approve the request again: it stays until you do. |
 | No explorer data or network health | Turn on **Block explorer** or **Status page** under Permissions. |

@@ -274,6 +274,7 @@
                 "pages": [
                   "v2.1.x/guides/wallets/accounts",
                   "v2.1.x/guides/wallets/metamask",
+                  "v2.1.x/guides/wallets/hardware-wallets",
                   "v2.1.x/guides/wallets/send-and-reveive",
                   "v2.1.x/guides/wallets/explorer",
                   "v2.1.x/guides/wallets/keep-safe"
