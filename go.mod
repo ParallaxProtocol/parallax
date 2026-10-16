@@ -63,6 +63,7 @@ require (
 	golang.org/x/text v0.42.0
 	golang.org/x/time v0.8.0
 	golang.org/x/tools v0.49.0
+	google.golang.org/protobuf v1.33.0
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
 	gopkg.in/urfave/cli.v1 v1.20.0
 )
@@ -99,7 +100,6 @@ require (
 	github.com/tklauser/go-sysconf v0.3.5 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
 	golang.org/x/mod v0.41.0 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
