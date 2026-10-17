@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "Parallax Technical Documentation",
   "colors": {
-    "primary": "#058AFD",
-    "light": "#058AFD",
-    "dark": "#058AFD"
+    "primary": "#00804a",
+    "light": "#19e68c",
+    "dark": "#00804a"
   },
   "favicon": "/favicon.svg",
   "navigation": {
