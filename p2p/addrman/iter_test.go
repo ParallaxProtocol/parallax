@@ -112,6 +112,52 @@ func TestNodeIterSkipsV2NativeEntries(t *testing.T) {
 	}
 }
 
+// TestNodeIterPaced — NodeIter answers from memory, so a consumer that
+// discards every candidate (the dial scheduler with free slots and all
+// reachable peers already connected) must not be able to drain it in a
+// hot loop. Successive yields are spaced by the pace interval, and Close
+// interrupts a Next waiting out that interval.
+func TestNodeIterPaced(t *testing.T) {
+	m, err := New(Deterministic(42))
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, nodeID := makeLegacyNode(t, net.IPv4(8, 8, 8, 8), 30303)
+	addr, _ := NewNetAddr(NetIPv4, n.IP().To4(), uint16(n.TCP()))
+	if !m.AddOne(addr, 0x01, nodeID, time.Now(), addr, SourceLegacyUDP, 0) {
+		t.Fatal("AddOne failed")
+	}
+
+	it := NewNodeIter(m, 10*time.Millisecond)
+	it.pace = 50 * time.Millisecond
+	defer it.Close()
+
+	const yields = 5
+	start := time.Now()
+	for i := 0; i < yields; i++ {
+		if !it.Next() {
+			t.Fatal("NodeIter.Next returned false")
+		}
+	}
+	if elapsed, min := time.Since(start), (yields-1)*it.pace; elapsed < min {
+		t.Errorf("%d yields took %v, want at least %v", yields, elapsed, min)
+	}
+
+	it.pace = time.Hour
+	done := make(chan bool, 1)
+	go func() { done <- it.Next() }()
+	time.Sleep(20 * time.Millisecond)
+	it.Close()
+	select {
+	case ok := <-done:
+		if ok {
+			t.Error("Next yielded during the pace interval")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Close did not interrupt the pace wait")
+	}
+}
+
 // TestIngestNodeRoundTrip — IngestNode feeds a legacy enode into addrman
 // and NodeIter reconstructs an equivalent *enode.Node.
 func TestIngestNodeRoundTrip(t *testing.T) {

@@ -212,13 +212,28 @@ func (it *V2Iter) Close() {
 // NodeIter yields entries indefinitely; Close() halts it. It's intended
 // to sit alongside the discv4 / dnsdisc iterators in p2p/server.go's
 // FairMix.
+//
+// Yields are paced to one per pace interval. The discv4 and dnsdisc
+// iterators are paced by network round trips, and the dial scheduler
+// relies on that: it reads candidates for as long as it has free dial
+// slots and discards those it is already connected to or dialing. This
+// iterator answers from memory, so on a network smaller than the dial
+// slot count the slots never fill, and an unpaced Next would rebuild
+// the same few enodes thousands of times per second.
 type NodeIter struct {
 	m          *AddrMan
 	current    *enode.Node
 	closed     chan struct{}
 	closeOnce  sync.Once
 	maxBackoff time.Duration
+	pace       time.Duration
+	lastYield  time.Time
 }
+
+// nodeIterPace is the minimum interval between NodeIter yields: the
+// cadence of Bitcoin Core's ThreadOpenConnections loop, which sleeps
+// 500ms between connection attempts (src/net.cpp).
+const nodeIterPace = 500 * time.Millisecond
 
 // NewNodeIter builds a NodeIter. maxBackoff caps the sleep between empty
 // Select() results so an empty addrbook doesn't spin the caller — 250ms
@@ -231,12 +246,24 @@ func NewNodeIter(m *AddrMan, maxBackoff time.Duration) *NodeIter {
 		m:          m,
 		closed:     make(chan struct{}),
 		maxBackoff: maxBackoff,
+		pace:       nodeIterPace,
 	}
 }
 
 // Next advances to the next dialable node. Blocks until one is found or
 // Close() is called.
 func (it *NodeIter) Next() bool {
+	if !it.lastYield.IsZero() {
+		if wait := it.pace - time.Since(it.lastYield); wait > 0 {
+			t := time.NewTimer(wait)
+			select {
+			case <-it.closed:
+				t.Stop()
+				return false
+			case <-t.C:
+			}
+		}
+	}
 	backoff := 10 * time.Millisecond
 	// Cap per-call skip spins, mirroring V2Iter. On an addrbook
 	// dominated by v2-native (KeyType=0x00) entries — the intended
@@ -256,6 +283,7 @@ func (it *NodeIter) Next() bool {
 			n, dialable := it.m.buildEnode(addr)
 			if dialable {
 				it.current = n
+				it.lastYield = time.Now()
 				return true
 			}
 			// Entry exists but can't be dialed via legacy RLPx (no
