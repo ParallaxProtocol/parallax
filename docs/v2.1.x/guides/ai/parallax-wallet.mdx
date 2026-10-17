@@ -42,9 +42,11 @@ so everything that guide says about asking questions applies here too.
     turn on **Assistant access**. Save.
   </Step>
   <Step title="Copy the connection">
-    Under **Connect an assistant**, choose **Claude Code** or **JSON
-    config** and copy it. It holds the server's address and its access
-    token.
+    Under **Connect an assistant**, choose your assistant from the list
+    (Claude Code, Claude Desktop, Codex, Gemini CLI, Cursor, VS Code,
+    Windsurf, Zed, Cline, opencode, LM Studio, or **JSON config** for any
+    other) and copy what it shows: a command to run or a config to add,
+    with the server's address and its access token in it.
   </Step>
   <Step title="Choose what assistants may do">
     Open **Settings → AI assistants → Permissions**. To begin with, the
@@ -78,6 +80,11 @@ Add `-s user` after `claude mcp add` to have it in every project. Then run
 `/mcp` in Claude Code to check that `parallax-wallet-app` is connected.
 
 ### Other assistants
+
+For the other assistants in the list, the app says where its config goes
+(for example `~/.cursor/mcp.json` for Cursor, or `~/.codex/config.toml`
+for Codex): add it there, alongside any servers already in it. Claude
+Desktop reaches the server through `mcp-remote`, which needs Node.js.
 
 The JSON config works for MCP clients that read an `mcpServers` config,
 such as a project's `.mcp.json`:
