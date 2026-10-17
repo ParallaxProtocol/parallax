@@ -1,0 +1,35 @@
+---
+title: "Sending and receiving in Parallax Wallet"
+sidebarTitle: "Sending and receiving"
+description: "Send and receive LAX, follow your history, keep an address book and sign messages in Parallax Wallet."
+---
+
+## Sending and receiving
+
+- **Receive** shows your address, a **Copy** button and a QR code. Only
+  send LAX on the Parallax network (chain ID 2110) to it.
+- **Send** takes an address or a contact's name, and an amount (**Max**
+  sends your whole balance less the fee). The network fee is
+  **Suggested** by your node, or **Custom** if you'd rather set it. You
+  review the fee and the total before anything is sent, and the app warns
+  you when something looks off, such as sending to yourself or paying far
+  more than needed.
+- A send that's still waiting can be sped up, or cancelled, from its row
+  in your activity: both replace it with the same transaction (or 0 LAX
+  to yourself) at a higher fee.
+- **History** lists everything you've sent, received and mined, with
+  filters and search, and **Export** saves it as a CSV file.
+- **Contacts** is your address book: names, notes and favourites, which
+  you can import and export as JSON or CSV.
+
+Sending needs your node running and in sync. More in
+[Sending and receiving LAX](../wallets/send-and-reveive).
+
+---
+
+## Signing messages
+
+**Sign message** proves you own an address by signing a short message
+with it; **Verify message** checks someone else's signed message. The
+app uses the standard personal-message signature (EIP-191), so other
+wallets can verify it too.

@@ -1,0 +1,91 @@
+---
+title: "Offline signing in Parallax Wallet"
+sidebarTitle: "Offline signing"
+description: "Keep your keys on a computer that never goes online, and send from another one with a watch-only account."
+---
+
+For the most careful setups, Parallax Wallet can keep your keys on a
+computer that never connects to the network. That computer, the
+**offline signer**, only signs. Your everyday computer runs the wallet
+with its node, follows the same accounts as **watch-only**, prepares
+each transfer, and broadcasts it once it's signed.
+
+They pass transfers back and forth as QR codes, held up to each
+computer's camera, or as files, so the signer never needs a network.
+
+---
+
+## What you need
+
+- A computer that will stay offline, with Parallax Wallet installed as an
+  **Offline signer**. Install the app on it before taking it offline;
+  it never checks for updates, so install new versions by hand.
+- Your everyday computer with Parallax Wallet and its node.
+- A camera on each, or a way to carry files between them, such as a USB
+  stick.
+
+---
+
+## Set up
+
+<Steps>
+  <Step title="Make the offline computer a signer">
+    At first launch choose **Offline signer**, or turn on **Settings →
+    General → Offline signer**. It never starts a node, and it hides
+    everything that needs the network.
+  </Step>
+  <Step title="Add your accounts on the signer">
+    Create or import them there, as on any wallet; see
+    [Accounts](./accounts).
+  </Step>
+  <Step title="Follow them from your everyday computer">
+    On the signer, choose **Show for watch-only** next to an account to
+    show its address as a QR code. On your everyday computer, add it with
+    **Settings → Accounts → Import accounts → Watch an address**, and scan
+    it.
+  </Step>
+</Steps>
+
+---
+
+## Send
+
+<Steps>
+  <Step title="Create a signing request">
+    On your everyday computer, choose the watch-only account and **Send**
+    as usual, then **Create signing request**. The app shows it as a QR
+    code, and **Save file…** saves it. You can leave the page: the
+    request waits on the **Overview** until it's signed.
+  </Step>
+  <Step title="Sign it offline">
+    On the signer, choose **Scan a signing request**, then scan the QR
+    code or open the file. Check that the fingerprint matches the one your
+    everyday computer shows, and that the amount and the recipient are
+    what you meant to send. Then **Sign**.
+  </Step>
+  <Step title="Broadcast it">
+    The signer shows the signed transaction as a QR code, or saves it as a
+    file. On your everyday computer, **Scan signed transaction** (or
+    **Broadcast** in the sidebar) and send it to the network.
+  </Step>
+</Steps>
+
+**Broadcast** also takes a raw signed transaction from the
+`parallax-wallet` command-line tool.
+
+---
+
+## Good to know
+
+- Only plain LAX transfers can be signed offline.
+- **Fee cap** in **Settings → General** on the signer is the most fee a
+  signed transfer may pay; a request above it is refused.
+- If the signer has already signed a different transfer from the same
+  account with the same nonce, it warns you: only one of them can go
+  through.
+- To call off a request that's waiting, choose **Cancel with a
+  replacement** on the **Overview**: it makes a new request that sends 0
+  LAX back to the account, which you sign and broadcast like any other.
+  **Discard** only stops the wallet following it.
+- **Sign message** works the same way for watch-only accounts: the
+  request goes to the signer as a QR code.

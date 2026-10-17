@@ -262,10 +262,22 @@
             "tab": "Guides",
             "groups": [
               {
+                "group": "Parallax Wallet",
+                "pages": [
+                  "v2.1.x/guides/parallax-wallet/introduction",
+                  "v2.1.x/guides/parallax-wallet/installing",
+                  "v2.1.x/guides/parallax-wallet/accounts",
+                  "v2.1.x/guides/parallax-wallet/send-and-receive",
+                  "v2.1.x/guides/parallax-wallet/hardware-wallets",
+                  "v2.1.x/guides/parallax-wallet/offline-signing",
+                  "v2.1.x/guides/parallax-wallet/security",
+                  "v2.1.x/guides/parallax-wallet/settings"
+                ]
+              },
+              {
                 "group": "Parallax Client",
                 "pages": [
                   "v2.1.x/guides/client/introduction",
-                  "v2.1.x/guides/client/desktop",
                   "v2.1.x/guides/client/setup"
                 ]
               },
@@ -274,7 +286,6 @@
                 "pages": [
                   "v2.1.x/guides/wallets/accounts",
                   "v2.1.x/guides/wallets/metamask",
-                  "v2.1.x/guides/wallets/hardware-wallets",
                   "v2.1.x/guides/wallets/send-and-reveive",
                   "v2.1.x/guides/wallets/explorer",
                   "v2.1.x/guides/wallets/keep-safe"
@@ -1160,6 +1171,16 @@
     {
       "source": "/v2.1.x/parallax-protocol/advanced/networking/pip-0006",
       "destination": "/v2.1.x/parallax-protocol/advanced/networking/discovery",
+      "permanent": true
+    },
+    {
+      "source": "/v2.1.x/guides/wallets/hardware-wallets",
+      "destination": "/v2.1.x/guides/parallax-wallet/hardware-wallets",
+      "permanent": true
+    },
+    {
+      "source": "/v2.1.x/guides/client/desktop",
+      "destination": "/v2.1.x/guides/parallax-wallet/introduction",
       "permanent": true
     },
     {

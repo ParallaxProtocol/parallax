@@ -1,0 +1,80 @@
+---
+title: "Settings and updates in Parallax Wallet"
+sidebarTitle: "Settings and updates"
+description: "What each section of Settings holds, how Parallax Wallet updates, and where it keeps its files."
+---
+
+## Settings
+
+| Section | What's there |
+|---|---|
+| **General** | Language, open at login, starting the node automatically, keeping the computer awake while syncing, notifications, automatic update checks, and offline signing |
+| **Appearance** | Theme (System, Light or Dark), account avatars, and turning off animations |
+| **Storage** | Where the wallet and the node's data live, moving them, and wiping the wallet |
+| **Accounts** | Creating, importing, backing up and removing accounts |
+| **Security** | Your wallet password and automatic locking |
+| **Node** | Sync mode (*Snap*, recommended, or *Full*), caches, fee estimation and the transaction pool |
+| **Network** | Inbound connections, peers, port mapping, and privacy options such as Tor |
+| **RPC** | The node's HTTP-RPC (on by default, at `127.0.0.1:8545`), WebSocket and other interfaces |
+| **AI assistants** | Letting AI assistants use your node and wallet, and what they may do; see [AI assistants in Parallax Wallet](../ai/parallax-wallet) |
+| **Diagnostics** | Log level and the app's live logs |
+| **About** | The app's version, checking for updates, and ways to report a problem or request a feature |
+
+Changes take effect when you **Save**; the few that need the node or the
+app to restart say so. Advanced options show the command-line flag they
+match, if you also use the [CLI client](../client/setup).
+
+<Note>
+Your node's HTTP-RPC is what other wallets connect to. To use MetaMask
+with your own node, point it at `http://127.0.0.1:8545`; see
+[Setting up MetaMask](../wallets/metamask). It only listens on your own
+computer unless you change its listen address.
+</Note>
+
+---
+
+## Updates
+
+Parallax Wallet checks for a new version every 30 minutes (turn this off
+in **Settings → General**), or when you press **Check for updates** in
+**Settings → About**. When one is out, an update button appears in the
+top bar. The app downloads it and checks it against the release's
+`SHA256SUMS.txt` before installing:
+
+- **Windows and Linux** — it installs the update and restarts when you
+  say so.
+- **macOS** — it opens the new version's disk image; drag Parallax
+  Wallet to *Applications* to replace the old one.
+
+An offline signer never checks for updates: install new versions by
+hand.
+
+---
+
+## Files on your computer
+
+The node's data (the blockchain) goes in the same places as the CLI
+client's, unless you chose another folder:
+
+- **Windows**: `%LOCALAPPDATA%\Parallax` (or `%APPDATA%\Parallax` if an
+  older install already uses it)
+- **macOS**: `~/Library/Parallax`
+- **Linux**: `~/.parallax`
+
+The app's settings (`gui.json`) and your wallet (its encrypted keys,
+phrases, contacts and logs) live in a `Parallax` folder in your system's
+app-config folder:
+
+- **Windows**: `%APPDATA%\Parallax`
+- **macOS**: `~/Library/Application Support/Parallax`
+- **Linux**: `~/.config/Parallax`
+
+**Settings → Storage** shows both, and can move them. Because the node
+uses the same data directory as the CLI client, you can switch between
+them without downloading the chain again.
+
+<Warning>
+These folders are not a backup. If this computer is lost or broken, what
+brings your accounts back is your recovery phrases, written on paper, and
+your single keys' backup files, saved with **Save backup**.
+</Warning>
