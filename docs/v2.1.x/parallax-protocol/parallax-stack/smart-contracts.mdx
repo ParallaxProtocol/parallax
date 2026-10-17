@@ -94,16 +94,16 @@ Multisig (multiple-signature) contracts are smart contract accounts that require
 
 ## Supported PVM versions
 
-Parallax is compatible with the **Paris EVM**, and has support for all EVM versions up to **Paris**. This ensures broad compatibility with most modern Ethereum tooling and frameworks.
+Parallax is compatible with the **Berlin EVM**, and has support for all EVM versions up to **Berlin**. This ensures broad compatibility with most modern Ethereum tooling and frameworks.
 
-For users deploying **Solidity** or **Vyper** contracts, it’s important to compile them using a version compatible with the **Paris** upgrade — using **Paris** as the target version is recommended to ensure consistent behavior and full compatibility with Parallax.
+For users deploying **Solidity** or **Vyper** contracts, it’s important to compile them using a version compatible with the **Berlin** upgrade — using **Berlin** as the target version is recommended to ensure consistent behavior and full compatibility with Parallax.
 
 For smart contracts written in Solidity, you can specify the the PVM version in the compiler options.
 
 You can set the target PVM version for Vyper smart contracts by including the line below to the source code.
 
 ```python
-#pragma evm-version paris
+#pragma evm-version berlin
 ```
 
 ## Smart contract resources
