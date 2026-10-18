@@ -9,7 +9,7 @@ name: Release
 # CGO-disabled, so a single Linux runner cross-compiles all targets.
 #
 # The desktop GUI (Parallax Desktop) is built and released from its own
-# repository: https://github.com/ParallaxProtocol/parallax-gui
+# repository: https://github.com/ParallaxProtocol/parallax-wallet
 #
 # The release is published as a DRAFT so a maintainer can review the
 # uploaded artifacts and notes before clicking "Publish release". Re-runs
