@@ -40,7 +40,7 @@ var (
 		Description: `
 The Parallax console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
-See https://docs.parallaxprotocol.org/parallax-client/interacting-with-parallax/js-console.`,
+See https://docs.parallaxprotocol.org/client/interacting-with-parallax/js-console.`,
 	}
 
 	attachCommand = cli.Command{
@@ -53,7 +53,7 @@ See https://docs.parallaxprotocol.org/parallax-client/interacting-with-parallax/
 		Description: `
 The Parallax console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
-See https://docs.parallaxprotocol.org/parallax-client/interacting-with-parallax/js-console.
+See https://docs.parallaxprotocol.org/client/interacting-with-parallax/js-console.
 This command allows to open a console on a running Parallax node.`,
 	}
 
@@ -66,7 +66,7 @@ This command allows to open a console on a running Parallax node.`,
 		Category:  "CONSOLE COMMANDS",
 		Description: `
 The JavaScript VM exposes a node admin interface as well as the Ðapp
-JavaScript API. See https://docs.parallaxprotocol.org/parallax-client/interacting-with-parallax/js-console`,
+JavaScript API. See https://docs.parallaxprotocol.org/client/interacting-with-parallax/js-console`,
 	}
 )
 

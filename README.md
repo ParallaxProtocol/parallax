@@ -27,7 +27,7 @@ To build the full suite of tools (adds `clef`, `abigen`, `pvm`, `rlpdump`, `devp
 make all
 ```
 
-For detailed build instructions including cross-compilation, Docker builds, and platform-specific notes, see `docs/`.
+For detailed build instructions including Docker builds and platform-specific notes, see [Installing the Parallax Client](https://docs.parallaxprotocol.org/client/getting-started/installing-client).
 
 ## Executables
 
@@ -55,7 +55,7 @@ Start with an interactive JavaScript console:
 ./build/bin/parallaxd console
 ```
 
-See the [getting started guide](https://docs.parallaxprotocol.org/parallax-client/getting-started/introduction) for connecting to the network, creating accounts, and sending transactions.
+See the [getting started guide](https://docs.parallaxprotocol.org/client/getting-started/introduction) for connecting to the network, creating accounts, and sending transactions.
 
 ### Daemon mode
 
@@ -65,7 +65,7 @@ Run the node in the background, detached from the terminal:
 ./build/bin/parallax-cli start
 ```
 
-Under the hood, `parallax-cli start` execs the sibling `parallaxd` binary with `--daemon`. `parallaxd` installed next to `parallax-cli` is the default location; `$PATH` is the fallback. Logs redirect to `<datadir>/parallax.log`, a PID file is written, and the process survives terminal exit. See [Daemon mode](https://docs.parallaxprotocol.org/parallax-client/fundamentals/daemon-mode) for systemd integration and flag details.
+Under the hood, `parallax-cli start` execs the sibling `parallaxd` binary with `--daemon`. `parallaxd` installed next to `parallax-cli` is the default location; `$PATH` is the fallback. Logs redirect to `<datadir>/parallax.log`, a PID file is written, and the process survives terminal exit. See [Daemon mode](https://docs.parallaxprotocol.org/client/fundamentals/daemon-mode) for systemd integration and flag details.
 
 Invoking `parallaxd --daemon` directly has the same effect.
 
@@ -88,7 +88,7 @@ parallax rpc info
 parallax rpc balance <addr>
 ```
 
-Object responses are pretty-printed JSON; scalar responses are bare values (safe for `$(parallax-cli blockcount)`). Full reference: [Command-line RPC](https://docs.parallaxprotocol.org/parallax-client/interacting-with-parallax/command-line-rpc).
+Object responses are pretty-printed JSON; scalar responses are bare values (safe for `$(parallax-cli blockcount)`). Full reference: [Command-line RPC](https://docs.parallaxprotocol.org/client/interacting-with-parallax/command-line-rpc).
 
 ### Shell completion
 
@@ -190,7 +190,7 @@ Binaries also embed the git commit and build date (`parallaxd version`), so an u
 
 ### Release branches
 
-Each minor series gets a long-lived branch, `X.Y.x` (e.g. `2.0.x`). The series is cut when `X.Y.0` ships; patch releases are tagged from that branch, while `main` moves on to the next minor's development cycle. Documentation is versioned the same way — `docs/v2.0.x`, `docs/v2.1.x` — so the docs for the release you run stay available after newer ones land.
+Each minor series gets a long-lived branch, `X.Y.x` (e.g. `2.0.x`). The series is cut when `X.Y.0` ships; patch releases are tagged from that branch, while `main` moves on to the next minor's development cycle. The [documentation](https://github.com/ParallaxProtocol/parallax-docs) lives in its own repository and is versioned by major release: it covers every release of the current major, noting which minor added a feature.
 
 ### Consensus is not versioned by releases
 
@@ -236,7 +236,7 @@ Parallax is a security-critical project. Any mistake can cost users money. All c
 
 - [Technical Documentation](https://docs.parallaxprotocol.org)
 - [Beginner Guides](https://docs.parallaxprotocol.org/guides)
-- [JSON-RPC API Reference](https://docs.parallaxprotocol.org/parallax-client/interacting-with-parallax/json-rpc-server/overview)
+- [JSON-RPC API Reference](https://docs.parallaxprotocol.org/client/interacting-with-parallax/json-rpc-server/overview)
 - [Whitepaper](https://parallaxprotocol.org/parallax.pdf)
 - [The Parallax Doctrine](https://github.com/ParallaxProtocol/parallax-doctrine)
 

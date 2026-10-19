@@ -100,7 +100,7 @@ docker run --rm parallaxprotocol/parallax wallet --help  # offline wallet tool
 
 - [Source repository](https://github.com/ParallaxProtocol/parallax)
 - [Documentation](https://docs.parallaxprotocol.org)
-- [JSON-RPC API reference](https://docs.parallaxprotocol.org/parallax-client/interacting-with-parallax/json-rpc-server/overview)
+- [JSON-RPC API reference](https://docs.parallaxprotocol.org/client/interacting-with-parallax/json-rpc-server/overview)
 
 ## License
 
