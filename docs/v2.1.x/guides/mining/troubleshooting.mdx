@@ -175,13 +175,13 @@ This method is often quicker and safer if your GPU drivers are already up to dat
 Now you can run Hashwarp again:
 
 ```bash  theme={null}
-hashwarp -P http://127.0.0.1:8545
+hashwarp --list-devices
 ```
 
-If everything was successful, you should see output like:
+If everything was successful, your GPU is listed. Start mining as usual, and Hashwarp prints its hashrate every 10 seconds:
 
 ```
-m  15:42:12|hashwarp  Mining on GPU #0: 32.5MH/s
+15:42:12  INFO  miner  115.42 MH/s · 60s 115.43 · 15m 116.18 · A20 · 71°C · fan 53% · 377 W · 306 kH/J
 ```
 
 Your GPU is now recognized and mining successfully on Parallax.

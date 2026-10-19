@@ -11,7 +11,7 @@ Mining on a pool allows you to combine your hashrate with other miners. Instead 
 
 - Installed GPU mining software such as [Hashwarp](./gpu).  
 - An account address to receive rewards.
-- The URL of a Parallax mining pool (for example, `stratum+tcp://<POOL_URL>:4444`).  
+- The address of a Parallax mining pool (for example, `pool.example.com:3333`).  
 
 ---
 
@@ -19,11 +19,15 @@ Mining on a pool allows you to combine your hashrate with other miners. Instead 
 
 <Steps>
   <Step title="Choose a mining pool">
-    Pick a Parallax mining pool from the official list (coming soon).  
+    Parallax pools are listed on [miningpoolstats](https://miningpoolstats.stream/parallax). Hashwarp's first-run wizard offers the known ones too.
 
-    Pools usually provide two connection URLs:
-    - **Stratum+TCP**: for most miners  
-    - **SSL**: for secure connections (optional)
+    Pools usually give two ports:
+    - **TCP**: for most miners
+    - **TLS (SSL)**: encrypted, recommended when available
+
+    <Warning>
+      Prefer a pool that finds less than half of the network's blocks. A pool with the majority can reverse payments and block transactions, which puts the coin you mine at risk. The [Parallax status page](https://status.parallaxprotocol.org) shows each pool's share, and Hashwarp warns you when your pool has the majority.
+    </Warning>
   </Step>
 
   <Step title="Run your miner">
@@ -32,20 +36,21 @@ Mining on a pool allows you to combine your hashrate with other miners. Instead 
     Example command with Hashwarp:
 
     ```bash
-    hashwarp -P stratum+tcp://<YOUR_ADDRESS>@<POOL_URL>:4444
+    hashwarp --pool <POOL_HOST>:<PORT> --wallet <YOUR_ADDRESS> --worker rig1
     ```
 
-    Replace `<YOUR_ADDRESS>` with your Parallax wallet address.  
-    Replace `<POOL_URL>` with the mining pool URL.  
-    - No password is required for most pools.  
-    - You can add a worker name like `<YOUR_ADDRESS>.worker1` to track multiple rigs.
+    Replace `<POOL_HOST>:<PORT>` with the pool's address and `<YOUR_ADDRESS>` with your Parallax address.
+    - Add `--tls` for a TLS port.
+    - The worker name (`rig1`) tells your rigs apart on the pool's dashboard.
+    - Give several pools separated by commas: Hashwarp moves to the next one when a pool fails.
+    - No password is required for most pools.
   </Step>
 
   <Step title="Confirm shares are submitted">
     If everything is working, you’ll see logs like:
 
     ```
-    m  16:12:42|hashwarp  Accepted share #42
+    16:12:42  INFO  share  ✔ accepted gpu0 · diff 8.59 GH · 364 ms · A42
     ```
 
     Each accepted share means your miner contributed valid work to the pool.

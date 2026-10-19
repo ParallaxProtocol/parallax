@@ -1746,7 +1746,7 @@ Result see eth\_getFilterChanges
 
 ### eth\_getWork
 
-Returns the hash of the current block, the seedHash, and the boundary condition to be met ("target").
+Returns the hash of the current block, the seedHash, the boundary condition to be met ("target") and the block number.
 
 **Parameters** None
 
@@ -1755,6 +1755,7 @@ Returns the hash of the current block, the seedHash, and the boundary condition 
 1. `DATA`, 32 Bytes - current block header pow-hash
 2. `DATA`, 32 Bytes - the seed hash used for the DAG.
 3. `DATA`, 32 Bytes - the boundary condition ("target"), 2^256-1 / difficulty.
+4. `QUANTITY` - the number of the block being mined.
 
 **Example**
 
@@ -1768,7 +1769,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getWork","params":[],"id":73
   "result": [
       "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
       "0x5EED00000000000000000000000000005EED0000000000000000000000000000",
-      "0xd1ff1c01710000000000000000000000d1ff1c01710000000000000000000000"
+      "0xd1ff1c01710000000000000000000000d1ff1c01710000000000000000000000",
+      "0xec54"
     ]
 }
 

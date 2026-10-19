@@ -1,93 +1,85 @@
 ---
 title: "Mining with your GPU"
 sidebarTitle: "Hashwarp Miner"
-description: "Beginner-friendly guide on how to mine with your GPU using Hashwarp."
+description: "How to mine Parallax with your GPU using Hashwarp, the official XHash miner."
 ---
 
-If you want better performance than the built-in CPU miner, you can mine with your **GPU** using [Hashwarp](https://github.com/ParallaxProtocol/hashwarp). Hashwarp is a fork of **Ethminer** -- adding support for Parallax Proof-of-Work XHash algorithm -- so existing Ethash miners can be used with only a few adjustments.
+[Hashwarp](https://github.com/ParallaxProtocol/hashwarp) is the official GPU miner for Parallax's [XHash](../../parallax-protocol/foundational-topics/consensus/algorithms/xhash) Proof-of-Work. It mines on **NVIDIA** GPUs (CUDA) and **AMD** and other GPUs (OpenCL), on a mining pool or solo on your own node.
 
----
+Besides mining, Hashwarp:
 
-## Hashwarp
-
-**Hashwarp** is the official reference GPU miner for Parallax’s **XHash** Proof-of-Work algorithm.  
-It is a **minimal implementation** focused on correctness and portability, derived from the original **Ethminer** project but adapted to support the Parallax XHash pipeline.
-
-Currently, Hashwarp supports **OpenCL** and **CUDA** mining, ensuring it works out of the box on both **AMD** and **NVIDIA** GPUs. This simplified architecture keeps the miner lightweight and easier to audit, while leaving room for the **community to build more advanced and optimized miners** — such as those adding Vulkan, or Metal backends and performance tuning.
-
-Hashwarp’s goals are:
-
-- Provide a **reference implementation** of XHash GPU mining.  
-- Offer **cross-platform compatibility** through OpenCL.  
-- Serve as a **foundation** for developers to experiment, optimize, and build upon.  
-
-If you’re interested in contributing or extending Hashwarp, visit the [official repository](https://github.com/ParallaxProtocol/hashwarp) and explore the source code.
+- Sets itself up: run it without options and a short wizard asks how you want to mine.
+- Protects your hardware: temperature limits per GPU, a shutdown temperature, and a watchdog that restarts a GPU when it fails. Every solution is checked before it is submitted.
+- Tunes your GPUs: memory and core clocks, power limits and fans per GPU, and `--oc-tune`, which finds the best settings for each one.
+- Shows what it does: a web dashboard of one rig or all of them, a JSON API and Prometheus metrics.
+- Warns you when your pool finds most of the network's blocks, which puts the network at risk.
+- Runs on HiveOS and mmpOS with ready-made packages.
 
 ---
 
 ## Prerequisites
 
-- A machine with a **dedicated GPU** (NVIDIA or AMD).  
-- Installed GPU drivers (CUDA 12.9 for NVIDIA, ROCm/AMD drivers for AMD).  
-- [VC++ Redist](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-supported-redistributable-version) (Windows Only)
-- Your [Parallax client](../client/setup) running with HTTP enabled.  
-- An account address to receive mining rewards.
+- An **NVIDIA** GPU (driver 525 or newer) or an **AMD** GPU (AMD driver with OpenCL: Adrenalin on Windows, ROCm on Linux), with enough memory for the XHash DAG: about 1.7 GB in late 2026, growing slowly with each epoch.
+- **Windows** 10 or newer, or **Linux** with glibc 2.28 or newer (Ubuntu 20.04, Debian 10, RHEL 8 and later). Everything else Hashwarp needs comes in the download.
+- A Parallax address to receive rewards, or your own [Parallax client](../client/setup) to mine solo.
 
 ---
 
 ## Step-by-step Guide
 
 <Steps>
-  <Step title="Install Hashwarp">
-    Download Hashwarp from the official repository:
-
-    - [Hashwarp GitHub Releases](https://github.com/ParallaxProtocol/hashwarp/releases)
-
-    Choose the build that matches your operating system.
+  <Step title="Download Hashwarp">
+    Download the archive for your operating system from the [Hashwarp releases](https://github.com/ParallaxProtocol/hashwarp/releases) and extract it.
   </Step>
 
-  <Step title="Start your Parallax client">
-    Run your Parallax node with mining RPC enabled:
+  <Step title="Start it">
+    Run `hashwarp` without options. The first time, it asks whether you want to mine on a pool or solo, which pool, your address and a name for the rig, saves the answers in `hashwarp.json` and starts mining. Next time it starts with that configuration.
+
+    Or give the options on the command line. On a pool:
 
     ```bash
-    ./parallaxd --http --http.api "eth,net,web3,miner" --mine --miner.coinbase <YOUR_ADDRESS>
+    hashwarp --pool <POOL_HOST>:<PORT> --wallet <YOUR_ADDRESS> --worker rig1
     ```
 
-    Replace `<YOUR_ADDRESS>` with the account that should receive mining rewards.
-
-    Leave this running in the background — Hashwarp will connect to it.
+    Replace `<POOL_HOST>:<PORT>` with the pool's address and `<YOUR_ADDRESS>` with your Parallax address. The worker name tells your rigs apart on the pool's dashboard. See [Mining on a Pool](./pool) to choose a pool.
   </Step>
 
-  <Step title="Run Hashwarp against Parallax client">
-    In another terminal window, point Hashwarp to your local Parallax node:
-
-    ```bash
-    hashwarp -P http://127.0.0.1:8545
-    ```
-
-    - `-P` specifies the RPC endpoint.  
-    - `127.0.0.1:8545` is the local Parallax client.  
-
-    Hashwarp will automatically start mining and submit shares to your Parallax node.
-  </Step>
-
-  <Step title="Confirm mining is active">
-    Your Parallax client logs should show new work being sealed into blocks.  
-    Hashwarp will also display hashrate statistics like:
+  <Step title="Check that it mines">
+    Hashwarp prints the hashrate every 10 seconds and a line for each share the pool accepts:
 
     ```
-    m  15:42:12|hashwarp  Mining on GPU #0: 32.5MH/s
+    05:57:14  INFO  share  ✔ accepted gpu0 · diff 8.59 GH · 364 ms · A20 R1
+    05:57:20  INFO  miner  115.42 MH/s · 60s 115.43 · 15m 116.18 · eff 133.62 · A20 R1 · 71°C · fan 53% · 377 W · 306 kH/J
     ```
+
+    The line shows the current hashrate and its 1 and 15 minute averages, the effective hashrate (what the pool credits you), the accepted (`A`) and rejected (`R`) shares, then the temperature, fan, power and efficiency. Press `s` for a table per GPU, or `h` for the other keys.
   </Step>
 </Steps>
 
 ---
 
-## Where do rewards go?
+## Solo mining
 
-- Rewards are sent directly to the **coinbase account** you provided in your Parallax client (`--miner.coinbase`).  
-- These rewards will be credited to your account once the block you mined reach enough maturity (100 blocks on top of the one you mined).
-- You can check your balance with:
+To mine solo, start your Parallax client with mining enabled. The block rewards go to its `--miner.coinbase` address:
+
+```bash
+./parallaxd --http --http.api "eth,net,web3,miner" --mine --miner.coinbase <YOUR_ADDRESS>
+```
+
+Then point Hashwarp to it:
+
+```bash
+hashwarp --solo                            # node on this computer, http://127.0.0.1:8545
+hashwarp --solo http://192.168.1.10:8545   # node on another computer
+```
+
+Hashwarp asks the node for new work every second. Over the node's WebSocket (`--ws --ws.api "eth,net,web3,miner"` on the client), use `hashwarp --solo ws://127.0.0.1:8546` instead; a client that supports it then pushes each new block's work to Hashwarp the moment it has it.
+
+<Warning>
+  Keep the client's HTTP and WebSocket ports on your local network: anyone who can reach them can submit work to your node.
+</Warning>
+
+Each block found is logged as `★ BLOCK FOUND` with its height. Block rewards are credited once the block has 100 blocks on top of it. You can check your balance with:
 
 ```bash
 ./parallaxd attach --exec "eth.getBalance('<YOUR_ADDRESS>')"
@@ -95,12 +87,24 @@ If you’re interested in contributing or extending Hashwarp, visit the [officia
 
 ---
 
-## Tips & Troubleshooting
+## Monitoring
 
-- If Hashwarp shows `no work available`, make sure your Parallax node is fully synced and started with `--mine` flag.  
-- If you see connection errors, verify that your Parallax client is running with `--http` enabled.  
-- To mine on multiple GPUs, Hashwarp will detect them automatically.  
+`--api-bind 127.0.0.1:21550` serves a dashboard on `http://127.0.0.1:21550` with the hashrate, shares, temperatures, power and efficiency of each GPU. With `--rig rig2=192.168.1.12 --rig rig3=192.168.1.13` it shows your other rigs too, and `hashwarp --monitor` serves that view without mining. The same data is available as JSON and as Prometheus metrics; see the [API documentation](https://github.com/ParallaxProtocol/hashwarp/blob/main/docs/API.md).
 
 ---
 
-⚡ You are now GPU mining on the Parallax network with Hashwarp!
+## Overclocking
+
+Hashwarp can set the memory and core clocks, power limit and fans of each GPU (NVIDIA, and AMD on Linux), and puts them back when it exits. It needs administrator rights (`sudo` on Linux).
+
+`hashwarp --oc-tune` finds, for each GPU, the memory clock with the highest hashrate and the lowest core clock that keeps it, which saves power. It mines offline for 10 to 20 minutes and saves the results; then mine with `--oc-profile tuned`. See [Overclocking](https://github.com/ParallaxProtocol/hashwarp/blob/main/docs/MINING.md#overclocking) for profiles and the individual settings.
+
+---
+
+## Tips & Troubleshooting
+
+- `hashwarp --list-devices` lists the GPUs Hashwarp found, and `hashwarp --selftest` checks that each one computes correct results.
+- If your pool finds most of the network's blocks, Hashwarp says so at startup and every hour, with smaller pools to move to. A pool with the majority can reverse payments; please spread your hashrate.
+- If Hashwarp reports **wrong results** for a GPU, lower its overclock.
+- On Windows, if no GPU is found, see [Windows Troubleshooting](./troubleshooting).
+- `hashwarp --help` lists every option, and the [Hashwarp documentation](https://github.com/ParallaxProtocol/hashwarp/blob/main/docs/MINING.md) covers them in detail.
