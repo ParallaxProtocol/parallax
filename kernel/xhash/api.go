@@ -17,11 +17,13 @@
 package xhash
 
 import (
+	"context"
 	"errors"
 	"math/big"
 
 	"github.com/ParallaxProtocol/parallax/v2/kernel"
 	"github.com/ParallaxProtocol/parallax/v2/primitives/types"
+	"github.com/ParallaxProtocol/parallax/v2/rpc"
 	"github.com/ParallaxProtocol/parallax/v2/util"
 	"github.com/ParallaxProtocol/parallax/v2/util/hexutil"
 )
@@ -67,6 +69,49 @@ func (api *API) GetWork() ([4]string, error) {
 	case err := <-errc:
 		return [4]string{}, err
 	}
+}
+
+// NewWork notifies the subscriber of each new work package, the same as GetWork returns,
+// starting with the current one. It is eth_subscribe("newWork") on a WebSocket or IPC
+// connection: miners get new work as soon as the node has it, without polling.
+func (api *API) NewWork(ctx context.Context) (*rpc.Subscription, error) {
+	if api.xhash.remote == nil {
+		return nil, errors.New("not supported")
+	}
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
+	}
+
+	works := make(chan [4]string, 1)
+	select {
+	case api.xhash.remote.subscribeCh <- works:
+	case <-api.xhash.remote.exitCh:
+		return nil, errXHashStopped
+	}
+	rpcSub := notifier.CreateSubscription()
+
+	go func() {
+		defer func() {
+			select {
+			case api.xhash.remote.unsubscribeCh <- works:
+			case <-api.xhash.remote.exitCh:
+			}
+		}()
+		for {
+			select {
+			case work := <-works:
+				notifier.Notify(rpcSub.ID, work)
+			case <-rpcSub.Err():
+				return
+			case <-notifier.Closed():
+				return
+			case <-api.xhash.remote.exitCh:
+				return
+			}
+		}
+	}()
+	return rpcSub, nil
 }
 
 // SubmitWork can be used by external miner to submit their POW solution.
