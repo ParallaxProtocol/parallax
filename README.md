@@ -4,7 +4,7 @@
 
 Parallax connects to the Parallax peer-to-peer network to download and fully validate blocks and transactions. It includes a full node, mining engine, and JSON-RPC server.
 
-For an immediately usable, binary version of the Parallax software, see <https://parallaxprotocol.org/en/resources/parallax-client/>.
+For an immediately usable, binary version of the Parallax software, see <https://parallaxprotocol.org/en/parallax-client>.
 
 ## Building from Source
 
@@ -237,7 +237,7 @@ Parallax is a security-critical project. Any mistake can cost users money. All c
 - [Technical Documentation](https://docs.parallaxprotocol.org)
 - [Beginner Guides](https://docs.parallaxprotocol.org/guides)
 - [JSON-RPC API Reference](https://docs.parallaxprotocol.org/parallax-client/interacting-with-parallax/json-rpc-server/overview)
-- [Whitepaper](https://parallaxprotocol.org/introduction/whitepaper)
+- [Whitepaper](https://parallaxprotocol.org/parallax.pdf)
 - [The Parallax Doctrine](https://github.com/ParallaxProtocol/parallax-doctrine)
 
 ## License
