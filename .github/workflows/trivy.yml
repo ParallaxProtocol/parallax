@@ -18,10 +18,6 @@ on:
   push:
     branches:
       - main
-    # Docs never reach the image (see .dockerignore); the weekly schedule
-    # still covers scanning between code pushes.
-    paths-ignore:
-      - "docs/**"
   schedule:
     # Weekly re-scan, Monday 06:27 UTC (odd minute to avoid the
     # on-the-hour thundering herd on shared runners).

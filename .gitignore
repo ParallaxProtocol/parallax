@@ -13,10 +13,6 @@
 .prltest
 */**/*tx_database*
 */**/*dapps*
-# The *dapps* rule above is inherited from go-ethereum and targets build
-# artifacts; it also swallowed docs/**/introduction-to-dapps.mdx, which is
-# content and must be tracked.
-!docs/**/*dapps*
 build/_vendor/pkg
 
 #*
