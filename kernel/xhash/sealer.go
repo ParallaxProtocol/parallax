@@ -208,8 +208,15 @@ type remoteSealer struct {
 	submitWorkCh chan *mineResult // Channel used for remote sealer to submit their mining result
 	fetchRateCh  chan chan uint64 // Channel used to gather submitted hash rate for local or remote sealer.
 	submitRateCh chan *hashrate   // Channel used for remote sealer to submit their mining hashrate
-	requestExit  chan struct{}
-	exitCh       chan struct{}
+
+	// Subscribers to new work (eth_subscribe "newWork"), each a channel holding the
+	// latest work package they haven't taken yet
+	subscribers   map[chan [4]string]struct{}
+	subscribeCh   chan chan [4]string
+	unsubscribeCh chan chan [4]string
+
+	requestExit chan struct{}
+	exitCh      chan struct{}
 }
 
 // sealTask wraps a seal block with relative result channel for remote sealer thread.
@@ -245,20 +252,23 @@ type sealWork struct {
 func startRemoteSealer(xhash *XHash, urls []string, noverify bool) *remoteSealer {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &remoteSealer{
-		xhash:        xhash,
-		noverify:     noverify,
-		notifyURLs:   urls,
-		notifyCtx:    ctx,
-		cancelNotify: cancel,
-		works:        make(map[util.Hash]*types.Block),
-		rates:        make(map[util.Hash]hashrate),
-		workCh:       make(chan *sealTask),
-		fetchWorkCh:  make(chan *sealWork),
-		submitWorkCh: make(chan *mineResult),
-		fetchRateCh:  make(chan chan uint64),
-		submitRateCh: make(chan *hashrate),
-		requestExit:  make(chan struct{}),
-		exitCh:       make(chan struct{}),
+		xhash:         xhash,
+		noverify:      noverify,
+		notifyURLs:    urls,
+		notifyCtx:     ctx,
+		cancelNotify:  cancel,
+		works:         make(map[util.Hash]*types.Block),
+		rates:         make(map[util.Hash]hashrate),
+		workCh:        make(chan *sealTask),
+		fetchWorkCh:   make(chan *sealWork),
+		submitWorkCh:  make(chan *mineResult),
+		fetchRateCh:   make(chan chan uint64),
+		submitRateCh:  make(chan *hashrate),
+		subscribers:   make(map[chan [4]string]struct{}),
+		subscribeCh:   make(chan chan [4]string),
+		unsubscribeCh: make(chan chan [4]string),
+		requestExit:   make(chan struct{}),
+		exitCh:        make(chan struct{}),
 	}
 	go s.loop()
 	return s
@@ -304,6 +314,16 @@ func (s *remoteSealer) loop() {
 			// Trace remote sealer's hash rate by submitted value.
 			s.rates[result.id] = hashrate{rate: result.rate, ping: time.Now()}
 			close(result.done)
+
+		case ch := <-s.subscribeCh:
+			// A new subscriber starts with the current work, if any
+			s.subscribers[ch] = struct{}{}
+			if s.currentBlock != nil {
+				sendWork(ch, s.currentWork)
+			}
+
+		case ch := <-s.unsubscribeCh:
+			delete(s.subscribers, ch)
 
 		case req := <-s.fetchRateCh:
 			// Gather all hash rate submitted by remote sealer.
@@ -361,6 +381,9 @@ func (s *remoteSealer) makeWork(block *types.Block) {
 // new work to be processed.
 func (s *remoteSealer) notifyWork() {
 	work := s.currentWork
+	for ch := range s.subscribers {
+		sendWork(ch, work)
+	}
 
 	// Encode the JSON payload of the notification. When NotifyFull is set,
 	// this is the complete block header, otherwise it is a JSON array.
@@ -374,6 +397,19 @@ func (s *remoteSealer) notifyWork() {
 	s.reqWG.Add(len(s.notifyURLs))
 	for _, url := range s.notifyURLs {
 		go s.sendNotification(s.notifyCtx, url, blob, work)
+	}
+}
+
+// sendWork gives a subscriber the latest work package without waiting for it: an older
+// one it hasn't taken yet is replaced. Only the sealer loop sends.
+func sendWork(ch chan [4]string, work [4]string) {
+	select {
+	case <-ch:
+	default:
+	}
+	select {
+	case ch <- work:
+	default:
 	}
 }
 
