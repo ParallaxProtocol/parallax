@@ -16,7 +16,8 @@
 
 package metrics
 
-// CPUStats is the system and process CPU stats.
+// CPUStats is the system and process CPU stats, in hundredths of a second
+// summed over the cores.
 type CPUStats struct {
 	GlobalTime int64 // Time spent by the CPU working on all processes
 	GlobalWait int64 // Time spent by waiting on disk for all processes

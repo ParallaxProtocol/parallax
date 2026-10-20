@@ -99,9 +99,13 @@ func CollectProcessMetrics(refresh time.Duration) {
 		location2 := (i - 1) % 2
 
 		ReadCPUStats(cpuStats[location1])
-		cpuSysLoad.Update((cpuStats[location1].GlobalTime - cpuStats[location2].GlobalTime) / refreshFreq)
-		cpuSysWait.Update((cpuStats[location1].GlobalWait - cpuStats[location2].GlobalWait) / refreshFreq)
-		cpuProcLoad.Update((cpuStats[location1].LocalTime - cpuStats[location2].LocalTime) / refreshFreq)
+		// The first reading has none before it to take a load over: against zero
+		// it would count all the time since the computer started as this interval's
+		if i > 1 {
+			cpuSysLoad.Update((cpuStats[location1].GlobalTime - cpuStats[location2].GlobalTime) / refreshFreq)
+			cpuSysWait.Update((cpuStats[location1].GlobalWait - cpuStats[location2].GlobalWait) / refreshFreq)
+			cpuProcLoad.Update((cpuStats[location1].LocalTime - cpuStats[location2].LocalTime) / refreshFreq)
+		}
 		cpuThreads.Update(int64(threadCreateProfile.Count()))
 		cpuGoroutines.Update(int64(runtime.NumGoroutine()))
 

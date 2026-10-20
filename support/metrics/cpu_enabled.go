@@ -37,7 +37,10 @@ func ReadCPUStats(stats *CPUStats) {
 	}
 	// requesting all cpu times will always return an array with only one time stats entry
 	timeStat := timeStats[0]
-	stats.GlobalTime = int64((timeStat.User + timeStat.Nice + timeStat.System) * cpu.ClocksPerSec)
-	stats.GlobalWait = int64((timeStat.Iowait) * cpu.ClocksPerSec)
+	// In hundredths of a second, as LocalTime is, on every system: gopsutil gives
+	// seconds, and its own ClocksPerSec is 100ns on Windows (a share of hundredths
+	// read 100,000 times the load there)
+	stats.GlobalTime = int64((timeStat.User + timeStat.Nice + timeStat.System) * 100)
+	stats.GlobalWait = int64(timeStat.Iowait * 100)
 	stats.LocalTime = getProcessCPUTime()
 }
