@@ -157,6 +157,21 @@ func (s *Store) PutSelfSigned(st SignedState) error {
 // unmarked. The mark is released if the journaled state is later pruned
 // without completing (see putComplete).
 func (s *Store) PutSelfSignedPayment(st SignedState, invoiceID string) error {
+	return s.putSelfSigned(st, invoiceID, 0)
+}
+
+// PutSelfSignedRebase is PutSelfSigned for the re-issue of this wallet's
+// journaled proposal at fromSeq one seq higher (Part 2 §7.5): in the same
+// transaction it moves any invoice mark fromSeq's journal write made to
+// st.Seq, so the mark survives fromSeq being pruned when st completes.
+func (s *Store) PutSelfSignedRebase(st SignedState, fromSeq uint64) error {
+	if fromSeq == 0 || fromSeq >= st.Seq {
+		return fmt.Errorf("%w: rebase from seq %d to %d", ErrBadState, fromSeq, st.Seq)
+	}
+	return s.putSelfSigned(st, "", fromSeq)
+}
+
+func (s *Store) putSelfSigned(st SignedState, invoiceID string, rebaseFrom uint64) error {
 	digest, err := st.Digest()
 	if err != nil {
 		return err
@@ -210,7 +225,13 @@ func (s *Store) PutSelfSignedPayment(st SignedState, invoiceID string) error {
 			}
 			return nil // identical re-journal (retransmission path)
 		}
-		return ss.Put(seqKey(st.Seq), raw)
+		if err := ss.Put(seqKey(st.Seq), raw); err != nil {
+			return err
+		}
+		if rebaseFrom != 0 {
+			return moveInvoiceMarks(tx, st.Key, rebaseFrom, st.Seq)
+		}
+		return nil
 	})
 }
 
@@ -226,21 +247,10 @@ func (s *Store) PutSelfSignedPayment(st SignedState, invoiceID string) error {
 // supersession by a strictly higher state are the only legal clears
 // (Part 3 §4.2 monotonicity).
 func (s *Store) PutComplete(st SignedState) error {
-	return s.putComplete(st, false)
+	return s.putComplete(st)
 }
 
-// PutCompleteTiebreak is PutComplete with the one narrow W3 exception the
-// simultaneous-proposal tiebreak requires (Part 2 §7.5): participant B,
-// holding its own journaled self-signed N+1, adopts and countersigns A's
-// *different* N+1. The discarded variant can never complete — completing it
-// would need A's signature over it, which A's own W3 forbids — and it is
-// pruned here, so no two complete states at one seq can ever exist locally.
-// Callers MUST use this only for the A-wins adoption path.
-func (s *Store) PutCompleteTiebreak(st SignedState) error {
-	return s.putComplete(st, true)
-}
-
-func (s *Store) putComplete(st SignedState, allowTiebreak bool) error {
+func (s *Store) putComplete(st SignedState) error {
 	if !st.Complete() {
 		return fmt.Errorf("%w: state is not dual-signed", ErrBadState)
 	}
@@ -273,7 +283,7 @@ func (s *Store) putComplete(st SignedState, allowTiebreak bool) error {
 		}
 
 		ss := cb.Bucket(bucketSelfSigned)
-		if prev := ss.Get(seqKey(st.Seq)); prev != nil && !allowTiebreak {
+		if prev := ss.Get(seqKey(st.Seq)); prev != nil {
 			prevDigest, err := digestOf(prev)
 			if err != nil {
 				return err
@@ -288,8 +298,8 @@ func (s *Store) putComplete(st SignedState, allowTiebreak bool) error {
 		}
 		// Prune superseded/completed journal entries (seq <= st.Seq). An
 		// entry that differs from st never completed (a lower seq would have
-		// been pruned at its own completion; one at st.Seq lost the
-		// tiebreak), so an invoice it spent is released for re-payment.
+		// been pruned at its own completion; a differing one at st.Seq is
+		// refused above), so an invoice it spent is released for re-payment.
 		c := ss.Cursor()
 		var voided []uint64
 		for k, v := c.First(); k != nil && bytes.Compare(k, seqKey(st.Seq)) <= 0; k, v = c.Next() {

@@ -211,30 +211,54 @@ func TestLateAckAfterSupersessionProposal(t *testing.T) {
 	}
 }
 
-func TestTiebreakAdoption(t *testing.T) {
+// TestNoSameSeqAdoption: a counterparty's different payload at a seq this
+// wallet already signed is never completed; that would leave this wallet's
+// signature on two payloads at one seq (Part 2 §7.5).
+func TestNoSameSeqAdoption(t *testing.T) {
 	s := openStore(t)
 	newChannel(t, s, RoleB)
 
-	// B journals its own N+1 proposal...
 	if err := s.PutSelfSigned(state(1, 0, 5, RoleB)); err != nil {
 		t.Fatal(err)
 	}
-	// ...then adopts A's conflicting N+1 (A-wins tiebreak). The plain path
-	// must refuse; the explicit tiebreak path must accept and prune B's
-	// discarded variant.
-	adopted := state(1, 7, 0, RoleA, RoleB)
-	if err := s.PutComplete(adopted); !errors.Is(err, ErrEquivocation) {
-		t.Fatalf("plain complete allowed tiebreak adoption: %v", err)
+	if err := s.PutComplete(state(1, 7, 0, RoleA, RoleB)); !errors.Is(err, ErrEquivocation) {
+		t.Fatalf("conflicting same-seq state completed: %v", err)
 	}
-	if err := s.PutCompleteTiebreak(adopted); err != nil {
+	// The re-issue one seq above voids the journaled variant by seq.
+	if err := s.PutComplete(state(2, 7, 0, RoleA, RoleB)); err != nil {
 		t.Fatal(err)
 	}
 	if out, _ := s.SelfSigned(testKey); len(out) != 0 {
-		t.Fatalf("discarded variant not pruned: %+v", out)
+		t.Fatalf("voided variant not pruned: %+v", out)
 	}
-	latest, _ := s.LatestState(testKey)
-	if latest.Seq != 1 || latest.TransferredAtoB.BigInt().Int64() != 7 {
-		t.Fatalf("adopted state not stored: %+v", latest)
+}
+
+// TestRebaseMovesInvoiceMark: the re-issue carries the same payment, so the
+// invoice the lost seq spent stays spent once that seq is pruned.
+func TestRebaseMovesInvoiceMark(t *testing.T) {
+	s := openStore(t)
+	newChannel(t, s, RoleA)
+	if err := s.CreateInvoice(Invoice{ID: "inv", AmountWei: NewU256(big.NewInt(5)), ExpiresAt: 1 << 40}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.PutSelfSignedPayment(state(1, 5, 0, RoleA), "inv"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.PutSelfSignedRebase(state(2, 5, 0, RoleA), 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.PutComplete(state(2, 5, 0, RoleA, RoleB)); err != nil {
+		t.Fatal(err)
+	}
+	inv, err := s.Invoice("inv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !inv.Paid || inv.PaidSeq != 2 {
+		t.Fatalf("rebase lost the invoice mark: %+v", inv)
+	}
+	if err := s.PutSelfSignedRebase(state(3, 5, 0, RoleA), 3); err == nil {
+		t.Fatal("rebase onto its own seq accepted")
 	}
 }
 

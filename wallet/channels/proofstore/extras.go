@@ -127,6 +127,40 @@ func releaseInvoices(tx *bolt.Tx, key ChannelKey, seqs []uint64) error {
 	return nil
 }
 
+// moveInvoiceMarks re-points the payer-side marks this wallet's own journal
+// write made on key at seq from to seq to (a rebased proposal carrying the
+// same payment), leaving every other mark alone.
+func moveInvoiceMarks(tx *bolt.Tx, key ChannelKey, from, to uint64) error {
+	b := tx.Bucket(bucketInvoices)
+	type update struct{ k, v []byte }
+	var updates []update
+	err := b.ForEach(func(k, v []byte) error {
+		var inv Invoice
+		if err := json.Unmarshal(v, &inv); err != nil {
+			return nil // an undecodable record holds no mark we can move
+		}
+		if !inv.Paid || !inv.PaidByProposal || inv.PaidBy == nil || *inv.PaidBy != key || inv.PaidSeq != from {
+			return nil
+		}
+		inv.PaidSeq = to
+		out, err := json.Marshal(inv)
+		if err != nil {
+			return err
+		}
+		updates = append(updates, update{append([]byte(nil), k...), out})
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	for _, u := range updates {
+		if err := b.Put(u.k, u.v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ------------------------------------------------------------------ tower
 
 // PutDelegation stores a delegated complete state, keeping only the max seq

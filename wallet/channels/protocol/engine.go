@@ -67,15 +67,19 @@ func New(store *proofstore.Store, signer Signer, cfg Config) *Engine {
 // Result is the outcome of handling one inbound message: at most one of Ack
 // or Nack to transmit; Completed set when a new dual-signed state was
 // committed (trigger tower delegation + self-backup); Dropped when the
-// message was silently ignored (unknown sender, or the A-side tiebreak
-// ignore); AdoptedTiebreak when this wallet (as B) discarded its own pending
-// intent for A's variant and should rebase it as a fresh proposal.
+// message was silently ignored (unknown sender, or a same-seq tiebreak
+// conflict); Rebase set (role A only) to the seq of this wallet's own
+// proposal that lost a same-seq conflict and must be re-issued above it via
+// RebaseProposal; Voided lists this wallet's own journaled seqs pruned
+// without completing because a higher state completed (stop retransmitting
+// them; any payment intent they carried is the caller's to re-issue).
 type Result struct {
-	Ack             *AckMsg
-	Nack            *NackMsg
-	Completed       *proofstore.SignedState
-	Dropped         bool
-	AdoptedTiebreak bool
+	Ack       *AckMsg
+	Nack      *NackMsg
+	Completed *proofstore.SignedState
+	Dropped   bool
+	Rebase    uint64
+	Voided    []uint64
 }
 
 // ---------------------------------------------------------------- helpers
@@ -312,6 +316,68 @@ func (e *Engine) ProposeNoOpSupersession(key proofstore.ChannelKey, nowBlock uin
 	return &ProposalMsg{V: 1, State: ToWire(next), ProposerRole: string(meta.Role)}, nil
 }
 
+// RebaseProposal re-issues this wallet's journaled proposal at seq, which
+// lost a same-seq conflict (Part 2 §7.5, Result.Rebase), as a new proposal
+// one seq above everything journaled, carrying the same cumulative amounts.
+// The old seq is never countersigned by the peer (its own signature sits on
+// a different payload there) and dies once the new one completes. An
+// invoice the old proposal spent moves to the new seq in the same journal
+// transaction, so that pruning the old seq does not release it. Idempotent:
+// if the latest journaled entry already carries the same amounts above seq,
+// it is returned again (a crash between journaling and enqueueing).
+func (e *Engine) RebaseProposal(key proofstore.ChannelKey, seq uint64, invoiceID string, nowBlock uint64) (*ProposalMsg, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	meta, err := e.store.Meta(key)
+	if err != nil {
+		return nil, ErrUnknownChannel
+	}
+	if meta.Status != proofstore.StatusOpen {
+		return nil, ErrNotOpen
+	}
+	if frozen(meta, nowBlock) {
+		return nil, ErrFrozen
+	}
+	journal, err := e.store.SelfSigned(key)
+	if err != nil {
+		return nil, err
+	}
+	var lost *proofstore.SignedState
+	for i := range journal {
+		if journal[i].Seq == seq {
+			lost = &journal[i]
+		}
+	}
+	if lost == nil {
+		return nil, ErrNoProposal
+	}
+	sameAmounts := func(a, b *proofstore.SignedState) bool {
+		return a.TransferredAtoB.BigInt().Cmp(b.TransferredAtoB.BigInt()) == 0 &&
+			a.TransferredBtoA.BigInt().Cmp(b.TransferredBtoA.BigInt()) == 0
+	}
+	last := journal[len(journal)-1]
+	if last.Seq > seq && sameAmounts(&last, lost) {
+		return &ProposalMsg{V: 1, InvoiceID: invoiceID, State: ToWire(last), ProposerRole: string(meta.Role)}, nil
+	}
+
+	next := *lost
+	next.Seq = last.Seq + 1
+	next.SigA, next.SigB = nil, nil
+	digest, err := next.Digest()
+	if err != nil {
+		return nil, err
+	}
+	sig, err := e.signer.SignDigest(digest)
+	if err != nil {
+		return nil, err
+	}
+	setSig(&next, meta.Role, sig)
+	if err := e.store.PutSelfSignedRebase(next, seq); err != nil { // W1 barrier
+		return nil, err
+	}
+	return &ProposalMsg{V: 1, InvoiceID: invoiceID, State: ToWire(next), ProposerRole: string(meta.Role)}, nil
+}
+
 // HandleAck completes an outstanding proposal from a verified 21903. The
 // completed state is returned for tower delegation and self-backup.
 func (e *Engine) HandleAck(key proofstore.ChannelKey, msg AckMsg) (*proofstore.SignedState, error) {
@@ -543,13 +609,23 @@ func (e *Engine) HandleProposal(msg ProposalMsg, senderNpub string, nowBlock uin
 		return Result{Nack: nack(key, KindProposal, st.Seq, NackPolicy, "proposal carries my signature slot")}, nil
 	}
 
-	// Tiebreak (§7.5): both sides proposed the same seq.
+	// Tiebreak (§7.5): both sides proposed the same seq. Neither side may
+	// countersign the other's variant: its own signature already sits on a
+	// different payload at this seq, and the counterparty can complete that
+	// one too by adding its signature, leaving two dual-signed states at one
+	// seq that no challenge can order (the contract needs a strictly higher
+	// seq). Both ignore the conflict; A re-issues its payment one seq above,
+	// which B can countersign because it voids B's own variant by seq.
 	journal, err := e.store.SelfSigned(key)
 	if err != nil {
 		return Result{}, err
 	}
-	adopted := false
+	var voided []uint64
 	for i := range journal {
+		if journal[i].Seq < st.Seq {
+			voided = append(voided, journal[i].Seq)
+			continue
+		}
 		if journal[i].Seq != st.Seq {
 			continue
 		}
@@ -558,14 +634,12 @@ func (e *Engine) HandleProposal(msg ProposalMsg, senderNpub string, nowBlock uin
 			return Result{}, err
 		}
 		if mineDigest == digest {
-			break // identical states: just countersign below
+			continue // identical states: just countersign below
 		}
 		if meta.Role == proofstore.RoleA {
-			// A's proposal wins; ignore B's conflicting one — B will
-			// countersign ours and rebase.
-			return Result{Dropped: true}, nil
+			return Result{Dropped: true, Rebase: st.Seq}, nil
 		}
-		adopted = true // B adopts A's variant, discards own intent
+		return Result{Dropped: true}, nil
 	}
 
 	// Check 5: the delta must pay an open, unexpired invoice (merchant
@@ -611,12 +685,7 @@ func (e *Engine) HandleProposal(msg ProposalMsg, senderNpub string, nowBlock uin
 	}
 	complete := st
 	setSig(&complete, meta.Role, mySig)
-	if adopted {
-		err = e.store.PutCompleteTiebreak(complete)
-	} else {
-		err = e.store.PutComplete(complete)
-	}
-	if err != nil {
+	if err := e.store.PutComplete(complete); err != nil {
 		return Result{}, err
 	}
 	if err := e.refreshPoisonedFlag(key); err != nil {
@@ -645,8 +714,8 @@ func (e *Engine) HandleProposal(msg ProposalMsg, senderNpub string, nowBlock uin
 			Sig:       "0x" + util.Bytes2Hex(mySig),
 			InvoiceID: msg.InvoiceID,
 		},
-		Completed:       &complete,
-		AdoptedTiebreak: adopted,
+		Completed: &complete,
+		Voided:    voided,
 	}, nil
 }
 

@@ -12,10 +12,10 @@ import (
 
 // TestAwaitPaymentNotFooledBySeqAdvance: `channel pay` declared success on
 // ANY seq advance past the pre-payment state. A seq advance is not our
-// payment: in the A-wins tiebreak our own intent is discarded and the
-// counterparty's payment occupies the seq — the CLI then printed "payment
-// complete" for a payment that never happened. Completion means OUR
-// outbound moved by the paid amount and nothing of ours is left journaled.
+// payment: after a same-seq conflict the counterparty re-issues its payment
+// above ours, voiding our intent — the CLI then printed "payment complete"
+// for a payment that never happened. Completion means OUR outbound moved by
+// the paid amount and nothing of ours is left journaled.
 func TestAwaitPaymentNotFooledBySeqAdvance(t *testing.T) {
 	h := newHub()
 	alice := newTestNode(t, h, nil)
@@ -24,8 +24,8 @@ func TestAwaitPaymentNotFooledBySeqAdvance(t *testing.T) {
 	ctx := context.Background()
 
 	// Bob (role B) proposes his payment; before completion, alice's
-	// conflicting proposal at the same seq arrives and B adopts A's variant
-	// (Part 2 §7.5) — bob's own intent is dead.
+	// conflicting proposal at the same seq arrives (Part 2 §7.5). Alice
+	// re-issues hers at seq 2, and bob's countersignature voids his own.
 	before, _ := bob.Store.LatestState(e2eKey)
 	if err := bob.Pay(ctx, e2eKey, big.NewInt(1e9), ""); err != nil {
 		t.Fatal(err)
@@ -34,9 +34,16 @@ func TestAwaitPaymentNotFooledBySeqAdvance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := bob.Engine.HandleProposal(*aliceProp, alice.SelfPub, 0, time.Now().Unix())
-	if err != nil || !res.AdoptedTiebreak {
-		t.Fatalf("tiebreak not adopted: %+v %v", res, err)
+	if res, err := bob.Engine.HandleProposal(*aliceProp, alice.SelfPub, 0, time.Now().Unix()); err != nil || res.Ack != nil {
+		t.Fatalf("conflicting variant countersigned: %+v %v", res, err)
+	}
+	re, err := alice.Engine.RebaseProposal(e2eKey, 1, "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := bob.Engine.HandleProposal(*re, alice.SelfPub, 0, time.Now().Unix())
+	if err != nil || res.Ack == nil || len(res.Voided) != 1 {
+		t.Fatalf("re-issue not countersigned: %+v %v", res, err)
 	}
 
 	// Bob's seq advanced (to alice's payment) but bob's own payment did NOT

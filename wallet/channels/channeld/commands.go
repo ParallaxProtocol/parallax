@@ -32,8 +32,8 @@ func (n *Node) Pay(ctx context.Context, key proofstore.ChannelKey, amountWei *bi
 // AwaitPayment blocks until the payment proposed after `before` completes,
 // the wait expires, or ctx is done. It returns the completed seq.
 //
-// A bare seq advance is NOT completion: in the A-wins tiebreak the seq is
-// occupied by the counterparty's payment and our intent is discarded, and a
+// A bare seq advance is NOT completion: in the same-seq tiebreak the
+// counterparty's re-issued payment completes above our voided intent, and a
 // NACK leaves the seq advancing later for unrelated reasons. Completion
 // means OUR cumulative outbound moved by exactly the paid amount with
 // nothing of ours left journaled.

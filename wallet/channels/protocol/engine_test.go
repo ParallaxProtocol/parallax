@@ -326,41 +326,108 @@ func TestTiebreakAWins(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// A receives B's conflicting seq-1 proposal: silently ignored.
+	// Neither side countersigns the other's seq-1 variant: each already
+	// signed a different payload there. A is told to re-issue its own.
 	resA, err := alice.engine.HandleProposal(*propB, bob.npub, nowBlock, nowUnix)
-	if err != nil || !resA.Dropped {
-		t.Fatalf("A did not ignore: %+v %v", resA, err)
+	if err != nil || !resA.Dropped || resA.Ack != nil || resA.Rebase != 1 {
+		t.Fatalf("A did not ignore and rebase: %+v %v", resA, err)
 	}
-
-	// B receives A's conflicting seq-1 proposal: adopts, countersigns,
-	// discards its own intent.
 	resB, err := bob.engine.HandleProposal(*propA, alice.npub, nowBlock, nowUnix)
-	if err != nil || resB.Ack == nil || !resB.AdoptedTiebreak {
-		t.Fatalf("B did not adopt: %+v %v", resB, err)
-	}
-	if _, err := alice.engine.HandleAck(key, *resB.Ack); err != nil {
-		t.Fatal(err)
+	if err != nil || !resB.Dropped || resB.Ack != nil || resB.Rebase != 0 {
+		t.Fatalf("B countersigned a conflicting variant: %+v %v", resB, err)
 	}
 
-	// B's journal was cleared by the adoption; it rebases its payment at
-	// seq 2 on A's totals, and both payments land.
-	prop2, err := bob.engine.ProposePayment(key, wei2, "", nowBlock)
+	// A re-issues its payment at seq 2; a repeat returns the same state.
+	re, err := alice.engine.RebaseProposal(key, 1, "", nowBlock)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if prop2.State.Seq != "2" || prop2.State.TransferredAtoB != wei1.String() {
-		t.Fatalf("rebase wrong: %+v", prop2.State)
+	if again, err := alice.engine.RebaseProposal(key, 1, "", nowBlock); err != nil || again.State != re.State {
+		t.Fatalf("rebase not idempotent: %+v %v", again, err)
 	}
-	res2, err := alice.engine.HandleProposal(*prop2, bob.npub, nowBlock, nowUnix)
-	if err != nil || res2.Ack == nil {
+	if re.State.Seq != "2" || re.State.TransferredAtoB != wei1.String() || re.State.TransferredBtoA != "0" {
+		t.Fatalf("rebase wrong: %+v", re.State)
+	}
+	res2, err := bob.engine.HandleProposal(*re, alice.npub, nowBlock, nowUnix)
+	if err != nil || res2.Ack == nil || len(res2.Voided) != 1 || res2.Voided[0] != 1 {
 		t.Fatalf("rebased payment refused: %+v %v", res2, err)
 	}
-	if _, err := bob.engine.HandleAck(key, *res2.Ack); err != nil {
+	if _, err := alice.engine.HandleAck(key, *res2.Ack); err != nil {
+		t.Fatal(err)
+	}
+
+	// B's seq-1 variant died by seq; it re-issues its payment on A's totals,
+	// and both payments land.
+	prop3, err := bob.engine.ProposePayment(key, wei2, "", nowBlock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prop3.State.Seq != "3" || prop3.State.TransferredAtoB != wei1.String() {
+		t.Fatalf("B rebase wrong: %+v", prop3.State)
+	}
+	res3, err := alice.engine.HandleProposal(*prop3, bob.npub, nowBlock, nowUnix)
+	if err != nil || res3.Ack == nil {
+		t.Fatalf("B's re-issued payment refused: %+v %v", res3, err)
+	}
+	if _, err := bob.engine.HandleAck(key, *res3.Ack); err != nil {
 		t.Fatal(err)
 	}
 	latest, _ := bob.store.LatestState(key)
-	if latest.Seq != 2 || latest.TransferredAtoB.BigInt().Cmp(wei1) != 0 || latest.TransferredBtoA.BigInt().Cmp(wei2) != 0 {
+	if latest.Seq != 3 || latest.TransferredAtoB.BigInt().Cmp(wei1) != 0 || latest.TransferredBtoA.BigInt().Cmp(wei2) != 0 {
 		t.Fatalf("converged state wrong: %+v", latest)
+	}
+	if j, _ := alice.store.SelfSigned(key); len(j) != 0 {
+		t.Fatalf("A journal not cleared: %+v", j)
+	}
+}
+
+// TestTiebreakNeverEquivocates: B adopting A's conflicting seq-1 used to
+// put B's signature on two payloads at seq 1. A then signed B's own variant
+// too, holding two dual-signed seq-1 states, and closed with whichever
+// dropped its invoice payment after B released the goods: the contract
+// only lets a strictly higher seq challenge. B must never countersign at a
+// seq it already signed, and the payment it does accept must land above
+// every variant.
+func TestTiebreakNeverEquivocates(t *testing.T) {
+	alice, bob, key := setupPair(t, Config{}, Config{})
+	invoiceFor(t, bob, "inv-goods", wei1)
+
+	propB, err := bob.engine.ProposePayment(key, wei2, "", nowBlock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	propA, err := alice.engine.ProposePayment(key, wei1, "inv-goods", nowBlock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resB, err := bob.engine.HandleProposal(*propA, alice.npub, nowBlock, nowUnix)
+	if err != nil || resB.Ack != nil || resB.Completed != nil {
+		t.Fatalf("B countersigned A's conflicting seq 1: %+v %v", resB, err)
+	}
+	if inv, _ := bob.store.Invoice("inv-goods"); inv.Paid {
+		t.Fatal("invoice marked paid without a countersigned state")
+	}
+
+	re, err := alice.engine.RebaseProposal(key, 1, "inv-goods", nowBlock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res2, err := bob.engine.HandleProposal(*re, alice.npub, nowBlock, nowUnix)
+	if err != nil || res2.Ack == nil {
+		t.Fatalf("rebased invoice payment refused: %+v %v", res2, err)
+	}
+
+	// The paying state sits above both seq-1 variants, B's own included, so
+	// whichever A might complete and close with, B's challenge wins.
+	bVariant, err := FromWire(propB.State)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res2.Completed.Seq <= bVariant.Seq {
+		t.Fatalf("paying state seq %d does not dominate B's variant at %d", res2.Completed.Seq, bVariant.Seq)
+	}
+	if inv, _ := bob.store.Invoice("inv-goods"); !inv.Paid || inv.PaidSeq != res2.Completed.Seq {
+		t.Fatalf("invoice not credited at the dominating seq: %+v", inv)
 	}
 }
 

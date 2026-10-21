@@ -305,6 +305,15 @@ func (n *Node) handleRumor(ctx context.Context, rumor nostr.Event, sender string
 		if res.Completed != nil && msg.InvoiceID != "" && n.OnPayment != nil {
 			n.OnPayment(msg.InvoiceID, res.Completed)
 		}
+		if res.Rebase != 0 {
+			st, serr := protocol.FromWire(msg.State)
+			if serr != nil {
+				return serr
+			}
+			if err := n.rebaseProposal(st.Key, res.Rebase, nowBlock); err != nil {
+				return err
+			}
+		}
 		return n.reactToResult(ctx, res, sender, msg.State.ChannelID, protocol.KindAck)
 
 	case protocol.KindAck:
@@ -571,13 +580,16 @@ func (n *Node) reactToResult(ctx context.Context, res protocol.Result, peer stri
 	if res.Completed != nil {
 		n.afterCompletion(ctx, res.Completed)
 	}
-	if res.AdoptedTiebreak && res.Completed != nil {
-		// Our own conflicting proposal at this seq is dead (A-wins tiebreak,
-		// Part 2 §7.5); stop retransmitting it. The abandoned payment intent
-		// is the caller's to re-issue at a fresh seq.
-		n.settleOutbound(protocol.KindProposal, res.Completed.Key, res.Completed.Seq)
-		n.log.Info("tiebreak: adopted counterparty state; local intent needs rebase",
-			"channel", res.Completed.Key.String(), "seq", res.Completed.Seq)
+	if res.Completed != nil {
+		// Our own proposals below the completed seq are dead (the peer's
+		// re-issue above a same-seq conflict, Part 2 §7.5); stop
+		// retransmitting them. A payment intent they carried is the
+		// caller's to re-issue at a fresh seq.
+		for _, seq := range res.Voided {
+			n.settleOutbound(protocol.KindProposal, res.Completed.Key, seq)
+			n.log.Info("own proposal voided by a higher completed state; local intent needs rebase",
+				"channel", res.Completed.Key.String(), "seq", seq, "completed", res.Completed.Seq)
+		}
 	}
 	var payload any
 	var kind int
@@ -706,6 +718,49 @@ func (n *Node) delegate(st proofstore.SignedState) {
 			n.log.Error("delegation enqueue", "err", err)
 		}
 	}
+}
+
+// rebaseProposal re-issues our proposal at seq, which lost a same-seq
+// conflict (Part 2 §7.5), one seq higher. The invoice id rides only in the
+// queued rumor, so it is recovered from there before that item is settled;
+// the new proposal is queued before the old one is dropped, so a crash in
+// between leaves at worst both queued. The peer retransmits its conflicting
+// proposal, so this runs repeatedly: RebaseProposal returns the same
+// re-issue, and it is queued only once.
+func (n *Node) rebaseProposal(key proofstore.ChannelKey, seq, nowBlock uint64) error {
+	items, err := n.Store.OutboundAll()
+	if err != nil {
+		return err
+	}
+	queued := make(map[string]bool, len(items))
+	invoiceID := ""
+	for _, item := range items {
+		queued[item.DedupeKey] = true
+		if item.DedupeKey != watcher.DedupeKeyFor(protocol.KindProposal, key, seq) {
+			continue
+		}
+		var old protocol.ProposalMsg
+		if json.Unmarshal([]byte(item.Content), &old) == nil {
+			invoiceID = old.InvoiceID
+		}
+	}
+	prop, err := n.Engine.RebaseProposal(key, seq, invoiceID, nowBlock)
+	if err != nil {
+		return fmt.Errorf("rebase seq %d on channel %s: %w", seq, key, err)
+	}
+	newSeq, err := strconv.ParseUint(prop.State.Seq, 10, 64)
+	if err != nil {
+		return err
+	}
+	if !queued[watcher.DedupeKeyFor(protocol.KindProposal, key, newSeq)] {
+		if err := n.enqueueProposal(key, prop); err != nil {
+			return err
+		}
+	}
+	n.settleOutbound(protocol.KindProposal, key, seq)
+	n.log.Info("tiebreak: re-issued own proposal above the conflict",
+		"channel", key.String(), "lost", seq, "seq", prop.State.Seq)
+	return nil
 }
 
 func (n *Node) settleOutbound(kind int, key proofstore.ChannelKey, seq uint64) {

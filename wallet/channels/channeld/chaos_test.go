@@ -7,8 +7,7 @@ package channeld
 // disk, and asserts after every cycle:
 //
 //   - no equivocation ever became durable: no signer has two payloads at one
-//     seq (the sole exception being B's discarded tiebreak variant, which
-//     can never complete);
+//     seq, simultaneous proposals included;
 //   - no complete-state regression: a completed seq's digest never changes
 //     and the latest seq never moves backwards;
 //   - every interrupted payment resolves to COMPLETE or clean supersession;
@@ -152,9 +151,9 @@ func (inv *invariants) observe(cycle int, parties []*chaosParty, chKey proofstor
 			}
 			inv.selfSigned[p.role][st.Seq] = d
 			// A journaled payload differing from the completed one at the
-			// same seq is legal only for role B (tiebreak adoption).
-			if cd, ok := inv.completed[st.Seq]; ok && cd != d && p.role == proofstore.RoleA {
-				inv.t.Fatalf("cycle %d: role A signed a variant at completed seq %d", cycle, st.Seq)
+			// same seq is an equivocation for either role.
+			if cd, ok := inv.completed[st.Seq]; ok && cd != d {
+				inv.t.Fatalf("cycle %d: %s signed a variant at completed seq %d", cycle, p.role, st.Seq)
 			}
 		}
 	}
@@ -319,7 +318,8 @@ func chaosWorker(t *testing.T, seed int64, cycles int) {
 			if err := bob.node.Pay(context.Background(), chKey, amountB, ""); err != nil {
 				t.Fatalf("cycle %d: payB: %v", cycle, err)
 			}
-			// A's completes; B's journal clears on adoption, then B rebases.
+			// A re-issues above the conflict; B's countersignature voids
+			// its own variant, then B rebases.
 			waitJournalEmpty(t, cycle, bob, chKey)
 			if err := bob.node.Pay(context.Background(), chKey, amountB, ""); err != nil &&
 				!errors.Is(err, protocol.ErrProposalPending) {
