@@ -56,6 +56,18 @@ type Tower struct {
 	gaveUpMu sync.Mutex
 	gaveUp   map[closeEvent]struct{}
 
+	// closing maps every channel seen entering Closing (a scanned
+	// CloseStarted, or a delegation landing on a Closing channel) to its
+	// challenge deadline. Tick re-evaluates each one every tick until the
+	// deadline passes: a scanned close is not evaluated once and forgotten,
+	// since a higher delegation can land, a dust skip can stop being dust,
+	// and a submitted challenge can be lost, all inside the window. Memory
+	// only; the first Tick rebuilds it from the chain (rebuilt), so a
+	// restarted tower re-derives every challenge it still owes.
+	closingMu sync.Mutex
+	closing   map[proofstore.ChannelKey]uint64
+	rebuilt   bool
+
 	// Alarm receives operator-grade alerts. Optional.
 	Alarm func(format string, args ...any)
 }
@@ -85,6 +97,7 @@ func New(cfg Config, store *proofstore.Store, backend watcher.TxBackend, txmgr *
 		contract: contract,
 		txmgr:    txmgr,
 		gaveUp:   make(map[closeEvent]struct{}),
+		closing:  make(map[proofstore.ChannelKey]uint64),
 	}
 	// On a shared manager the node's watcher has already claimed Alarm for
 	// the wallet log; chain onto it rather than skipping — a tower challenge
@@ -156,6 +169,11 @@ func (t *Tower) HandleDelegation(ctx context.Context, msg protocol.TowerDelegati
 	if err != nil {
 		return nil, err
 	}
+	// Already Closing: the CloseStarted may lie behind the watermark, so
+	// hand the channel to the next Tick's re-evaluation directly.
+	if onchain.State == 2 {
+		t.watchClose(st.Key, onchain.CloseInitiatedAtBlock.Uint64()+uint64(onchain.ChallengePeriodBlocks))
+	}
 	return &protocol.TowerReceiptMsg{
 		V:         1,
 		ChannelID: strconv.FormatUint(st.Key.ChannelID, 10),
@@ -166,7 +184,8 @@ func (t *Tower) HandleDelegation(ctx context.Context, msg protocol.TowerDelegati
 	}, nil
 }
 
-// Tick scans confirmed CloseStarted events since the watermark and
+// Tick scans confirmed CloseStarted events since the watermark, then
+// re-evaluates every channel still inside its challenge window, and
 // challenges any close that is stale against a held delegation. Returns the
 // confirmed head acted on.
 func (t *Tower) Tick(ctx context.Context) (uint64, error) {
@@ -182,24 +201,37 @@ func (t *Tower) Tick(ctx context.Context) (uint64, error) {
 
 	t.txmgr.Tick(ctx, head)
 
+	// A failed scan must not starve the closes already known: they are
+	// re-evaluated regardless, and the scan error is reported after.
+	reacted, err := t.scan(ctx, head, cutoff)
+	t.reevaluate(ctx, head, reacted)
+	return head, err
+}
+
+// scan reacts to the confirmed CloseStarted events since the watermark and
+// advances it, returning the channels it reacted to. The first call also
+// rebuilds the closing set from the closes behind the watermark.
+func (t *Tower) scan(ctx context.Context, head, cutoff uint64) (map[proofstore.ChannelKey]struct{}, error) {
 	from, err := t.store.TowerWatermark(t.cfg.ChainID, t.cfg.Registry.Hex())
 	if err != nil {
-		return head, err
+		return nil, err
+	}
+	if err := t.rebuild(ctx, from, head); err != nil {
+		return nil, err
 	}
 	if from+1 > cutoff {
-		return head, nil
+		return nil, nil
 	}
 
 	// All CloseStarted events on the registry, not just own channels.
 	iter, err := t.contract.FilterCloseStarted(&bind.FilterOpts{Context: ctx, Start: from + 1, End: &cutoff}, nil, nil)
 	if err != nil {
-		return head, err
+		return nil, err
 	}
 	// The watermark may only advance past events that were reacted to:
-	// react() is the tower's sole evaluation of a CloseStarted, so skipping
-	// a transiently failed one would silently drop its challenge window.
-	// firstFailed pins the watermark so the failed range is re-scanned,
-	// for as long as a retry could still land a challenge (retryable).
+	// firstFailed pins it so a transiently failed range is re-scanned, for
+	// as long as a retry could still land a challenge (retryable).
+	reacted := make(map[proofstore.ChannelKey]struct{})
 	var firstFailed uint64
 	for iter.Next() {
 		ev := iter.Event
@@ -212,6 +244,10 @@ func (t *Tower) Tick(ctx context.Context) (uint64, error) {
 		if t.hasGivenUp(ce) {
 			continue
 		}
+		// Watched whether or not a delegation is held yet: one may land
+		// at any point before the deadline.
+		t.watchClose(key, ev.DeadlineBlock.Uint64())
+		reacted[key] = struct{}{}
 		err := t.react(ctx, key, head)
 		if err == nil {
 			continue
@@ -229,17 +265,98 @@ func (t *Tower) Tick(ctx context.Context) (uint64, error) {
 		}
 	}
 	if err := iter.Error(); err != nil {
-		return head, err // incomplete scan: keep the old watermark
+		return reacted, err // incomplete scan: keep the old watermark
 	}
 	mark := cutoff
 	if firstFailed > 0 {
 		mark = firstFailed - 1
 	}
 	if err := t.store.SetTowerWatermark(t.cfg.ChainID, t.cfg.Registry.Hex(), mark); err != nil {
-		return head, err
+		return reacted, err
 	}
 	t.pruneGivenUp(mark)
-	return head, nil
+	return reacted, nil
+}
+
+// maxChallengePeriodBlocks mirrors the registry's MAX_CHALLENGE_PERIOD: no
+// close older than this many blocks can still be inside its window.
+const maxChallengePeriodBlocks = 4320
+
+// rebuild restores the closing set once per process from the CloseStarted
+// events at or below the watermark whose window is still open. Challenge
+// intents live only in the transaction manager's memory while the
+// watermark is persisted, so without this a restarted tower would never
+// retry a challenge it had submitted (or skipped) before going down.
+func (t *Tower) rebuild(ctx context.Context, mark, head uint64) error {
+	t.closingMu.Lock()
+	done := t.rebuilt
+	t.closingMu.Unlock()
+	if done {
+		return nil
+	}
+	if mark > 0 {
+		start := uint64(1)
+		if mark > maxChallengePeriodBlocks {
+			start = mark - maxChallengePeriodBlocks
+		}
+		iter, err := t.contract.FilterCloseStarted(&bind.FilterOpts{Context: ctx, Start: start, End: &mark}, nil, nil)
+		if err != nil {
+			return err
+		}
+		for iter.Next() {
+			ev := iter.Event
+			if deadline := ev.DeadlineBlock.Uint64(); deadline >= head {
+				t.watchClose(proofstore.ChannelKey{
+					ChainID:   t.cfg.ChainID,
+					Registry:  t.cfg.Registry,
+					ChannelID: ev.ChannelId.Uint64(),
+				}, deadline)
+			}
+		}
+		if err := iter.Error(); err != nil {
+			return err
+		}
+	}
+	t.closingMu.Lock()
+	t.rebuilt = true
+	t.closingMu.Unlock()
+	return nil
+}
+
+// reevaluate re-runs react for every watched close the scan did not just
+// react to, and stops watching a close once its deadline has passed (after
+// the evaluation that raises the expired-unchallenged alarm). react is
+// idempotent while a challenge is pending, and re-submits one that was
+// dropped (reverted, lost its nonce, or lost with a restart).
+func (t *Tower) reevaluate(ctx context.Context, head uint64, reacted map[proofstore.ChannelKey]struct{}) {
+	t.closingMu.Lock()
+	watched := make(map[proofstore.ChannelKey]uint64, len(t.closing))
+	for key, deadline := range t.closing {
+		watched[key] = deadline
+	}
+	t.closingMu.Unlock()
+
+	for key, deadline := range watched {
+		if _, ok := reacted[key]; !ok {
+			if err := t.react(ctx, key, head); err != nil && !errors.Is(err, errQuarantined) {
+				t.alarm("tower re-evaluation of %s: %v", key, err)
+			}
+		}
+		if head > deadline {
+			t.closingMu.Lock()
+			if t.closing[key] == deadline {
+				delete(t.closing, key)
+			}
+			t.closingMu.Unlock()
+		}
+	}
+}
+
+// watchClose adds a closing channel to the per-tick re-evaluation set.
+func (t *Tower) watchClose(key proofstore.ChannelKey, deadline uint64) {
+	t.closingMu.Lock()
+	defer t.closingMu.Unlock()
+	t.closing[key] = deadline
 }
 
 // closeEvent identifies one CloseStarted event by channel and block.
@@ -368,8 +485,13 @@ func (t *Tower) react(ctx context.Context, key proofstore.ChannelKey, head uint6
 		}
 	}
 
-	t.alarm("challenging stale close on %s: delegated seq %d > on-chain %d", key, st.Seq, onchain.ClosingSeq)
-	return t.txmgr.Submit(ctx, "towerchallenge:"+key.String(), head, deadline,
+	// Re-evaluated every tick: alarm when a challenge is (re)submitted, not
+	// on every pass over one already in flight.
+	id := "towerchallenge:" + key.String()
+	if !t.txmgr.Pending(id) {
+		t.alarm("challenging stale close on %s: delegated seq %d > on-chain %d", key, st.Seq, onchain.ClosingSeq)
+	}
+	return t.txmgr.Submit(ctx, id, head, deadline,
 		func(auth *bind.TransactOpts) (*types.Transaction, error) {
 			return t.contract.Challenge(auth, new(big.Int).SetUint64(key.ChannelID), st.ContractProof(), st.SigA, st.SigB)
 		})
