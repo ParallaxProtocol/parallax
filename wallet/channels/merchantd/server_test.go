@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,6 +16,8 @@ import (
 	"github.com/ParallaxProtocol/parallax/v2/wallet/channels/channeld"
 	"github.com/ParallaxProtocol/parallax/v2/wallet/channels/chantest"
 	"github.com/ParallaxProtocol/parallax/v2/wallet/channels/proofstore"
+	"github.com/ParallaxProtocol/parallax/v2/wallet/channels/protocol"
+	"github.com/ParallaxProtocol/parallax/v2/wallet/channels/watcher"
 )
 
 const testToken = "secret-token"
@@ -260,5 +263,79 @@ func TestCloseRefusesAmbiguousBareChannelID(t *testing.T) {
 	}
 	if decoyMeta, _ := merchant.Node.Store.Meta(decoy); decoyMeta.PendingClose != nil {
 		t.Fatal("qualified close hit the decoy channel")
+	}
+}
+
+// TestZeroValueProposalFiresNoWebhook: the invoice id rides in the unsigned
+// envelope, so a payer used to obtain a validly signed "paid" webhook for
+// any pending invoice by naming it on a zero-delta supersession, with
+// nothing transferred and the invoice still pending.
+func TestZeroValueProposalFiresNoWebhook(t *testing.T) {
+	env := chantest.NewPair(t)
+	merchant, payer := env.Bob, env.Alice
+
+	var webhooks atomic.Int32
+	hookSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		webhooks.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer hookSrv.Close()
+	merchant.Node.Cfg.Merchant.WebhookURL = hookSrv.URL
+
+	server := New(merchant.Node, testToken, nil)
+	ts := httptest.NewServer(server.Handler())
+	defer ts.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go merchant.Node.Run(ctx, time.Hour)
+	go payer.Node.Run(ctx, time.Hour)
+	go server.RunWebhookWorker(ctx, 50*time.Millisecond)
+	env.WaitConnected(t)
+
+	code, raw := api(t, ts, "POST", "/v1/invoices", testToken,
+		map[string]any{"amountWei": "1000000000", "memo": "laptop", "ttlSeconds": 600})
+	if code != http.StatusCreated {
+		t.Fatalf("create invoice: %d %s", code, raw)
+	}
+	var created invoiceResponse
+	if err := json.Unmarshal(raw, &created); err != nil {
+		t.Fatal(err)
+	}
+
+	// Journal a never-sent payment so a no-op supersession exists, then
+	// queue the no-op naming the victim invoice.
+	if _, err := payer.Node.Engine.ProposePayment(env.Key, big.NewInt(1), "", 0); err != nil {
+		t.Fatal(err)
+	}
+	noop, err := payer.Node.Engine.ProposeNoOpSupersession(env.Key, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	noop.InvoiceID = created.InvoiceID
+	content, err := protocol.EncodePayload(noop)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().Unix()
+	if _, err := payer.Node.Store.EnqueueOutbound(proofstore.OutboundItem{
+		DedupeKey: watcher.DedupeKeyFor(protocol.KindProposal, env.Key, 2),
+		ToNpub:    merchant.Node.SelfPub, Kind: protocol.KindProposal, Content: content,
+		RumorTime: now, ExpiresAt: now + 600,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	env.WaitUntil(t, "no-op countersigned", func() bool {
+		latest, err := merchant.Node.Store.LatestState(env.Key)
+		return err == nil && latest.Seq == 2
+	})
+	time.Sleep(300 * time.Millisecond) // give any stray delivery time to appear
+	if n := webhooks.Load(); n != 0 {
+		t.Fatalf("zero-value proposal fired %d webhook(s)", n)
+	}
+	_, raw = api(t, ts, "GET", "/v1/invoices/"+created.InvoiceID, testToken, nil)
+	var got invoiceResponse
+	if err := json.Unmarshal(raw, &got); err != nil || got.Status != "pending" {
+		t.Fatalf("invoice status after zero-value proposal: %s", raw)
 	}
 }

@@ -413,7 +413,7 @@ func TestTiebreakNeverEquivocates(t *testing.T) {
 		t.Fatal(err)
 	}
 	res2, err := bob.engine.HandleProposal(*re, alice.npub, nowBlock, nowUnix)
-	if err != nil || res2.Ack == nil {
+	if err != nil || res2.Ack == nil || res2.InvoicePaid != "inv-goods" {
 		t.Fatalf("rebased invoice payment refused: %+v %v", res2, err)
 	}
 
@@ -519,5 +519,41 @@ func TestAckVerification(t *testing.T) {
 
 	if _, err := alice.engine.HandleAck(key, AckMsg{V: 1, Seq: "42", StateHash: res.Ack.StateHash, Sig: res.Ack.Sig}); !errors.Is(err, ErrNoProposal) {
 		t.Fatal("ack for unknown seq accepted")
+	}
+}
+
+// TestNoOpProposalNeverReportsInvoicePaid: the invoice id rides in the
+// unsigned envelope, so a zero-delta supersession naming a pending invoice
+// used to read as that invoice's payment (a signed "paid" webhook for
+// nothing). Only a real transition reports one.
+func TestNoOpProposalNeverReportsInvoicePaid(t *testing.T) {
+	alice, bob, key := setupPair(t, Config{}, Config{})
+	invoiceFor(t, bob, "inv1", wei1)
+
+	if _, err := alice.engine.ProposePayment(key, wei1, "", nowBlock); err != nil {
+		t.Fatal(err)
+	}
+	noop, err := alice.engine.ProposeNoOpSupersession(key, nowBlock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	noop.InvoiceID = "inv1"
+	res, err := bob.engine.HandleProposal(*noop, alice.npub, nowBlock, nowUnix)
+	if err != nil || res.Ack == nil {
+		t.Fatalf("no-op refused: %+v %v", res, err)
+	}
+	if res.InvoicePaid != "" {
+		t.Fatalf("zero-value proposal reported invoice %q paid", res.InvoicePaid)
+	}
+	if inv, _ := bob.store.Invoice("inv1"); inv.Paid {
+		t.Fatal("zero-value proposal marked the invoice paid")
+	}
+	if _, err := alice.engine.HandleAck(key, *res.Ack); err != nil {
+		t.Fatal(err)
+	}
+
+	res, _ = pay(t, alice, bob, key, wei1, "inv1")
+	if res.InvoicePaid != "inv1" {
+		t.Fatalf("real payment not reported: %+v", res)
 	}
 }

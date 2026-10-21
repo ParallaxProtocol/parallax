@@ -302,8 +302,8 @@ func (n *Node) handleRumor(ctx context.Context, rumor nostr.Event, sender string
 		if err != nil {
 			return err
 		}
-		if res.Completed != nil && msg.InvoiceID != "" && n.OnPayment != nil {
-			n.OnPayment(msg.InvoiceID, res.Completed)
+		if res.InvoicePaid != "" && n.OnPayment != nil {
+			n.OnPayment(res.InvoicePaid, res.Completed)
 		}
 		if res.Rebase != 0 {
 			st, serr := protocol.FromWire(msg.State)

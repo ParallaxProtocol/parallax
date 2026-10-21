@@ -72,14 +72,17 @@ func New(store *proofstore.Store, signer Signer, cfg Config) *Engine {
 // proposal that lost a same-seq conflict and must be re-issued above it via
 // RebaseProposal; Voided lists this wallet's own journaled seqs pruned
 // without completing because a higher state completed (stop retransmitting
-// them; any payment intent they carried is the caller's to re-issue).
+// them; any payment intent they carried is the caller's to re-issue);
+// InvoicePaid names the invoice this call transitioned to paid, the only
+// signal that an inbound payment against an invoice actually landed.
 type Result struct {
-	Ack       *AckMsg
-	Nack      *NackMsg
-	Completed *proofstore.SignedState
-	Dropped   bool
-	Rebase    uint64
-	Voided    []uint64
+	Ack         *AckMsg
+	Nack        *NackMsg
+	Completed   *proofstore.SignedState
+	Dropped     bool
+	Rebase      uint64
+	Voided      []uint64
+	InvoicePaid string
 }
 
 // ---------------------------------------------------------------- helpers
@@ -697,11 +700,18 @@ func (e *Engine) HandleProposal(msg ProposalMsg, senderNpub string, nowBlock uin
 	// This runs even under push-payments policy: skipping the invoice
 	// REQUIREMENT never skips crediting one that was referenced. An unknown
 	// id under push policy is tolerated (nothing to credit).
+	// Only a transition made here reports the invoice paid: the id rides
+	// in the unsigned envelope, so a no-op, an already-paid id, or an id
+	// this store never minted must never read as payment.
+	invoicePaid := ""
 	if !isNoOp && msg.InvoiceID != "" {
 		err := e.store.MarkInvoicePaid(msg.InvoiceID, key, st.Seq)
 		if err != nil && !errors.Is(err, proofstore.ErrExists) &&
 			!(e.cfg.PushPayments && errors.Is(err, proofstore.ErrNotFound)) {
 			return Result{}, err
+		}
+		if err == nil {
+			invoicePaid = msg.InvoiceID
 		}
 	}
 
@@ -714,8 +724,9 @@ func (e *Engine) HandleProposal(msg ProposalMsg, senderNpub string, nowBlock uin
 			Sig:       "0x" + util.Bytes2Hex(mySig),
 			InvoiceID: msg.InvoiceID,
 		},
-		Completed: &complete,
-		Voided:    voided,
+		Completed:   &complete,
+		Voided:      voided,
+		InvoicePaid: invoicePaid,
 	}, nil
 }
 
