@@ -232,6 +232,15 @@ func (e *Engine) HandleWithdrawProposal(msg WithdrawProposalMsg, senderNpub stri
 	pw := meta.PeerPendingWithdraw
 	retransmit := pw != nil && pw.Participant == participant && pw.ExpiryBlock == expiry &&
 		pw.TotalWithdrawn.BigInt().Cmp(total) == 0
+	// The record is the only earmark against entitlement, and replacing it
+	// stops counting the old voucher, which stays dual-signed and
+	// submittable until its own expiry. A replacement must therefore
+	// outlive it: one expiring sooner would release the earmark while the
+	// old voucher can still spend it, and a payment funded by it would be
+	// clawed back from us at settle.
+	if !retransmit && voucherLive(pw, nowBlock) && expiry < pw.ExpiryBlock {
+		return Result{Nack: nack(key, KindWithdrawProposal, 0, NackPolicy, "expiry below the outstanding voucher's")}, nil, nil
+	}
 	withdrawn := dep.WithdrawnOf(prole).BigInt()
 	if !retransmit {
 		withdrawn = withdrawAdjusted(meta, dep, nowBlock).WithdrawnOf(prole).BigInt()

@@ -4,8 +4,10 @@ import (
 	"errors"
 	"math/big"
 	"strconv"
+	"strings"
 	"testing"
 
+	"github.com/ParallaxProtocol/parallax/v2/util"
 	"github.com/ParallaxProtocol/parallax/v2/wallet/channels/proofstore"
 )
 
@@ -149,5 +151,65 @@ func TestWithdrawExpiryHorizon(t *testing.T) {
 	res, ready, err = alice.engine.HandleWithdrawProposal(*prop, bob.npub, nowBlock)
 	if err != nil || res.Ack == nil || ready == nil {
 		t.Fatalf("genuine refused: %+v %v", res, err)
+	}
+}
+
+// signedWithdrawFrom builds a 21911 signed by p directly, bypassing its own
+// engine's guards (the adversarial proposer).
+func signedWithdrawFrom(t *testing.T, p *party, key proofstore.ChannelKey, total *big.Int, expiry uint64) WithdrawProposalMsg {
+	t.Helper()
+	d, err := withdrawDigest(key, p.signer.Address(), total, expiry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig, err := p.signer.SignDigest(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return WithdrawProposalMsg{
+		V: 1, ChannelID: strconv.FormatUint(key.ChannelID, 10),
+		Registry: strings.ToLower(key.Registry.Hex()), ChainID: key.ChainID,
+		Participant: strings.ToLower(p.signer.Address().Hex()), TotalWithdrawn: total.String(),
+		ExpiryBlock: strconv.FormatUint(expiry, 10), Sig: "0x" + util.Bytes2Hex(sig),
+	}
+}
+
+// TestPeerWithdrawReplacementCannotShortenExpiry: the responder keeps one
+// peer voucher record. A higher-total replacement expiring sooner used to
+// overwrite it, so once the replacement lapsed nothing earmarked the first
+// voucher, which stayed dual-signed and submittable: the peer spent the same
+// entitlement off-chain and withdrew it on-chain, and the settle clamp put
+// the shortfall on us.
+func TestPeerWithdrawReplacementCannotShortenExpiry(t *testing.T) {
+	alice, bob, key := setupPair(t, Config{PushPayments: true}, Config{})
+	two := new(big.Int).Mul(big.NewInt(2), wei1)
+	five := new(big.Int).Mul(big.NewInt(5), wei1)
+
+	v1 := signedWithdrawFrom(t, bob, key, two, nowBlock+1000)
+	if res, ready, err := alice.engine.HandleWithdrawProposal(v1, bob.npub, nowBlock); err != nil || res.Ack == nil || ready == nil {
+		t.Fatalf("V1 refused: %+v %v", res, err)
+	}
+	v2 := signedWithdrawFrom(t, bob, key, new(big.Int).Add(two, big.NewInt(1)), nowBlock+1)
+	res, ready, err := alice.engine.HandleWithdrawProposal(v2, bob.npub, nowBlock)
+	if err != nil || res.Ack != nil || ready != nil || res.Nack == nil {
+		t.Fatalf("shorter-lived replacement countersigned: %+v %v", res, err)
+	}
+
+	// After V2 would have lapsed, V1 still earmarks its 2 LAX: a payment of
+	// the whole 5 LAX deposit is refused.
+	later := nowBlock + 2
+	if err := alice.engine.SweepWithdraw(key, later); err != nil {
+		t.Fatal(err)
+	}
+	pay := signedPaymentFrom(t, bob, proofstore.RoleB, key, 1, new(big.Int), five)
+	res, err = alice.engine.HandleProposal(pay, bob.npub, later, nowUnix)
+	if err != nil || res.Ack != nil || res.Nack == nil || res.Nack.Reason != NackInsufficientBalance {
+		t.Fatalf("payment spending V1's earmark accepted: %+v %v", res, err)
+	}
+
+	// A replacement that outlives V1 is still accepted.
+	v3 := signedWithdrawFrom(t, bob, key, new(big.Int).Add(two, big.NewInt(1)), nowBlock+1000)
+	if res, ready, err := alice.engine.HandleWithdrawProposal(v3, bob.npub, nowBlock); err != nil || res.Ack == nil || ready == nil {
+		t.Fatalf("longer-lived replacement refused: %+v %v", res, err)
 	}
 }
