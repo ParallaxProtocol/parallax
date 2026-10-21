@@ -30,6 +30,10 @@ const (
 	maxBumps        = 10
 )
 
+// transferGas is the intrinsic gas of a plain value transfer (the nonce
+// filler's whole cost).
+const transferGas = 21000
+
 // pendingTx is one tracked intent.
 type pendingTx struct {
 	build       func(*bind.TransactOpts) (*types.Transaction, error)
@@ -41,6 +45,15 @@ type pendingTx struct {
 	bumps       int
 	deadline    uint64 // 0 = none; alarm fires as head approaches it
 	noBump      bool   // synchronous Transact intent: the caller owns retries
+	missingAt   uint64 // head a noBump broadcast was first seen absent from the pool (0 = present)
+}
+
+// nonceReader is the mined-nonce lookup Tick uses to spot intents whose
+// nonce another transaction consumed. *client.Client and the simulated
+// backend provide it; a backend without it skips that check and relies on
+// the "nonce too low" resubmit path alone.
+type nonceReader interface {
+	NonceAt(ctx context.Context, account util.Address, blockNumber *big.Int) (uint64, error)
 }
 
 // TxManager tracks keyed transaction intents until they are mined,
@@ -214,15 +227,17 @@ func (m *TxManager) Transact(ctx context.Context, label string,
 	receipt, err := bind.WaitMined(ctx, m.backend, tx)
 	if err != nil {
 		// The broadcast may still mine: keep the reservation until a Tick
-		// reaps its receipt, so the nonce is not reused underneath it.
+		// reaps its receipt, so the nonce is not reused underneath it. If
+		// it never reaches the pool, Tick fills the nonce instead.
 		return nil, err
 	}
 	m.Done(id)
 	return receipt, nil
 }
 
-// Tick drives every pending intent: reap mined ones, fee-bump stale ones,
-// and alarm when a deadline closes in.
+// Tick drives every pending intent: reap mined ones, drop ones whose nonce
+// another transaction consumed, fill the nonce of a Transact lost from the
+// pool, fee-bump stale ones, and alarm when a deadline closes in.
 func (m *TxManager) Tick(ctx context.Context, head uint64) {
 	m.tickMu.Lock()
 	defer m.tickMu.Unlock()
@@ -234,6 +249,18 @@ func (m *TxManager) Tick(ctx context.Context, head uint64) {
 	}
 	m.mu.Unlock()
 
+	// The account's nonces, read BEFORE the receipt checks: a nonce below
+	// the mined one whose own receipts are then still absent was consumed
+	// by some other transaction, never by a race with this tick. Either
+	// read failing just skips the checks that need it.
+	mined, haveMined := uint64(0), false
+	if nr, ok := m.backend.(nonceReader); ok {
+		if n, err := nr.NonceAt(ctx, m.from, nil); err == nil {
+			mined, haveMined = n, true
+		}
+	}
+	pooled, perr := m.backend.PendingNonceAt(ctx, m.from)
+
 	for _, id := range ids {
 		m.mu.Lock()
 		p, ok := m.pending[id]
@@ -242,22 +269,40 @@ func (m *TxManager) Tick(ctx context.Context, head uint64) {
 			continue
 		}
 
-		// Any attempt mining resolves the intent: after a fee bump, the
-		// replaced original can still be the one that lands, and watching
-		// only the newest hash would leave the intent pending forever.
-		mined := false
-		for _, hash := range p.txHashes {
-			if receipt, err := m.backend.TransactionReceipt(ctx, hash); err == nil && receipt != nil {
-				if receipt.Status != types.ReceiptStatusSuccessful {
-					m.alarm("transaction %s reverted (tx %s); intent dropped, caller will re-evaluate", id, hash.Hex())
-				}
-				m.Done(id)
-				mined = true
-				break
-			}
-		}
-		if mined {
+		if m.reap(ctx, id, p) {
 			continue
+		}
+
+		// The nonce went to another transaction (another wallet on the same
+		// key, or a lost broadcast the node later replaced): none of this
+		// intent's attempts can ever mine. Dropping it releases the
+		// reservation and lets the caller's next Submit pick a fresh nonce;
+		// bumping on would only collect "nonce too low" until the deadline.
+		if haveMined && p.nonce < mined {
+			m.alarm("transaction %s lost nonce %d to another transaction; intent dropped, caller will re-evaluate", id, p.nonce)
+			m.Done(id)
+			continue
+		}
+
+		// A Transact broadcast missing from the pool (lost, evicted, or its
+		// caller gave up waiting) is never resent, so its reservation would
+		// stand as a permanent gap that every later intent queues behind.
+		// The pool's pending nonce sitting exactly on it means everything
+		// below is in place and this one is absent; once that has held for
+		// a bump window, fill the nonce with a 0-value self-transfer rather
+		// than resending the call — its caller may already have retried it
+		// at a fresh nonce, and a deposit must never land twice.
+		if p.noBump && perr == nil {
+			switch {
+			case pooled != p.nonce:
+				p.missingAt = 0
+			case p.missingAt == 0:
+				p.missingAt = head
+			case head >= p.missingAt+bumpAfterBlocks:
+				m.alarm("transaction %s (nonce %d) is missing from the pool; filling its nonce with a 0-value self-transfer", id, p.nonce)
+				p.build = m.fillNonce
+				p.noBump = false
+			}
 		}
 
 		if p.deadline > 0 && head+alarmBlocksBeforeDeadline > p.deadline {
@@ -265,16 +310,31 @@ func (m *TxManager) Tick(ctx context.Context, head uint64) {
 				id, int64(p.deadline)-int64(head), p.txHashes[len(p.txHashes)-1].Hex(), p.bumps)
 		}
 
-		if !p.noBump && head >= p.submittedAt+bumpAfterBlocks && head >= p.retryAt && p.bumps < maxBumps {
+		if !p.noBump && head >= p.submittedAt+bumpAfterBlocks && head >= p.retryAt {
 			// Same nonce, 25% higher price: replaces the stuck transaction.
 			// The bump budget is consumed by a successful handoff to the
 			// RPC, never by the attempt — burning it on failed sends would
 			// let a long RPC outage exhaust maxBumps with only the original
 			// low-fee transaction in the mempool, halting escalation exactly
-			// when the recovered RPC needs it.
+			// when the recovered RPC needs it. Past the cap the transaction
+			// is rebroadcast at its final price, so one lost from the pool
+			// after the last bump is not stranded there.
 			prev := new(big.Int).Set(p.gasPrice)
-			p.gasPrice.Add(p.gasPrice, new(big.Int).Div(new(big.Int).Mul(p.gasPrice, big.NewInt(bumpPercent)), big.NewInt(100)))
+			if p.bumps < maxBumps {
+				p.gasPrice.Add(p.gasPrice, new(big.Int).Div(new(big.Int).Mul(p.gasPrice, big.NewInt(bumpPercent)), big.NewInt(100)))
+			}
 			if _, err := m.send(ctx, id, p, head); err != nil {
+				// A nonce consumed underneath the intent: settled if one of
+				// its own attempts mined, otherwise dropped so the caller's
+				// next Submit re-nonces. Bumping on would burn the budget
+				// on a nonce that can never mine again.
+				if nonceTooLow(err) {
+					if !m.reap(ctx, id, p) {
+						m.alarm("transaction %s lost nonce %d to another transaction; intent dropped, caller will re-evaluate", id, p.nonce)
+						m.Done(id)
+					}
+					continue
+				}
 				// "already known" / "underpriced" races are benign (the
 				// price sticks so the next tick compounds another 25%);
 				// anything else rolls back the price and retries at the
@@ -285,7 +345,7 @@ func (m *TxManager) Tick(ctx context.Context, head uint64) {
 				// while a transient RPC failure delays escalation by one
 				// block at most. Near the deadline every tick retries.
 				if benignResubmitError(err) {
-					p.bumps++
+					m.countBump(p)
 				} else {
 					p.gasPrice.Set(prev)
 					p.retryAt = head + 1
@@ -296,14 +356,56 @@ func (m *TxManager) Tick(ctx context.Context, head uint64) {
 				}
 				continue
 			}
-			p.bumps++
+			m.countBump(p)
 		}
 	}
+}
+
+// reap resolves an intent if any of its attempts has a receipt. Any attempt
+// mining resolves it: after a fee bump, the replaced original can still be
+// the one that lands, and watching only the newest hash would leave the
+// intent pending forever.
+func (m *TxManager) reap(ctx context.Context, id string, p *pendingTx) bool {
+	for _, hash := range p.txHashes {
+		if receipt, err := m.backend.TransactionReceipt(ctx, hash); err == nil && receipt != nil {
+			if receipt.Status != types.ReceiptStatusSuccessful {
+				m.alarm("transaction %s reverted (tx %s); intent dropped, caller will re-evaluate", id, hash.Hex())
+			}
+			m.Done(id)
+			return true
+		}
+	}
+	return false
+}
+
+// countBump consumes one unit of the bump budget; rebroadcasts past the cap
+// are free.
+func (m *TxManager) countBump(p *pendingTx) {
+	if p.bumps < maxBumps {
+		p.bumps++
+	}
+}
+
+// fillNonce builds and sends a 0-value self-transfer at the reserved nonce:
+// the stand-in for a Transact broadcast that went missing from the pool.
+func (m *TxManager) fillNonce(auth *bind.TransactOpts) (*types.Transaction, error) {
+	tx := types.NewTransaction(auth.Nonce.Uint64(), m.from, new(big.Int), transferGas, auth.GasPrice, nil)
+	signed, err := auth.Signer(m.from, tx)
+	if err != nil {
+		return nil, err
+	}
+	if err := m.backend.SendTransaction(auth.Context, signed); err != nil {
+		return nil, err
+	}
+	return signed, nil
 }
 
 func benignResubmitError(err error) bool {
 	s := err.Error()
 	return strings.Contains(s, "already known") ||
-		strings.Contains(s, "underpriced") ||
-		strings.Contains(s, "nonce too low") // mined between receipt check and resubmit
+		strings.Contains(s, "underpriced")
+}
+
+func nonceTooLow(err error) bool {
+	return strings.Contains(err.Error(), "nonce too low")
 }

@@ -3,12 +3,16 @@ package watcher
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ParallaxProtocol/parallax/v2/primitives/types"
 	"github.com/ParallaxProtocol/parallax/v2/script/abi/bind"
+	"github.com/ParallaxProtocol/parallax/v2/script/abi/bind/backends"
 	"github.com/ParallaxProtocol/parallax/v2/util"
 	"github.com/ParallaxProtocol/parallax/v2/wallet/channels/registry"
 )
@@ -499,5 +503,286 @@ func TestTxManagerFailedBumpRetriesEveryTickNearDeadline(t *testing.T) {
 	erroring.mu.Unlock()
 	if n != 2 {
 		t.Fatalf("attempts on two ticks near the deadline: %d, want 2", n)
+	}
+}
+
+// gethPoolBackend models a real node's txpool on top of the simulated
+// backend (which rejects any nonce != pending): a lower nonce is refused
+// with geth's "nonce too low", a higher nonce is "queued" (accepted, never
+// mined until the gap fills; the sender must resend it), and the first
+// dropN sends are accepted but lost (node restart without journal,
+// eviction). It hides NonceAt, so the manager learns of a consumed nonce
+// only from a resubmit; minedNonceBackend restores the lookup.
+type gethPoolBackend struct {
+	TxBackend
+	mu     sync.Mutex
+	dropN  int
+	sent   int
+	queued int
+}
+
+func (g *gethPoolBackend) SendTransaction(ctx context.Context, tx *types.Transaction) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.sent++
+	if g.sent <= g.dropN {
+		return nil
+	}
+	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+	if err != nil {
+		return err
+	}
+	pn, err := g.TxBackend.PendingNonceAt(ctx, from)
+	if err != nil {
+		return err
+	}
+	if tx.Nonce() < pn {
+		return errors.New("nonce too low")
+	}
+	if tx.Nonce() > pn {
+		g.queued++
+		return nil
+	}
+	return g.TxBackend.SendTransaction(ctx, tx)
+}
+
+// minedNonceBackend is a gethPoolBackend that also serves NonceAt.
+type minedNonceBackend struct {
+	*gethPoolBackend
+	sim *backends.SimulatedBackend
+}
+
+func (b *minedNonceBackend) NonceAt(ctx context.Context, account util.Address, blockNumber *big.Int) (uint64, error) {
+	return b.sim.NonceAt(ctx, account, blockNumber)
+}
+
+// startStaleClose stores bob's seq-5 state, has alice force-close at stale
+// seq 2, confirms it, and returns the challenge deadline.
+func startStaleClose(t *testing.T, e *simEnv) uint64 {
+	t.Helper()
+	if err := e.store.PutComplete(e.dualSigned(t, 5, lax(3), new(big.Int))); err != nil {
+		t.Fatal(err)
+	}
+	stale := e.dualSigned(t, 2, lax(1), new(big.Int))
+	if _, err := e.contract.StartClose(e.aliceAuth, big.NewInt(1), stale.ContractProof(), stale.SigA, stale.SigB); err != nil {
+		t.Fatal(err)
+	}
+	e.commit(3)
+	onchain, err := e.contract.GetChannel(nil, big.NewInt(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return onchain.CloseInitiatedAtBlock.Uint64() + uint64(onchain.ChallengePeriodBlocks)
+}
+
+// tickUntilDeadline drives the watcher block by block up to the challenge
+// deadline and returns the on-chain closing seq there, before any settle.
+func tickUntilDeadline(t *testing.T, e *simEnv, w *Watcher, deadline uint64) uint64 {
+	t.Helper()
+	for e.backend.Blockchain().CurrentBlock().Number().Uint64() < deadline {
+		_, _ = w.Tick(context.Background())
+		e.commit(1)
+	}
+	onchain, err := e.contract.GetChannel(nil, big.NewInt(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return onchain.ClosingSeq
+}
+
+func newPoolWatcher(t *testing.T, e *simEnv, backend TxBackend) (*Watcher, *TxManager, *[]string) {
+	t.Helper()
+	mgr := NewTxManager(backend, e.bobPriv, big.NewInt(1337))
+	w, err := New(Config{ChainID: "1337", Registry: e.regAddr, Confirmations: 3}, e.store, backend, mgr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	alarms := &[]string{}
+	w.Alarm = func(format string, args ...any) {
+		msg := fmt.Sprintf(format, args...)
+		t.Logf("alarm: %s", msg)
+		*alarms = append(*alarms, msg)
+	}
+	return w, mgr, alarms
+}
+
+// TestTxManagerFillsLostTransactNonce: a Transact whose broadcast is lost
+// and whose caller stops waiting is never resent, so its nonce reservation
+// would stand as a gap every later intent queues behind: the auto-challenge
+// sits unexecutable and the stale close settles. The manager must fill the
+// missing nonce (without replaying the abandoned call) so the challenge
+// lands inside the window.
+func TestTxManagerFillsLostTransactNonce(t *testing.T) {
+	e := setupSim(t)
+	pool := &gethPoolBackend{TxBackend: e.backend, dropN: 1}
+	w, mgr, alarms := newPoolWatcher(t, e, pool)
+	contract, err := registry.NewChannelRegistry(e.regAddr, pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// An ordinary channeld call through the shared manager: the broadcast
+	// is lost and the caller's context expires.
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	_, err = mgr.Transact(ctx, "deposit", func(auth *bind.TransactOpts) (*types.Transaction, error) {
+		auth.Value = lax(1)
+		return contract.Deposit(auth, big.NewInt(1))
+	})
+	cancel()
+	if err == nil {
+		t.Fatal("lost Transact reported mined")
+	}
+
+	deadline := startStaleClose(t, e)
+	if seq := tickUntilDeadline(t, e, w, deadline); seq != 5 {
+		t.Fatalf("on-chain seq %d at the deadline, want 5: challenge wedged behind the lost Transact nonce", seq)
+	}
+	filled := false
+	for _, a := range *alarms {
+		filled = filled || strings.Contains(a, "filling its nonce")
+	}
+	if !filled {
+		t.Fatalf("no nonce-fill alarm: %q", *alarms)
+	}
+	// The abandoned deposit was not replayed.
+	onchain, err := e.contract.GetChannel(nil, big.NewInt(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if onchain.DepositB.Cmp(lax(5)) != 0 {
+		t.Fatalf("abandoned deposit replayed: depositB %s", onchain.DepositB)
+	}
+}
+
+// consumeBobNonce sends an unrelated transfer from bob's key outside the
+// manager (the operator's other wallet) and mines it.
+func consumeBobNonce(t *testing.T, e *simEnv) {
+	t.Helper()
+	nonce, err := e.backend.PendingNonceAt(context.Background(), e.bob)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gp, err := e.backend.SuggestGasPrice(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	signed, err := types.SignTx(types.NewTransaction(nonce, e.alice, big.NewInt(1), 21000, gp, nil),
+		types.LatestSignerForChainID(big.NewInt(1337)), e.bobPriv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.backend.SendTransaction(context.Background(), signed); err != nil {
+		t.Fatal(err)
+	}
+	e.commit(1)
+}
+
+// TestTxManagerNonceTooLowDropsIntent: the challenge's first broadcast is
+// lost and another transaction on the same key consumes its nonce. Every
+// fee bump then meets "nonce too low"; treating that as benign burned the
+// bump budget and left the intent pending forever, and a pending id makes
+// Submit a no-op, so the challenge was never re-nonced. The intent must be
+// dropped (no bump counted) and resubmitted at a fresh nonce.
+func TestTxManagerNonceTooLowDropsIntent(t *testing.T) {
+	e := setupSim(t)
+	pool := &gethPoolBackend{TxBackend: e.backend, dropN: 1}
+	w, mgr, alarms := newPoolWatcher(t, e, pool)
+	deadline := startStaleClose(t, e)
+
+	if _, err := w.Tick(context.Background()); err != nil { // challenge sent, lost
+		t.Fatal(err)
+	}
+	mgr.mu.Lock()
+	lost := mgr.pending["challenge:"+e.key.String()].nonce
+	mgr.mu.Unlock()
+	consumeBobNonce(t, e)
+
+	if seq := tickUntilDeadline(t, e, w, deadline); seq != 5 {
+		t.Fatalf("on-chain seq %d at the deadline, want 5: challenge wedged on consumed nonce %d", seq, lost)
+	}
+	dropped := false
+	for _, a := range *alarms {
+		dropped = dropped || strings.Contains(a, "lost nonce")
+	}
+	if !dropped {
+		t.Fatalf("no lost-nonce alarm: %q", *alarms)
+	}
+}
+
+// TestTxManagerDropsIntentOnConsumedNonce: with a mined-nonce lookup the
+// manager spots a consumed nonce on the next tick, without waiting for a
+// bump to fail, and the challenge is re-nonced at once.
+func TestTxManagerDropsIntentOnConsumedNonce(t *testing.T) {
+	e := setupSim(t)
+	pool := &minedNonceBackend{gethPoolBackend: &gethPoolBackend{TxBackend: e.backend, dropN: 1}, sim: e.backend}
+	w, mgr, _ := newPoolWatcher(t, e, pool)
+	startStaleClose(t, e)
+
+	if _, err := w.Tick(context.Background()); err != nil { // challenge sent, lost
+		t.Fatal(err)
+	}
+	id := "challenge:" + e.key.String()
+	mgr.mu.Lock()
+	lost := mgr.pending[id].nonce
+	mgr.mu.Unlock()
+	consumeBobNonce(t, e)
+
+	// Inside the bump window: only the consumed-nonce check can act.
+	if _, err := w.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	mgr.mu.Lock()
+	p, ok := mgr.pending[id]
+	mgr.mu.Unlock()
+	if !ok || p.nonce == lost {
+		t.Fatalf("challenge not re-nonced past consumed nonce %d (pending %v)", lost, ok)
+	}
+	e.commit(1)
+	onchain, err := e.contract.GetChannel(nil, big.NewInt(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if onchain.ClosingSeq != 5 {
+		t.Fatalf("on-chain seq %d after the re-nonced challenge, want 5", onchain.ClosingSeq)
+	}
+}
+
+// TestTxManagerRebroadcastsPastBumpCap: once maxBumps is spent the intent
+// is still resent at its final price, so a transaction lost from the pool
+// after the last bump is not stranded with no attempt in flight.
+func TestTxManagerRebroadcastsPastBumpCap(t *testing.T) {
+	e := setupSim(t)
+	dropping := &droppingBackend{TxBackend: e.backend, dropFirst: 1 + maxBumps}
+	mgr := NewTxManager(dropping, e.bobPriv, big.NewInt(1337))
+	contract, err := registry.NewChannelRegistry(e.regAddr, dropping)
+	if err != nil {
+		t.Fatal(err)
+	}
+	head := uint64(10)
+	err = mgr.Submit(context.Background(), "deposit:test", head, 0,
+		func(auth *bind.TransactOpts) (*types.Transaction, error) {
+			auth.Value = lax(1)
+			return contract.Deposit(auth, big.NewInt(1))
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 1; i <= maxBumps+1; i++ {
+		mgr.Tick(context.Background(), head+uint64(i)*bumpAfterBlocks)
+	}
+	dropping.mu.Lock()
+	n := len(dropping.attempts)
+	last, capped := dropping.attempts[n-1], dropping.attempts[n-2]
+	dropping.mu.Unlock()
+	if n != maxBumps+2 {
+		t.Fatalf("attempts: %d, want %d (original, %d bumps, one rebroadcast)", n, maxBumps+2, maxBumps)
+	}
+	if last.Cmp(capped) != 0 {
+		t.Fatalf("rebroadcast past the cap repriced: %s after %s", last, capped)
+	}
+	e.backend.Commit()
+	mgr.Tick(context.Background(), head+uint64(maxBumps+2)*bumpAfterBlocks)
+	if mgr.Pending("deposit:test") {
+		t.Fatal("rebroadcast past the bump cap never mined")
 	}
 }
