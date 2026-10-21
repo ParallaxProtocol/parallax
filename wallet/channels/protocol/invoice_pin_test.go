@@ -50,6 +50,7 @@ func TestInvoicePinQualifiedByRegistry(t *testing.T) {
 		ChannelID: key.ChannelID,
 		Registry:  key.Registry,
 		ChainID:   key.ChainID,
+		Merchant:  bob.signer.Address(),
 	})
 	if err != nil {
 		t.Fatal(err)

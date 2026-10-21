@@ -86,12 +86,22 @@ func setupPair(t *testing.T, cfgA, cfgB Config) (alice, bob *party, key proofsto
 	return alice, bob, key
 }
 
+// invoiceFor stores an invoice p minted (p is the merchant).
 func invoiceFor(t *testing.T, p *party, id string, amount *big.Int) {
 	t.Helper()
-	err := p.store.CreateInvoice(proofstore.Invoice{
+	receivedInvoice(t, p, p, id, amount)
+}
+
+// receivedInvoice stores in holder's store an invoice merchant issued: a
+// merchant's own record when they are the same party, the payer's copy
+// (as received over 21901) otherwise.
+func receivedInvoice(t *testing.T, holder, merchant *party, id string, amount *big.Int) {
+	t.Helper()
+	err := holder.store.CreateInvoice(proofstore.Invoice{
 		ID:        id,
 		AmountWei: proofstore.NewU256(amount),
 		ExpiresAt: nowUnix + 600,
+		Merchant:  merchant.signer.Address(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -260,6 +270,7 @@ func TestRejectsWrongInvoiceAmountAndExpiry(t *testing.T) {
 	invoiceFor(t, bob, "small", big.NewInt(5))
 	if err := bob.store.CreateInvoice(proofstore.Invoice{
 		ID: "expired", AmountWei: proofstore.NewU256(wei1), ExpiresAt: nowUnix - 1,
+		Merchant: bob.signer.Address(),
 	}); err != nil {
 		t.Fatal(err)
 	}

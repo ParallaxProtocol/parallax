@@ -10,7 +10,7 @@ import (
 // over 21901) alongside the merchant's own record.
 func payerInvoice(t *testing.T, payer, merchant *party, id string) {
 	t.Helper()
-	invoiceFor(t, payer, id, wei1)
+	receivedInvoice(t, payer, merchant, id, wei1)
 	invoiceFor(t, merchant, id, wei1)
 }
 
@@ -148,5 +148,46 @@ func TestSupersessionReleasesInvoice(t *testing.T) {
 	inv, err := bob.store.Invoice("inv1")
 	if err != nil || !inv.Paid || inv.PaidByProposal {
 		t.Fatalf("merchant mark wrong: %+v %v", inv, err)
+	}
+}
+
+// TestPeerIssuedInvoiceNeverSatisfiesCheck5: invoices received from a
+// counterparty share the store with minted ones. A peer that sent us an
+// invoice and then paid it against that id passed check 5 with push
+// payments off, and flipped our record of the debt to Paid, so we could no
+// longer pay it.
+func TestPeerIssuedInvoiceNeverSatisfiesCheck5(t *testing.T) {
+	alice, bob, key := setupPair(t, Config{}, Config{})
+	receivedInvoice(t, alice, bob, "bob-issued", wei1)
+
+	prop, err := bob.engine.ProposePayment(key, wei1, "bob-issued", nowBlock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := alice.engine.HandleProposal(*prop, bob.npub, nowBlock, nowUnix)
+	if err != nil || res.Ack != nil || res.Nack == nil || res.Nack.Detail != "unknown invoice" {
+		t.Fatalf("payment against a peer-issued invoice accepted: %+v %v", res, err)
+	}
+	if invoicePaid(t, alice, "bob-issued") {
+		t.Fatal("peer-issued invoice marked paid")
+	}
+}
+
+// TestPeerIssuedInvoiceUnderPushPolicy: push payments accept the delta, but
+// a peer-issued id is foreign: it is neither credited nor reported paid,
+// and our debt stays payable.
+func TestPeerIssuedInvoiceUnderPushPolicy(t *testing.T) {
+	alice, bob, key := setupPair(t, Config{PushPayments: true}, Config{})
+	receivedInvoice(t, alice, bob, "bob-issued", wei1)
+
+	res, _ := pay(t, bob, alice, key, wei1, "bob-issued")
+	if res.InvoicePaid != "" {
+		t.Fatalf("foreign invoice reported paid: %+v", res)
+	}
+	if invoicePaid(t, alice, "bob-issued") {
+		t.Fatal("peer-issued invoice marked paid")
+	}
+	if _, err := alice.engine.ProposePayment(key, wei1, "bob-issued", nowBlock); err != nil {
+		t.Fatalf("our debt became unpayable: %v", err)
 	}
 }

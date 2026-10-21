@@ -650,12 +650,17 @@ func (e *Engine) HandleProposal(msg ProposalMsg, senderNpub string, nowBlock uin
 	// transfer nothing and need no invoice. Push payments waive the invoice
 	// REQUIREMENT (no id, or an id this store never minted) — never the
 	// validation of a known invoice the proposal references: skipping it
-	// would let any delta flip the invoice to Paid below.
+	// would let any delta flip the invoice to Paid below. Invoices received
+	// from counterparties share the store, so only one this wallet minted
+	// (merchant address = ours) counts: a peer that sent us an invoice and
+	// then pays it would otherwise pass the check with push payments off,
+	// and flip our record of the debt to Paid.
+	minted := false
 	if !isNoOp {
 		var inv *proofstore.Invoice
 		if msg.InvoiceID != "" {
-			if rec, ierr := e.store.Invoice(msg.InvoiceID); ierr == nil {
-				inv = &rec
+			if rec, ierr := e.store.Invoice(msg.InvoiceID); ierr == nil && rec.Merchant == e.signer.Address() {
+				inv, minted = &rec, true
 			}
 		}
 		if !e.cfg.PushPayments || inv != nil {
@@ -698,16 +703,15 @@ func (e *Engine) HandleProposal(msg ProposalMsg, senderNpub string, nowBlock uin
 	// Mark the invoice paid exactly once; a duplicate proposal after a
 	// completed payment re-ACKs without re-firing (Part 2 §7.2, §7.3.5).
 	// This runs even under push-payments policy: skipping the invoice
-	// REQUIREMENT never skips crediting one that was referenced. An unknown
-	// id under push policy is tolerated (nothing to credit).
-	// Only a transition made here reports the invoice paid: the id rides
-	// in the unsigned envelope, so a no-op, an already-paid id, or an id
-	// this store never minted must never read as payment.
+	// REQUIREMENT never skips crediting one that was referenced. An id this
+	// wallet never minted (unknown, or an invoice a peer sent us) is never
+	// credited. Only a transition made here reports the invoice paid: the
+	// id rides in the unsigned envelope, so a no-op, an already-paid id, or
+	// a foreign id must never read as payment.
 	invoicePaid := ""
-	if !isNoOp && msg.InvoiceID != "" {
+	if minted {
 		err := e.store.MarkInvoicePaid(msg.InvoiceID, key, st.Seq)
-		if err != nil && !errors.Is(err, proofstore.ErrExists) &&
-			!(e.cfg.PushPayments && errors.Is(err, proofstore.ErrNotFound)) {
+		if err != nil && !errors.Is(err, proofstore.ErrExists) {
 			return Result{}, err
 		}
 		if err == nil {
